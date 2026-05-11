@@ -1219,12 +1219,10 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
   const reset=()=>{setItems([]);setBrand("");setContact("");setProjName("");setRetOn(false);if(clearPrefill)clearPrefill();};
   const catLabel: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
 
-  const splitCalc=!isMobile&&items.length>0;
   return(
-    <div style={{display:splitCalc?"flex":"block",gap:splitCalc?32:0,alignItems:"flex-start"}}>
+    <div>
       {pdf&&<PDFModal data={pdf} type={isRev?"revised":"quote"} onClose={()=>{setPdf(null);}} settings={settings}
         onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);}}/>}
-      <div style={{flex:splitCalc?"0 0 50%":undefined,minWidth:0}}>
       <div style={{marginBottom:18}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Calculator</h2>
         <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
@@ -1281,48 +1279,6 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
           <B onClick={addItem} s={{paddingLeft:20,paddingRight:20}}>+ Add to Quote</B>
         </div>
       </div>
-      </div>{/*left*/}
-      {splitCalc&&items.length>0&&(
-        <div style={{flex:"0 0 50%",minWidth:0}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 14px",paddingTop:2}}>Quote Summary</p>
-          <div style={{marginBottom:12}}>
-            {items.map((it: any)=>(
-              <div key={it.id} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.rule}`}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
-                    <span style={{fontSize:9,color:C.white,background:C.muted,padding:"2px 8px",borderRadius:2,textTransform:"uppercase",letterSpacing:"0.07em",flexShrink:0}}>{{influencer:"Influencer",ugc:"UGC",editorial:"Editorial"}[it.cat as string]||it.cat}</span>
-                    <span style={{fontSize:12,color:C.black}}>{it.qty>1?`${it.qty}× `:""}{it.name}</span>
-                  </div>
-                  {it.note&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{it.note}</p>}
-                  {it.addons?.length>0&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{it.addons.join(" · ")}</p>}
-                  {(it.usageLabel||it.exclLabel)&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{[it.usageLabel,it.exclLabel].filter(Boolean).join(" · ")}</p>}
-                  {it.platforms?.length>0&&<p style={{fontSize:10.5,color:C.muted,margin:0,paddingLeft:52}}>{it.platforms.join(" · ")}</p>}
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,marginLeft:14}}>
-                  <span style={{fontSize:12,fontFamily:SERIF,color:C.black}}>{fmt(it.amt)}</span>
-                  <button onClick={()=>setItems(p=>p.filter((x: any)=>x.id!==it.id))} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:14,padding:0,lineHeight:1}}>✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:11,padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2}}>
-            <input type="checkbox" id="ret2" checked={retOn} onChange={(e: any)=>setRetOn(e.target.checked)}/>
-            <label htmlFor="ret2" style={{fontSize:10,cursor:"pointer"}}>Retainer{retOn?" (−20%)":""}</label>
-            {retOn&&<><I type="number" min={1} value={retMo} onChange={(e: any)=>setRetMo(parseInt(e.target.value)||6)} s={{width:50}}/><span style={{fontSize:9,color:C.muted}}>months</span></>}
-          </div>
-          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 16px",marginBottom:14}}>
-            {retOn&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}><span style={{fontSize:9,color:C.muted}}>Subtotal</span><span style={{fontSize:10,color:C.muted}}>{fmt(subtotal)}</span></div>}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-              <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Total (EUR)</span>
-              <span style={{fontFamily:SERIF,fontSize:22,color:C.black}}>{fmt(grand)}</span>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <B v="sec" onClick={()=>{if(window.confirm("Reset all items and start over?"))reset();}}>Reset</B>
-            <B s={{flex:"1 1 auto",textAlign:"center"}} onClick={openPreview}>{isRev?"Preview Revised Quote":"Preview & Generate Quote"}</B>
-          </div>
-        </div>
-      )}
 
       {items.length>0?(
         <>
@@ -1664,7 +1620,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   if(amendT)return<AmendModal p={amendT.p} onSave={(a: any)=>saveAmend(amendT.cid,amendT.pid,a)} onClose={()=>setAmendT(null)} settings={settings} rc={rc}/>;
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} settings={settings}/>;
 
-  if(cl&&isMobile){
+  if(cl){
     const f=fin(cl);
     const edt=editMode?ed:cl;
     return(
@@ -1805,11 +1761,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
     );
   }
 
-  const f2=cl?fin(cl):null;
-  const edt2=editMode?ed:cl;
   return(
-    <div style={{display:(!isMobile&&cl)?"flex":"block",gap:(!isMobile&&cl)?28:0,alignItems:"flex-start"}}>
-      <div style={{flex:(!isMobile&&cl)?"0 0 44%":undefined,minWidth:0,overflowY:(!isMobile&&cl)?"auto":undefined,maxHeight:(!isMobile&&cl)?"calc(100vh - 120px)":undefined}}>
+    <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Clients</h2>
         <B onClick={()=>setShowAdd((s: boolean)=>!s)}>+ New Client</B>
@@ -1922,142 +1875,6 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
           </div>
         );
       })}
-      </div>{/*list-col*/}
-      {(!isMobile&&cl)&&(
-        <div style={{flex:"0 0 56%",minWidth:0}}>
-          <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Back</button>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
-            <div style={{minWidth:0}}>
-              {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
-              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
-            </div>
-            <div style={{display:"flex",gap:6,flexShrink:0}}>
-              {editMode
-                ?<><B onClick={()=>{upCl(cl.id,edt);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
-                :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
-              <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Brand Info</p>
-              {editMode?<>
-                <Lbl>Contact</Lbl><I value={edt.contact||""} onChange={(e: any)=>setEd((p: any)=>({...p,contact:e.target.value}))}/>
-                <Lbl>Email</Lbl><I value={edt.email||""} onChange={(e: any)=>setEd((p: any)=>({...p,email:e.target.value}))} type="email"/>
-                <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
-                <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
-                <Lbl>Tags</Lbl>
-                <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
-                <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
-              </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
-            </div>
-            <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
-              <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Financial Snapshot</p>
-              <IR label="Total Revenue" value={fmt(f.total)}/>
-              <IR label="Paid Projects" value={`${f.count}`}/>
-              <IR label="Last Invoice" value={f.lastDate?`${fmt(f.last)} · ${fmtD(f.lastDate)}`:"—"}/>
-              <IR label="Avg. Deal" value={f.avg?fmt(f.avg):"—"}/>
-              <IR label="Outstanding" value={fmt(f.out)}/>
-            </div>
-          </div>
-          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Relationship Notes</p>
-            {editMode?<textarea value={edt.notes||""} onChange={(e: any)=>setEd((p: any)=>({...p,notes:e.target.value}))} style={{width:"100%",minHeight:50,padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:11,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>:<p style={{fontSize:11,color:cl.notes?C.black:C.light,margin:0,lineHeight:1.6}}>{cl.notes||"No notes yet…"}</p>}
-          </div>
-          {cl.projects.some((pr: any)=>uEnd(pr))&&(
-            <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
-              <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Usage Rights Tracker</p>
-              {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
-                <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:11}}>{pr.name}</span>
-                  <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                    <UBadge end={uEnd(pr)}/>
-                    {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"0 0 9px"}}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Collaboration History</p>
-            <B v="sec" s={{fontSize:8}} onClick={()=>{setShowAddP((s: boolean)=>!s);setNewPN("");}}>+ Add Project</B>
-          </div>
-          {showAddP&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"9px 11px",marginBottom:9}}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Add Project</p>
-            <B s={{width:"100%",textAlign:"center",marginBottom:8}} onClick={()=>{onGoToCalc(cl.name);setShowAddP(false);}}>Build Quote in Calculator</B>
-            <p style={{fontSize:10,color:C.muted,textAlign:"center",margin:"0 0 8px"}}>— or add manually —</p>
-            <div style={{display:"flex",gap:7}}>
-              <I placeholder="Project name" value={newPN} onChange={(e: any)=>setNewPN(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addP(cl.id)}/>
-              <B v="sec" onClick={()=>addP(cl.id)}>Add</B>
-              <B v="sec" onClick={()=>{setShowAddP(false);setNewPN("");}}>Cancel</B>
-            </div>
-          </div>}
-          {cl.projects.map((pr: any,i: number)=>{const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);const _r=(
-            <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                <div style={{flex:1,minWidth:0}}>
-                  {editPrName===pr.id
-                    ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 6px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:3}}/>
-                    :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>✎</span></p>}
-                  <p style={{fontSize:10.5,color:C.muted,margin:"0 0 6px"}}>{fmtD(pr.date)}</p>
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                    <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
-                    {end&&<UBadge end={end}/>}
-                  </div>
-                </div>
-                <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
-                  <p style={{fontFamily:SERIF,fontSize:14,color:C.black,margin:"0 0 3px"}}>{fmt(pr.amount)}</p>
-                  {(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:"0 0 2px"}}>incl. {pr.amendments.length} amend.</p>}
-                  {(pr.renewals||[]).length>0&&<p style={{fontSize:10,color:C.green,margin:0}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</p>}
-                  <div style={{marginTop:4}}>
-                    {delConfirm===pr.id
-                      ?<span style={{fontSize:8,color:C.red}}>Delete? <button onClick={()=>{setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.filter((proj: any)=>proj.id!==pr.id)}));setDelConfirm(null);}} style={{color:C.red,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>Yes</button> · <button onClick={()=>setDelConfirm(null)} style={{color:C.muted,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>No</button></span>
-                      :<button onClick={()=>{setDelConfirm(pr.id);setEditPrName(null);}} style={{fontSize:9.5,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS}}>✕ delete</button>}
-                  </div>
-                </div>
-              </div>
-              {["production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
-                <span style={{fontSize:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase"}}>Delivery Date</span>
-                <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
-              </div>}
-              {(pr.renewals||[]).map((r: any,ri: number)=>(
-                <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><p style={{fontSize:11,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p><p style={{fontSize:10,color:C.muted,margin:0}}>{fmtD(r.startDate)} → {fmtD(r.endDate)} · {r.invoiceNo}</p></div>
-                  <div style={{textAlign:"right"}}>
-                    <p style={{fontSize:11,fontFamily:SERIF,margin:"0 0 3px"}}>{fmt(r.fee)}</p>
-                    <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                      <span style={{fontSize:9.5,color:r.paid?C.green:C.amber,border:`1px solid ${r.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2}}>{r.paid?"Paid":"Unpaid"}</span>
-                      <button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:!rn.paid})})}))} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>{r.paid?"Undo":"Mark Paid"}</button>
-                      {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
-                {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
-                {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>Quote</B>}
-                {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
-                {(pr.amendments||[]).map((a: any,ai: number)=>(
-                  <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
-                ))}
-                {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
-              </div>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-                {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
-                {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"→ Contracted":ns==="invoiced"?"→ Invoiced":`→ ${ns.charAt(0).toUpperCase()+ns.slice(1)}`}</B>}
-                {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
-                {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
-                {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
-                {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
-                {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
-                {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>← Undo</B>}
-              </div>
-            </div>
-          );
-            return _r;
-          })}
-        </div>
-      )}
     </div>
   );
 }
