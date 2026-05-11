@@ -348,8 +348,7 @@ function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}
   const d=dLeft(end);
   const exp=d!==null&&d<0;
   const soon=d!==null&&d>=0&&d<=30;
-  const ok=d!==null&&d>30;
-  // pastel palette
+  const ok=!exp&&!soon;
   const col=exp?"#b85c5c":soon?"#b8894a":ok?"#5a8a6a":C.muted;
   const bg=exp?"#fdf0f0":soon?"#fdf8f0":ok?"#f0f7f2":"transparent";
   const bd=exp?"#e8c8c8":soon?"#e8d8b8":ok?"#b8d8c4":C.rule;
@@ -806,12 +805,13 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
 }
 
 // ─── AUTH ─────────────────────────────────────────────────
-function AppLogo({size="nav"}: {size?: "nav"|"auth"}) {
+function AppLogo({size="nav"}: {size?: "nav"|"auth"|"web"}) {
   const big=size==="auth";
+  const web=size==="web";
   return(
     <div style={{textAlign:"center",lineHeight:1,display:"inline-block"}}>
-      <span style={{fontFamily:"'Playfair Display',Georgia,serif",fontSize:big?26:18,letterSpacing:"0.02em",color:C.black,display:"block"}}>Lynn Hoa</span>
-      <span style={{fontFamily:SANS,fontSize:big?8:6.5,letterSpacing:"0.26em",textTransform:"uppercase" as const,color:C.muted,display:"block",marginTop:big?4:2}}>Studio</span>
+      <span style={{fontFamily:"'Playfair Display',Georgia,serif",fontSize:big?26:web?22:18,letterSpacing:"0.02em",color:C.black,display:"block"}}>Lynn Hoa</span>
+      <span style={{fontFamily:SANS,fontSize:big?8:web?7:6.5,letterSpacing:"0.26em",textTransform:"uppercase" as const,color:C.muted,display:"block",marginTop:big?4:2}}>Studio</span>
     </div>
   );
 }
@@ -1546,13 +1546,156 @@ function RenewalModal({p,onSave,onClose,settings}: any) {
   );
 }
 
+// ─── CLIENT DETAIL PANEL ─────────────────────────────────
+function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,setPdf,onRevise,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel}: any) {
+  const f=fin(cl);
+  const edt=editMode?ed:cl;
+  return(
+    <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
+      <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>&larr; Clients</button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
+        <div style={{minWidth:0}}>
+          {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
+        </div>
+        <div style={{display:"flex",gap:6,flexShrink:0}}>
+          {editMode
+            ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
+            :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Brand Info</p>
+          {editMode?<>
+            <Lbl>Contact</Lbl><I value={edt.contact||""} onChange={(e: any)=>setEd((p: any)=>({...p,contact:e.target.value}))}/>
+            <Lbl>Email</Lbl><I value={edt.email||""} onChange={(e: any)=>setEd((p: any)=>({...p,email:e.target.value}))} type="email"/>
+            <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
+            <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
+            <Lbl>Tags</Lbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
+            <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
+          </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
+        </div>
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Financial Snapshot</p>
+          <IR label="Total Revenue" value={fmt(f.total)}/>
+          <IR label="Paid Projects" value={`${f.count}`}/>
+          <IR label="Last Invoice" value={f.lastDate?`${fmt(f.last)} \u00b7 ${fmtD(f.lastDate)}`:"—"}/>
+          <IR label="Avg. Deal" value={f.avg?fmt(f.avg):"—"}/>
+          <IR label="Outstanding" value={fmt(f.out)}/>
+        </div>
+      </div>
+      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Relationship Notes</p>
+        {editMode?<textarea value={edt.notes||""} onChange={(e: any)=>setEd((p: any)=>({...p,notes:e.target.value}))} style={{width:"100%",minHeight:50,padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:11,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>:<p style={{fontSize:11,color:cl.notes?C.black:C.light,margin:0,lineHeight:1.6}}>{cl.notes||"No notes yet\u2026"}</p>}
+      </div>
+      {cl.projects.some((pr: any)=>uEnd(pr))&&(
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Usage Rights Tracker</p>
+          {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
+            <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:11}}>{pr.name}</span>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                <UBadge end={uEnd(pr)}/>
+                {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"0 0 9px"}}>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Collaboration History</p>
+        <B v="sec" s={{fontSize:8}} onClick={()=>{setShowAddP((s: boolean)=>!s);setNewPN("");}}>+ Add Project</B>
+      </div>
+      {showAddP&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"9px 11px",marginBottom:9}}>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Add Project</p>
+        <B s={{width:"100%",textAlign:"center",marginBottom:8}} onClick={()=>{onGoToCalc(cl.name);setShowAddP(false);}}>Build Quote in Calculator</B>
+        <p style={{fontSize:10,color:C.muted,textAlign:"center",margin:"0 0 8px"}}>\u2014 or add manually \u2014</p>
+        <div style={{display:"flex",gap:7}}>
+          <I placeholder="Project name" value={newPN} onChange={(e: any)=>setNewPN(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addP(cl.id)}/>
+          <B v="sec" onClick={()=>addP(cl.id)}>Add</B>
+          <B v="sec" onClick={()=>{setShowAddP(false);setNewPN("");}}>Cancel</B>
+        </div>
+      </div>}
+      {cl.projects.map((pr: any,i: number)=>{
+        const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
+        return(
+          <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+              <div style={{flex:1,minWidth:0}}>
+                {editPrName===pr.id
+                  ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 6px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:3}}/>
+                  :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>\u270e</span></p>}
+                <p style={{fontSize:10.5,color:C.muted,margin:"0 0 6px"}}>{fmtD(pr.date)}</p>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                  <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
+                  {end&&<UBadge end={end}/>}
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
+                <p style={{fontFamily:SERIF,fontSize:14,color:C.black,margin:"0 0 3px"}}>{fmt(pr.amount)}</p>
+                {(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:"0 0 2px"}}>incl. {pr.amendments.length} amend.</p>}
+                {(pr.renewals||[]).length>0&&<p style={{fontSize:10,color:C.green,margin:0}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</p>}
+                <div style={{marginTop:4}}>
+                  {delConfirm===pr.id
+                    ?<span style={{fontSize:8,color:C.red}}>Delete? <button onClick={()=>{setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.filter((proj: any)=>proj.id!==pr.id)}));setDelConfirm(null);}} style={{color:C.red,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>Yes</button> <button onClick={()=>setDelConfirm(null)} style={{color:C.muted,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>No</button></span>
+                    :<button onClick={()=>{setDelConfirm(pr.id);setEditPrName(null);}} style={{fontSize:9.5,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS}}>delete</button>}
+                </div>
+              </div>
+            </div>
+            {["production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
+              <span style={{fontSize:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase"}}>Delivery Date</span>
+              <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
+            </div>}
+            {(pr.renewals||[]).map((r: any,ri: number)=>(
+              <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><p style={{fontSize:11,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>Renewal {ri+1} \u2014 {r.optLabel}</p><p style={{fontSize:10,color:C.muted,margin:0}}>{fmtD(r.startDate)} \u2192 {fmtD(r.endDate)} \u00b7 {r.invoiceNo}</p></div>
+                <div style={{textAlign:"right"}}>
+                  <p style={{fontSize:11,fontFamily:SERIF,margin:"0 0 3px"}}>{fmt(r.fee)}</p>
+                  <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
+                    <span style={{fontSize:9.5,color:r.paid?C.green:C.amber,border:`1px solid ${r.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2}}>{r.paid?"Paid":"Unpaid"}</span>
+                    <button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:!rn.paid})})}))} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>{r.paid?"Undo":"Mark Paid"}</button>
+                    {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
+              {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
+              {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>Quote</B>}
+              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
+              {(pr.amendments||[]).map((a: any,ai: number)=>(
+                <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
+              ))}
+              {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
+            </div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
+              {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
+              {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"Contracted":ns==="invoiced"?"Invoiced":ns.charAt(0).toUpperCase()+ns.slice(1)}</B>}
+              {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
+              {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT&&setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
+              {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
+              {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
+              {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
+              {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── CLIENTS ──────────────────────────────────────────────
-function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset}: any) {
+function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange}: any) {
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
   const [typeFilter,setTypeFilter]=useState("all");
   const [sortOrder,setSortOrder]=useState("recent");
-  const [sel,setSel]=useState<string|null>(null);
+  const [sel,setSel_]=useState<string|null>(null);
+  const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
@@ -1623,7 +1766,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   if(amendT)return<AmendModal p={amendT.p} onSave={(a: any)=>saveAmend(amendT.cid,amendT.pid,a)} onClose={()=>setAmendT(null)} settings={settings} rc={rc}/>;
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} settings={settings}/>;
 
-  if(cl){
+  if(cl&&isMobile){
     const f=fin(cl);
     const edt=editMode?ed:cl;
     return(
@@ -1765,7 +1908,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   }
 
   return(
-    <div>
+    <div style={{display:cl&&!isMobile?"flex":"block",gap:cl&&!isMobile?28:0,alignItems:"flex-start"}}>
+      <div style={{flex:cl&&!isMobile?"0 0 42%":"1 1 100%",minWidth:0,overflowY:cl&&!isMobile?"auto":undefined,maxHeight:cl&&!isMobile?"calc(100vh - 80px)":undefined}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Clients</h2>
         <B onClick={()=>setShowAdd((s: boolean)=>!s)}>+ New Client</B>
@@ -1854,6 +1998,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
           </div>
         );
       })}
+      </div>{/* end left col */}
+      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} setPdf={setPdf} onRevise={onRevise} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel}/>}
     </div>
   );
 }
@@ -1870,7 +2016,7 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
-  const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{const items: any[]=[];const ue=uEnd(pr);if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."}));return items;})).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
+  const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{const rows: any[]=[];const ue=uEnd(pr);if(ue)rows.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>rows.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."}));return rows;})).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
   const nowM=new Date().getMonth();
   const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -1898,20 +2044,20 @@ function Dashboard({clients,goTo,isMobile}: any) {
       <div>
         <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>&#x2190; Dashboard</button>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>License Tracker</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allLicenses.length} active license{allLicenses.length!==1?"s":""} · sorted by urgency</p>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allLicenses.length} license{allLicenses.length!==1?"s":""} tracked &middot; sorted by urgency</p>
         {allLicenses.length===0&&<p style={{fontSize:11,color:C.light}}>No active licenses tracked yet.</p>}
         {allLicenses.map((r: any,i: number)=>{
           const d=dLeft(r.end);
           const exp=d!==null&&d<0;
           const soon=d!==null&&d>=0&&d<=30;
-          const ok=d!==null&&d>30;
+          const ok=!exp&&!soon;
           const rowBg=exp?"#fdf0f0":soon?"#fdf8f0":ok?"#f7faf8":C.bg;
           const rowBd=exp?"#e8c8c8":soon?"#e8d8b8":ok?"#c8dcd0":C.rule;
           return(
             <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${rowBd}`,background:rowBg,borderRadius:2,padding:"11px 14px",marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
               <div style={{minWidth:0}}>
                 <p style={{fontSize:12,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
-                <p style={{fontSize:10.5,color:C.muted,margin:0}}>{r.prName} · {r.label}</p>
+                <p style={{fontSize:10.5,color:C.muted,margin:0}}>{r.prName} &middot; {r.label}</p>
               </div>
               <UBadge end={r.end} label={r.label}/>
             </div>
@@ -1994,7 +2140,7 @@ function Dashboard({clients,goTo,isMobile}: any) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
-        <Card label="License Tracker" count={allLicenses.length} sub={expiring.length>0?`${expiring.length} expiring soon`:allLicenses.filter((r:any)=>{const d=dLeft(r.end);return d!==null&&d<0;}).length>0?"expired licenses":"all clear"} warm={expiring.length>0||allLicenses.some((r:any)=>dLeft(r.end)!==null&&(dLeft(r.end)??1)<0)} onClick={()=>setDrill("license")}/>
+        <Card label="License Tracker" count={allLicenses.length} sub={expiring.length>0?`${expiring.length} expiring soon`:allLicenses.some((r:any)=>(dLeft(r.end)??1)<0)?"check expired licenses":"all licences clear"} warm={expiring.length>0||allLicenses.some((r:any)=>(dLeft(r.end)??1)<0)} onClick={()=>allLicenses.length>0?setDrill("license"):undefined}/>
       </div>
     </div>
   );
@@ -2218,6 +2364,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [nav,setNav]=useState(0);
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
+  const [clientSel,setClientSel]=useState<string|null>(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
@@ -2310,36 +2457,32 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
           </>
         ):(
-          <>
-            <div style={{textAlign:"center",padding:"10px 20px 7px"}}>
-              <AppLogo/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 28px",height:56}}>
+            <div style={{display:"flex",alignItems:"center",position:"relative"}}>
+              {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
+              <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:200,flexShrink:0}}>{initials}</button>
+              {menuOpen&&<div style={{position:"absolute",left:0,top:"calc(100% + 13px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
+                <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
+                  <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
+                  <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
+                </div>
+                {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                  <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
+                ))}
+                <div style={{borderTop:`1px solid ${C.rule}`}}/>
+                <button onClick={logout} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
+              </div>}
             </div>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 20px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
-              <div style={{display:"flex"}}>
-                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i);}} style={{padding:"0 13px",height:40,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
-              </div>
-              <div style={{position:"absolute",right:20,display:"flex",alignItems:"center"}}>
-                {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
-                <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:200,flexShrink:0}}>{initials}</button>
-                {menuOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
-                  <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
-                    <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
-                    <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
-                  </div>
-                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
-                    <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
-                  ))}
-                  <div style={{borderTop:`1px solid ${C.rule}`}}/>
-                  <button onClick={logout} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
-                </div>}
-              </div>
+            <div style={{textAlign:"center"}}><AppLogo size="web"/></div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
-          </>
+          </div>
         )}
       </div>
-      <div style={{maxWidth:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px"}}>
+      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
-        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset}/>}
+        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
