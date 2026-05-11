@@ -976,7 +976,7 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
           {sec.items.map((it: any)=>(
             <div key={it.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
               <div><span style={{fontSize:8.5}}>{it.n}</span>{it.note&&<span style={{fontSize:7,color:C.light,display:"block"}}>{it.note}</span>}</div>
-              <span style={{fontFamily:SERIF,fontSize:8.5,whiteSpace:"nowrap",marginLeft:12}}>{it.p!=null?`€ ${it.p.toLocaleString("de-DE")}`:""}</span>
+              <span style={{fontFamily:SERIF,fontSize:8.5,whiteSpace:"nowrap",marginLeft:12}}>{it.p!=null?`€ ${it.p.toLocaleString("de-DE")}`:it.m||""}</span>
             </div>
           ))}
         </div>
