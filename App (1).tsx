@@ -967,7 +967,7 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
   return(
     <div style={{padding:"90px 62px 130px",fontSize:9.5,lineHeight:1.5,fontFamily:SANS,color:C.black,background:C.bg,minHeight:841}}>
       <div style={{marginBottom:22}}>
-        <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 4px"}}>{l?"Preiskarte":"Rate Card"}</h1>
+        <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 4px"}}>{l?"Preisliste":"Rate Card"}</h1>
         <p style={{fontSize:7.5,color:C.muted,margin:0}}>{card.sub}</p>
       </div>
       {card.sections.map((sec: any,si: number)=>(
@@ -976,7 +976,7 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
           {sec.items.map((it: any)=>(
             <div key={it.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
               <div><span style={{fontSize:8.5}}>{it.n}</span>{it.note&&<span style={{fontSize:7,color:C.light,display:"block"}}>{it.note}</span>}</div>
-              <span style={{fontFamily:SERIF,fontSize:8.5,whiteSpace:"nowrap",marginLeft:12}}>{it.p!=null?`€ ${it.p.toLocaleString("de-DE")}`:""}</span>
+              <span style={{fontFamily:SERIF,fontSize:8.5,whiteSpace:"nowrap",marginLeft:12}}>{it.p!=null?`€ ${it.p.toLocaleString("de-DE")}`:it.m||""}</span>
             </div>
           ))}
         </div>
@@ -1236,9 +1236,9 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
         <Lbl>Project Name <span style={{fontWeight:"normal",color:C.light}}>(optional)</span></Lbl>
         <I value={projName} onChange={(e: any)=>setProjName(e.target.value)} placeholder="e.g. Spring Campaign 2026"/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:20}}>
-        <div style={{minWidth:0}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{width:"100%",boxSizing:"border-box"}}/></div>
-        <div style={{minWidth:0}}><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:20}}>
+        <div style={{minWidth:0,overflow:"hidden"}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{width:"100%",fontSize:isMobile?10:12}}/></div>
+        <div><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
       </div>
 
       <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"16px 18px",marginBottom:16,background:C.white}}>
@@ -1881,16 +1881,29 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile}: any) {
+  const [drill,setDrill]=useState<null|"year"|"month">(null);
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name})));
+  const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
-  const rev=all.filter((pr: any)=>pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0);
+  const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
-  const Card=({label,count,items,warm,sub}: any)=>(
-    <div onClick={()=>items?.length&&goTo(1)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:items?.length?"pointer":"default"}}>
+  const nowY=new Date().getFullYear();
+  const nowM=new Date().getMonth();
+  const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const yearOf=(pr: any)=>new Date(pr.date).getFullYear();
+  const monthOf=(pr: any)=>new Date(pr.date).getMonth();
+  const thisYearPaid=paid.filter((pr: any)=>yearOf(pr)===nowY);
+  const thisYearRev=thisYearPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const thisMonthPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===nowM);
+  const thisMonthRev=thisMonthPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
+  const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
+  const Card=({label,count,items,warm,sub,onClick}: any)=>(
+    <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
         <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>
         <span style={{fontFamily:SERIF,fontSize:22,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
@@ -1900,12 +1913,73 @@ function Dashboard({clients,goTo,isMobile}: any) {
       {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
     </div>
   );
+  if(drill==="year"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
+        {allYears.map((y: number)=>{
+          const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
+          const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+          return(
+            <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yPaid.length?8:0}}>
+                <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
+              </div>
+              {yPaid.slice(0,3).map((pr: any,i: number)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                </div>
+              ))}
+              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  if(drill==="month"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
+        {[...monthsToShow].reverse().map((m: number)=>{
+          const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
+          const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+          return(
+            <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
+                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
+              </div>
+              {mPaid.slice(0,3).map((pr: any,i: number)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                </div>
+              ))}
+              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
+              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
         <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
+        <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
+        <Card label={`${MO[nowM]} Revenue`} count={fmt(thisMonthRev)} sub={`${thisMonthPaid.length} paid project${thisMonthPaid.length!==1?"s":""}`} onClick={()=>setDrill("month")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
@@ -1915,6 +1989,147 @@ function Dashboard({clients,goTo,isMobile}: any) {
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
         <Card label="Expiring Usage Rights" count={expiring.length} items={expiring.map((pr: any)=>({...pr,amount:0}))} warm/>
       </div>
+    </div>
+  );
+}
+
+
+// ─── INVOICES ─────────────────────────────────────────────
+const CTYPE_LABEL: Record<string,string> = {influencer:"Collab (Influencer)",ugc:"UGC",editorial:"Editorial"};
+const MO_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MO_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function getTypeOfWork(pr: any): string {
+  if(!pr.amount||pr.amount===0||pr.status==="lead"||pr.status==="quoted"||pr.status==="revised") return "Unpaid";
+  const ctab = pr.qd?.ctab||"";
+  return CTYPE_LABEL[ctab]||"Unpaid";
+}
+
+function buildInvoiceRows(clients: any[]) {
+  const rows: any[] = [];
+  clients.forEach((c: any) => {
+    (c.projects||[]).forEach((pr: any) => {
+      if(!["invoiced","paid"].includes(pr.status) && !pr.paid) return;
+      const q = pr.qd;
+      if(!q) return;
+      const iNo = `INV-${(q.qNo||"").replace(/QUO-?/i,"").trim()||"001"}`;
+      const dateStr = pr.date||q.date||"";
+      rows.push({
+        cid: c.id, cName: c.name, pr,
+        iNo, dateStr,
+        year: dateStr?parseInt(dateStr.slice(0,4)):0,
+        month: dateStr?parseInt(dateStr.slice(5,7))-1:0,
+      });
+    });
+  });
+  rows.sort((a,b)=>b.dateStr.localeCompare(a.dateStr));
+  return rows;
+}
+
+function exportExcel(rows: any[]) {
+  const headers = ["Month","Invoice No.","Client","Project","Type of Work","Collab","TikToks","Reels","Posts","Stories","Income","Expenses","Delivery Date","Payment Status","Receipt Date"];
+  const lines = [headers];
+  rows.forEach(r => {
+    const pr = r.pr; const q = pr.qd;
+    const mo = r.dateStr ? `${MO_SHORT[r.month]} ${String(r.year).slice(2)}` : "";
+    const typeOfWork = getTypeOfWork(pr);
+    const isCollab = q?.ctab==="influencer";
+    const lines2 = q?.lines||[];
+    const collab = isCollab ? String(lines2.filter((l:any)=>l.name?.toLowerCase().includes("photo")||l.name?.toLowerCase().includes("carousel")||l.name?.toLowerCase().includes("set")).reduce((s:number,l:any)=>s+(l.qty||1),0)||"") : "";
+    const tiktoks = isCollab ? String(lines2.filter((l:any)=>l.name?.toLowerCase().includes("tiktok")||(l.platforms||[]).includes("TikTok")).reduce((s:number,l:any)=>s+(l.qty||1),0)||"") : "";
+    const reels = isCollab ? String(lines2.filter((l:any)=>l.name?.toLowerCase().includes("reel")||(l.platforms||[]).includes("Instagram")).reduce((s:number,l:any)=>s+(l.qty||1),0)||"") : "";
+    const posts = "";
+    const stories = isCollab ? String(lines2.filter((l:any)=>l.name?.toLowerCase().includes("story")||l.name?.toLowerCase().includes("storie")).reduce((s:number,l:any)=>s+(l.qty||1),0)||"") : "";
+    const income = pr.amount ? `€ ${Number(pr.amount).toFixed(2).replace(".",",")}` : "€ 0,00";
+    const expenses = "€ 0,00";
+    const delivery = pr.deliveryDate ? pr.deliveryDate.split("-").reverse().join(".") : "";
+    const payStatus = pr.paid ? "paid" : "invoiced";
+    const receipt = pr.paid && pr.paidDate ? pr.paidDate.split("-").reverse().join(".") : "";
+    lines.push([mo, r.iNo, r.cName, pr.name, typeOfWork, collab, tiktoks, reels, posts, stories, income, expenses, delivery, payStatus, receipt]);
+  });
+  const csv = lines.map(row => row.map((v:string) => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href=url; a.download="invoices.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function Invoices({clients,settings,isMobile}: any) {
+  const [pdfData,setPdfData]=useState<any>(null);
+  const allRows = buildInvoiceRows(clients);
+
+  const openPreview = (r: any) => {
+    const pr=r.pr; const q=pr.qd;
+    const iNo=r.iNo;
+    setPdfData({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice",lang:"en"});
+  };
+
+
+  // group by year then month
+  const grouped: {year:number,months:{month:number,rows:any[]}[]}[] = [];
+  allRows.forEach(r=>{
+    let yg=grouped.find(g=>g.year===r.year);
+    if(!yg){yg={year:r.year,months:[]};grouped.push(yg);}
+    let mg=yg.months.find(m=>m.month===r.month);
+    if(!mg){mg={month:r.month,rows:[]};yg.months.push(mg);}
+    mg.rows.push(r);
+  });
+
+  if(pdfData) return <PDFModal data={pdfData.data} type={pdfData.type} onClose={()=>setPdfData(null)} settings={settings}/>;
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:8}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <B v="sec" s={{fontSize:9}} onClick={()=>exportExcel(allRows)}>Export Excel</B>
+        </div>
+      </div>
+      {allRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects move here once invoiced or paid.</p>}
+      {grouped.map(yg=>(
+        <div key={yg.year}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,marginTop:18}}>
+            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0,fontWeight:"600"}}>{yg.year}</p>
+            <div style={{display:"flex",gap:5}}>
+              <B v="sec" s={{fontSize:8}} onClick={()=>exportExcel(yg.months.flatMap(m=>m.rows))}>Save Year Excel</B>
+            </div>
+          </div>
+          {yg.months.map(mg=>(
+            <div key={mg.month} style={{marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
+                <p style={{fontSize:10,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase",margin:0}}>{MO_LONG[mg.month]} {yg.year}</p>
+                <div style={{display:"flex",gap:5}}>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>exportExcel(mg.rows)}>Month Excel</B>
+                </div>
+              </div>
+              {mg.rows.map((r,i)=>{
+                const pr=r.pr;
+                const typeOfWork=getTypeOfWork(pr);
+                return(
+                  <div key={r.iNo+i} style={{display:"flex",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.rule}`,gap:8,cursor:"pointer"}} onClick={()=>openPreview(r)}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"baseline",gap:7,flexWrap:"wrap"}}>
+                        <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.iNo}</span>
+                        <span style={{fontSize:10,color:C.muted}}>{r.cName}</span>
+                        <span style={{fontSize:10,color:C.light}}>·</span>
+                        <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:200}}>{pr.name}</span>
+                      </div>
+                      <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                        <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em"}}>{fmtD(pr.date)}</span>
+                        <span style={{fontSize:9,color:C.light}}>·</span>
+                        <span style={{fontSize:9,color:C.muted}}>{typeOfWork}</span>
+                        <span style={{fontSize:9,color:pr.paid?C.green:C.amber,border:`1px solid ${pr.paid?C.greenBorder:C.amberBorder}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em"}}>{pr.paid?"Paid":"Invoiced"}</span>
+                      </div>
+                    </div>
+                    <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+                    <button onClick={e=>{e.stopPropagation();openPreview(r);}} style={{fontSize:9,padding:"4px 9px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontFamily:SANS,letterSpacing:"0.06em",flexShrink:0,whiteSpace:"nowrap"}}>Save PDF</button>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -2019,7 +2234,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
+                  {([["Invoices",6],["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2045,7 +2260,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
+                  {([["Invoices",6],["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2063,6 +2278,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
+        {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
       </div>
     </div>
   );
