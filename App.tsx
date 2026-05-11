@@ -1881,36 +1881,16 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month">(null);
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name})));
-  const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
-  const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const rev=all.filter((pr: any)=>pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
-
-  const nowY=new Date().getFullYear();
-  const nowM=new Date().getMonth();
-  const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-  const yearOf=(pr: any)=>new Date(pr.date).getFullYear();
-  const monthOf=(pr: any)=>new Date(pr.date).getMonth();
-
-  const thisYearPaid=paid.filter((pr: any)=>yearOf(pr)===nowY);
-  const thisYearRev=thisYearPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-  const thisMonthPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===nowM);
-  const thisMonthRev=thisMonthPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-
-  // All years that have paid projects
-  const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
-  // Months 0..nowM for current year
-  const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
-
-  const Card=({label,count,items,warm,sub,onClick}: any)=>(
-    <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
+  const Card=({label,count,items,warm,sub}: any)=>(
+    <div onClick={()=>items?.length&&goTo(1)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:items?.length?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
         <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>
         <span style={{fontFamily:SERIF,fontSize:22,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
@@ -1920,79 +1900,12 @@ function Dashboard({clients,goTo,isMobile}: any) {
       {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
     </div>
   );
-
-  // ── Year drill-down ──
-  if(drill==="year"){
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
-        {allYears.map((y: number)=>{
-          const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
-          const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-          return(
-            <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:y===nowY&&yPaid.length?8:0}}>
-                <span style={{fontSize:11,color:y===nowY?C.black:C.muted,letterSpacing:"0.04em",fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
-              </div>
-              {yPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
-                </div>
-              ))}
-              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // ── Month drill-down ──
-  if(drill==="month"){
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
-        {[...monthsToShow].reverse().map((m: number)=>{
-          const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
-          const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-          return(
-            <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
-                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,letterSpacing:"0.04em",fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
-              </div>
-              {mPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
-                </div>
-              ))}
-              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
-              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // ── Main dashboard ──
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
         <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
-        <Card label={`${MO[nowM]} Revenue`} count={fmt(thisMonthRev)} sub={`${thisMonthPaid.length} paid project${thisMonthPaid.length!==1?"s":""}`} onClick={()=>setDrill("month")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
@@ -2092,7 +2005,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {appMobile?(
           <>
             <div style={{textAlign:"center",padding:"10px 20px 7px"}}>
-              <AppLogo/>
+              <button onClick={()=>setNav(0)} style={{background:"none",border:"none",cursor:"pointer",padding:0}}><AppLogo/></button>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
               <div style={{display:"flex"}}>
@@ -2118,7 +2031,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         ):(
           <>
             <div style={{textAlign:"center",padding:"10px 20px 7px"}}>
-              <AppLogo/>
+              <button onClick={()=>setNav(0)} style={{background:"none",border:"none",cursor:"pointer",padding:0}}><AppLogo/></button>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 20px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
               <div style={{display:"flex"}}>
