@@ -1237,7 +1237,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
         <I value={projName} onChange={(e: any)=>setProjName(e.target.value)} placeholder="e.g. Spring Campaign 2026"/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:20}}>
-        <div style={{minWidth:0,overflow:"hidden"}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{width:"100%",fontSize:isMobile?10:12}}/></div>
+        <div style={{minWidth:0}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{width:"100%",boxSizing:"border-box",padding:"7px 6px",fontSize:isMobile?10:12,textAlign:"center"}}/></div>
         <div><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
       </div>
 
@@ -2056,6 +2056,7 @@ function exportExcel(rows: any[]) {
 
 function Invoices({clients,settings,isMobile}: any) {
   const [pdfData,setPdfData]=useState<any>(null);
+  const [bulkOpen,setBulkOpen]=useState(false);
   const allRows = buildInvoiceRows(clients);
 
   const openPreview = (r: any) => {
@@ -2063,7 +2064,6 @@ function Invoices({clients,settings,isMobile}: any) {
     const iNo=r.iNo;
     setPdfData({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice",lang:"en"});
   };
-
 
   // group by year then month
   const grouped: {year:number,months:{month:number,rows:any[]}[]}[] = [];
@@ -2075,32 +2075,42 @@ function Invoices({clients,settings,isMobile}: any) {
     mg.rows.push(r);
   });
 
+  // build bulk export options
+  const bulkOptions: {label:string,rows:any[]}[] = [];
+  grouped.forEach(yg=>{
+    bulkOptions.push({label:`${yg.year} — Full Year`,rows:yg.months.flatMap(m=>m.rows)});
+    yg.months.forEach(mg=>bulkOptions.push({label:`${MO_LONG[mg.month]} ${yg.year}`,rows:mg.rows}));
+  });
+
   if(pdfData) return <PDFModal data={pdfData.data} type={pdfData.type} onClose={()=>setPdfData(null)} settings={settings}/>;
 
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:8}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          <B v="sec" s={{fontSize:9}} onClick={()=>exportExcel(allRows)}>Export Excel</B>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <button onClick={()=>exportExcel(allRows)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase",padding:0}}>Export Excel</button>
+          <div style={{position:"relative"}}>
+            {bulkOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setBulkOpen(false)}/>}
+            <button onClick={()=>setBulkOpen(o=>!o)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase",padding:0,position:"relative",zIndex:200}}>Bulk ▾</button>
+            {bulkOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 6px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",minWidth:190,zIndex:200}}>
+              {bulkOptions.map((opt,i)=>(
+                <button key={i} onClick={()=>{exportExcel(opt.rows);setBulkOpen(false);}} style={{display:"block",width:"100%",padding:"8px 13px",background:"none",border:"none",borderBottom:i<bulkOptions.length-1?`1px solid ${C.rule}`:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.03em",boxSizing:"border-box"}}>{opt.label}</button>
+              ))}
+            </div>}
+          </div>
         </div>
       </div>
       {allRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects move here once invoiced or paid.</p>}
       {grouped.map(yg=>(
         <div key={yg.year}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,marginTop:18}}>
+          <div style={{marginBottom:8,marginTop:18}}>
             <p style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0,fontWeight:"600"}}>{yg.year}</p>
-            <div style={{display:"flex",gap:5}}>
-              <B v="sec" s={{fontSize:8}} onClick={()=>exportExcel(yg.months.flatMap(m=>m.rows))}>Save Year Excel</B>
-            </div>
           </div>
           {yg.months.map(mg=>(
             <div key={mg.month} style={{marginBottom:14}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
+              <div style={{padding:"6px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
                 <p style={{fontSize:10,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase",margin:0}}>{MO_LONG[mg.month]} {yg.year}</p>
-                <div style={{display:"flex",gap:5}}>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>exportExcel(mg.rows)}>Month Excel</B>
-                </div>
               </div>
               {mg.rows.map((r,i)=>{
                 const pr=r.pr;
@@ -2234,7 +2244,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Invoices",6],["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2260,7 +2270,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Invoices",6],["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
