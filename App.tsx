@@ -2056,16 +2056,56 @@ function exportExcel(rows: any[]) {
 
 function Invoices({clients,settings,isMobile}: any) {
   const [pdfData,setPdfData]=useState<any>(null);
-  const [saveMode,setSaveMode]=useState<"year"|"month">("year");
   const [dropOpen,setDropOpen]=useState(false);
+  const [bulkStatus,setBulkStatus]=useState<string|null>(null);
   const allRows = buildInvoiceRows(clients);
-  const nowY=new Date().getFullYear();
-  const nowM=new Date().getMonth();
 
   const openPreview = (r: any) => {
     const pr=r.pr; const q=pr.qd;
     const iNo=r.iNo;
     setPdfData({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice",lang:"en"});
+  };
+
+  const bulkDownload = async (rows: any[], label: string) => {
+    if(!rows.length) return;
+    setDropOpen(false);
+    setBulkStatus(`Preparing ${rows.length} invoice${rows.length>1?"s":""}…`);
+    const [{default:html2canvas},{default:jsPDF}]=await Promise.all([import("html2canvas"),import("jspdf")]);
+    for(let i=0;i<rows.length;i++){
+      const r=rows[i];
+      const pr=r.pr; const q=pr.qd;
+      const iNo=r.iNo;
+      const d={brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."};
+      setBulkStatus(`Saving ${i+1} / ${rows.length} — ${iNo}`);
+      // render invoice into a hidden offscreen container
+      const wrap=document.createElement("div");
+      wrap.style.cssText="position:fixed;left:-9999px;top:0;width:595px;z-index:-1;background:#faf9f7;";
+      document.body.appendChild(wrap);
+      const {createRoot:cr}=await import("react-dom/client");
+      const root=cr(wrap);
+      await new Promise<void>(res=>{
+        root.render(<A4 d={d} type="invoice" lang="en" settings={settings} extraSigMargin={0} clauseGuards={[]} tRowGuards={[]}/>);
+        setTimeout(res,600);
+      });
+      try {
+        const pages=Array.from(wrap.querySelectorAll("[data-pdf-page]")) as HTMLElement[];
+        const pdf=new (jsPDF as any)({orientation:"portrait",unit:"mm",format:"a4"});
+        const pw=pdf.internal.pageSize.getWidth();
+        const ph=pdf.internal.pageSize.getHeight();
+        for(let p=0;p<pages.length;p++){
+          if(p>0)pdf.addPage();
+          const canvas=await (html2canvas as any)(pages[p],{scale:2,useCORS:true,backgroundColor:"#faf9f7"});
+          pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pw,ph);
+        }
+        const dateStr=(pr.date||"").replace(/-/g,"_");
+        pdf.save(`${dateStr} ${iNo}.pdf`);
+      } finally {
+        root.unmount();
+        document.body.removeChild(wrap);
+      }
+      if(i<rows.length-1) await new Promise(res=>setTimeout(res,400));
+    }
+    setBulkStatus(null);
   };
 
   // group by year then month
@@ -2078,13 +2118,9 @@ function Invoices({clients,settings,isMobile}: any) {
     mg.rows.push(r);
   });
 
-  const savePdfRows = saveMode==="year"
-    ? (grouped.find(g=>g.year===nowY)||grouped[0])?.months.flatMap(m=>m.rows)||allRows
-    : (grouped.find(g=>g.year===nowY)?.months.find(m=>m.month===nowM)||grouped[0]?.months[0])?.rows||allRows;
-  const savePdfLabel = saveMode==="year"
-    ? `Save PDF ${(grouped.find(g=>g.year===nowY)||grouped[0])?.year||nowY}`
-    : `Save PDF ${MO_SHORT[(grouped.find(g=>g.year===nowY)?.months.find(m=>m.month===nowM)||grouped[0]?.months[0])?.month??nowM]} ${(grouped.find(g=>g.year===nowY)||grouped[0])?.year||nowY}`;
-  const altLabel = saveMode==="year" ? "by Month" : "by Year";
+  // month-only options for bulk dropdown
+  const monthOptions: {label:string,rows:any[]}[] = [];
+  grouped.forEach(yg=>yg.months.forEach(mg=>monthOptions.push({label:`${MO_LONG[mg.month]} ${yg.year}`,rows:mg.rows})));
 
   const btnStyle: any = {height:28,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.07em",color:C.muted,display:"flex",alignItems:"center",whiteSpace:"nowrap"};
 
@@ -2095,19 +2131,21 @@ function Invoices({clients,settings,isMobile}: any) {
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:8}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
         <div style={{display:"flex",gap:5,alignItems:"center"}}>
-          {/* Save PDF button + dropdown toggle */}
-          <div style={{display:"flex",alignItems:"center",border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
-            <button onClick={()=>exportExcel(savePdfRows)} style={{...btnStyle,border:"none",borderRadius:0,borderRight:`1px solid ${C.rule}`,paddingRight:9}}>{savePdfLabel}</button>
-            <div style={{position:"relative"}}>
-              {dropOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setDropOpen(false)}/>}
-              <button onClick={()=>setDropOpen(o=>!o)} style={{...btnStyle,border:"none",borderRadius:0,padding:"0 8px",position:"relative",zIndex:200}}>▾</button>
-              {dropOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 4px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",minWidth:130,zIndex:200}}>
-                <button onClick={()=>{setSaveMode(m=>m==="year"?"month":"year");setDropOpen(false);}} style={{display:"block",width:"100%",padding:"9px 13px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.03em",boxSizing:"border-box"}}>{altLabel}</button>
-              </div>}
+          {/* Bulk download dropdown — months only */}
+          <div style={{position:"relative"}}>
+            {dropOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setDropOpen(false)}/>}
+            <div style={{display:"flex",alignItems:"center",border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+              <span style={{...btnStyle,border:"none",borderRadius:0,borderRight:`1px solid ${C.rule}`,paddingRight:9,cursor:"default",color:bulkStatus?C.light:C.muted}}>{bulkStatus||"Download"}</span>
+              <button onClick={()=>!bulkStatus&&setDropOpen(o=>!o)} style={{...btnStyle,border:"none",borderRadius:0,padding:"0 8px",position:"relative",zIndex:200,opacity:bulkStatus?0.4:1}}>▾</button>
             </div>
+            {dropOpen&&monthOptions.length>0&&<div style={{position:"absolute",right:0,top:"calc(100% + 4px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",minWidth:170,zIndex:200,maxHeight:260,overflowY:"auto"}}>
+              {monthOptions.map((opt,i)=>(
+                <button key={i} onClick={()=>bulkDownload(opt.rows,opt.label)} style={{display:"block",width:"100%",padding:"8px 13px",background:"none",border:"none",borderBottom:i<monthOptions.length-1?`1px solid ${C.rule}`:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.02em",boxSizing:"border-box"}}>{opt.label}</button>
+              ))}
+            </div>}
           </div>
-          {/* Excel download icon */}
-          <button onClick={()=>exportExcel(allRows)} title="Export all as Excel" style={{...btnStyle,padding:"0 8px",fontSize:13}}>
+          {/* Excel icon */}
+          <button onClick={()=>exportExcel(allRows)} title="Export all as Excel" style={{...btnStyle,padding:"0 8px"}}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 1v8M7 9l-3-3M7 9l3-3M2 11h10" stroke={C.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
