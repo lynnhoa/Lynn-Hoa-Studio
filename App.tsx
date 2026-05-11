@@ -1923,7 +1923,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         );
       })}
       </div>{/*list-col*/}
-      {(!isMobile&&cl)&&(()=>{const f=f2;const edt=edt2;return(
+      {(!isMobile&&cl)&&(
         <div style={{flex:"0 0 56%",minWidth:0}}>
           <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Back</button>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
@@ -2053,7 +2053,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
                 {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>← Undo</B>}
               </div>
             </div>
-          );})}
+          );})
         </div>
       )}
     </div>
