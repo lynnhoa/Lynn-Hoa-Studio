@@ -1137,51 +1137,6 @@ function RateCards({rc,setRc,settings}: any) {
   );
 }
 
-// ─── QUOTE SUMMARY PANEL ─────────────────────────────────
-function QuoteSummary({items,setItems,catLabel,retOn,setRetOn,retMo,setRetMo,subtotal,grand,reset,openPreview,isRev}: any) {
-  return(
-    <div>
-      <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 14px"}}>Quote Summary</p>
-      <div style={{marginBottom:12}}>
-        {items.map((it: any)=>(
-          <div key={it.id} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.rule}`}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
-                <span style={{fontSize:9,color:C.white,background:C.muted,padding:"2px 8px",borderRadius:2,textTransform:"uppercase",letterSpacing:"0.07em",flexShrink:0}}>{catLabel[it.cat]||it.cat}</span>
-                <span style={{fontSize:12,color:C.black}}>{it.qty>1?`${it.qty}× `:""}{it.name}</span>
-              </div>
-              {it.note&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{it.note}</p>}
-              {it.addons?.length>0&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{it.addons.join(" · ")}</p>}
-              {(it.usageLabel||it.exclLabel)&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{[it.usageLabel,it.exclLabel].filter(Boolean).join(" · ")}</p>}
-              {it.platforms?.length>0&&<p style={{fontSize:10.5,color:C.muted,margin:0,paddingLeft:52}}>{it.platforms.join(" · ")}</p>}
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,marginLeft:14}}>
-              <span style={{fontSize:12,fontFamily:SERIF,color:C.black}}>{fmt(it.amt)}</span>
-              <button onClick={()=>setItems((p: any)=>p.filter((x: any)=>x.id!==it.id))} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:14,padding:0,lineHeight:1}}>×</button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:11,padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2}}>
-        <input type="checkbox" id="ret" checked={retOn} onChange={(e: any)=>setRetOn(e.target.checked)}/>
-        <label htmlFor="ret" style={{fontSize:10,cursor:"pointer"}}>Retainer{retOn?" (−20%)":""}</label>
-        {retOn&&<><I type="number" min={1} value={retMo} onChange={(e: any)=>setRetMo(parseInt(e.target.value)||6)} s={{width:50}}/><span style={{fontSize:9,color:C.muted}}>months</span></>}
-      </div>
-      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 16px",marginBottom:14}}>
-        {retOn&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}><span style={{fontSize:9,color:C.muted}}>Subtotal</span><span style={{fontSize:10,color:C.muted}}>{fmt(subtotal)}</span></div>}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Total (EUR)</span>
-          <span style={{fontFamily:SERIF,fontSize:22,color:C.black}}>{fmt(grand)}</span>
-        </div>
-      </div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        <B v="sec" onClick={()=>{if(window.confirm("Reset all items and start over?"))reset();}}>Reset</B>
-        <B s={{flex:"1 1 auto",textAlign:"center"}} onClick={openPreview}>{isRev?"Preview Revised Quote":"Preview & Generate Quote"}</B>
-      </div>
-    </div>
-  );
-}
-
 // ─── CALCULATOR ───────────────────────────────────────────
 function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
   const isRev=prefill?.isRev||false;
@@ -1264,88 +1219,113 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
   const reset=()=>{setItems([]);setBrand("");setContact("");setProjName("");setRetOn(false);if(clearPrefill)clearPrefill();};
   const catLabel: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
 
-  const showSplit = !isMobile && items.length > 0;
-
   return(
-    <div style={{display:"flex",gap:28,alignItems:"flex-start"}}>
+    <div>
       {pdf&&<PDFModal data={pdf} type={isRev?"revised":"quote"} onClose={()=>{setPdf(null);}} settings={settings}
         onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);}}/>}
-
-      {/* LEFT COLUMN — always visible */}
-      <div style={{flex:showSplit?"0 0 50%":"1 1 100%",minWidth:0}}>
-        <div style={{marginBottom:18}}>
-          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Calculator</h2>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:9}}>
-          <div><Lbl>Brand / Company</Lbl><I value={brand} onChange={(e: any)=>setBrand(e.target.value)} placeholder="Sephora"/></div>
-          <div><Lbl>Contact Name</Lbl><I value={contact} onChange={(e: any)=>setContact(e.target.value)} placeholder="Anna Müller"/></div>
-        </div>
-        <div style={{marginBottom:9}}>
-          <Lbl>Project Name <span style={{fontWeight:"normal",color:C.light}}>(optional)</span></Lbl>
-          <I value={projName} onChange={(e: any)=>setProjName(e.target.value)} placeholder="e.g. Spring Campaign 2026"/>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:20}}>
-          <div style={{minWidth:0,overflow:"hidden"}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{minWidth:0,WebkitAppearance:"none",appearance:"none"}}/></div>
-          <div style={{minWidth:0}}><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
-        </div>
-
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"16px 18px",marginBottom:16,background:C.white}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 13px"}}>Add Item</p>
-          <div style={{display:"flex",gap:6,marginBottom:13,flexWrap:"wrap"}}>
-            {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={bCat===k} onClick={()=>{setBCat(k);setBDel(0);setBAddons([]);}}>{catLabel[k]}</Pill>)}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:8,marginBottom:9}}>
-            <div><Lbl>Deliverable</Lbl><S value={bDel} onChange={(e: any)=>setBDel(parseInt(e.target.value))}>{deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}</S></div>
-            <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e: any)=>setBQty(parseInt(e.target.value)||1)}/></div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:9}}>
-            <div>
-              <Lbl>Usage Rights</Lbl>
-              <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>{card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{u.pct>0?` (+${u.pct}%)`:""}</option>)}</S>
-              <div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:5}}>
-                {(["Instagram","TikTok","YouTube","Other"] as const).map(p=>{const on=bPlatforms.includes(p);return<button key={p} type="button" onClick={()=>setBPlatforms(pr=>on?pr.filter(x=>x!==p):[...pr,p])} style={{padding:"3px 8px",border:`1px solid ${on?C.black:C.rule}`,background:on?C.black:C.bg,color:on?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:8.5,letterSpacing:"0.05em",borderRadius:2}}>{p}</button>;})}
-              </div>
-            </div>
-            <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>{card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{e.pct>0?` (+${e.pct}%)`:""}</option>)}</S></div>
-          </div>
-          <div style={{marginBottom:9}}>
-            <Lbl>Add-ons</Lbl>
-            <S value={bAoSel} onChange={(e: any)=>{const v=e.target.value;if(v&&!bAddons.includes(v))setBAddons(p=>[...p,v]);setBaAoSel("");}} s={{marginBottom:5}}>
-              <option value="">— Select add-on —</option>
-              {addonList.filter((a: any)=>!bAddons.includes(a.id)).map((a: any)=><option key={a.id} value={a.id}>{a.n}{a.flat?` +€${a.flat}`:a.pct?` +${a.pct}%`:""}</option>)}
-            </S>
-            {bAddons.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-              {bAddons.map(aid=>{const a=addonList.find((x: any)=>x.id===aid);if(!a)return null;return<Tag key={aid} onRemove={()=>setBAddons(p=>p.filter(x=>x!==aid))}>{a.n}</Tag>;})}
-            </div>}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,alignItems:"flex-end",marginBottom:12}}>
-            <div><Lbl>Negotiated Rate <span style={{fontWeight:"normal",color:C.light}}>(overrides card)</span></Lbl><I type="number" placeholder="€" value={bNeg} onChange={(e: any)=>setBNeg(e.target.value)}/></div>
-            <label style={{display:"flex",alignItems:"center",gap:5,fontSize:9,cursor:"pointer",paddingBottom:8,whiteSpace:"nowrap"}}><input type="checkbox" checked={bVol} onChange={(e: any)=>setBVol(e.target.checked)}/>Vol. disc.</label>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
-            <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:C.black,fontFamily:SERIF,fontSize:17}}>{fmt(computePrice())}</strong></span>
-            <B onClick={addItem} s={{paddingLeft:20,paddingRight:20}}>+ Add to Quote</B>
-          </div>
-        </div>
-
-        {/* Mobile: items appear below form */}
-        {isMobile&&items.length>0&&(
-          <QuoteSummary items={items} setItems={setItems} catLabel={catLabel} retOn={retOn} setRetOn={setRetOn} retMo={retMo} setRetMo={setRetMo} subtotal={subtotal} grand={grand} reset={reset} openPreview={openPreview} isRev={isRev}/>
-        )}
-        {items.length===0&&(
-          <div style={{textAlign:"center",padding:"36px 0",borderTop:`1px solid ${C.rule}`}}>
-            <p style={{fontFamily:SERIF,fontSize:17,color:C.muted,margin:"0 0 4px",fontWeight:"normal"}}>No items yet</p>
-            <p style={{fontSize:9,color:C.light,margin:0}}>Configure an item above and click "+ Add to Quote"</p>
-          </div>
-        )}
+      <div style={{marginBottom:18}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Calculator</h2>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
       </div>
 
-      {/* RIGHT COLUMN — desktop only, when items exist */}
-      {showSplit&&(
-        <div style={{flex:"0 0 46%",minWidth:0,position:"sticky",top:20}}>
-          <QuoteSummary items={items} setItems={setItems} catLabel={catLabel} retOn={retOn} setRetOn={setRetOn} retMo={retMo} setRetMo={setRetMo} subtotal={subtotal} grand={grand} reset={reset} openPreview={openPreview} isRev={isRev}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:9}}>
+        <div><Lbl>Brand / Company</Lbl><I value={brand} onChange={(e: any)=>setBrand(e.target.value)} placeholder="Sephora"/></div>
+        <div><Lbl>Contact Name</Lbl><I value={contact} onChange={(e: any)=>setContact(e.target.value)} placeholder="Anna Müller"/></div>
+      </div>
+      <div style={{marginBottom:9}}>
+        <Lbl>Project Name <span style={{fontWeight:"normal",color:C.light}}>(optional)</span></Lbl>
+        <I value={projName} onChange={(e: any)=>setProjName(e.target.value)} placeholder="e.g. Spring Campaign 2026"/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:20}}>
+        <div style={{minWidth:0,overflow:"hidden"}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{minWidth:0,WebkitAppearance:"none",appearance:"none"}}/></div>
+        <div style={{minWidth:0}}><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
+      </div>
+
+      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"16px 18px",marginBottom:16,background:C.white}}>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 13px"}}>Add Item</p>
+        <div style={{display:"flex",gap:6,marginBottom:13,flexWrap:"wrap"}}>
+          {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={bCat===k} onClick={()=>{setBCat(k);setBDel(0);setBAddons([]);}}>{catLabel[k]}</Pill>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:8,marginBottom:9}}>
+          <div><Lbl>Deliverable</Lbl><S value={bDel} onChange={(e: any)=>setBDel(parseInt(e.target.value))}>{deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}</S></div>
+          <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e: any)=>setBQty(parseInt(e.target.value)||1)}/></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:9}}>
+          <div>
+            <Lbl>Usage Rights</Lbl>
+            <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>{card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{u.pct>0?` (+${u.pct}%)`:""}</option>)}</S>
+            <div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:5}}>
+              {(["Instagram","TikTok","YouTube","Other"] as const).map(p=>{const on=bPlatforms.includes(p);return<button key={p} type="button" onClick={()=>setBPlatforms(pr=>on?pr.filter(x=>x!==p):[...pr,p])} style={{padding:"3px 8px",border:`1px solid ${on?C.black:C.rule}`,background:on?C.black:C.bg,color:on?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:8.5,letterSpacing:"0.05em",borderRadius:2}}>{p}</button>;})}
+            </div>
+          </div>
+          <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>{card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{e.pct>0?` (+${e.pct}%)`:""}</option>)}</S></div>
+        </div>
+        <div style={{marginBottom:9}}>
+          <Lbl>Add-ons</Lbl>
+          <S value={bAoSel} onChange={(e: any)=>{const v=e.target.value;if(v&&!bAddons.includes(v))setBAddons(p=>[...p,v]);setBaAoSel("");}} s={{marginBottom:5}}>
+            <option value="">— Select add-on —</option>
+            {addonList.filter((a: any)=>!bAddons.includes(a.id)).map((a: any)=><option key={a.id} value={a.id}>{a.n}{a.flat?` +€${a.flat}`:a.pct?` +${a.pct}%`:""}</option>)}
+          </S>
+          {bAddons.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+            {bAddons.map(aid=>{const a=addonList.find((x: any)=>x.id===aid);if(!a)return null;return<Tag key={aid} onRemove={()=>setBAddons(p=>p.filter(x=>x!==aid))}>{a.n}</Tag>;})}
+          </div>}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,alignItems:"flex-end",marginBottom:12}}>
+          <div><Lbl>Negotiated Rate <span style={{fontWeight:"normal",color:C.light}}>(overrides card)</span></Lbl><I type="number" placeholder="€" value={bNeg} onChange={(e: any)=>setBNeg(e.target.value)}/></div>
+          <label style={{display:"flex",alignItems:"center",gap:5,fontSize:9,cursor:"pointer",paddingBottom:8,whiteSpace:"nowrap"}}><input type="checkbox" checked={bVol} onChange={(e: any)=>setBVol(e.target.checked)}/>Vol. disc.</label>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
+          <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:C.black,fontFamily:SERIF,fontSize:17}}>{fmt(computePrice())}</strong></span>
+          <B onClick={addItem} s={{paddingLeft:20,paddingRight:20}}>+ Add to Quote</B>
+        </div>
+      </div>
+
+      {items.length>0?(
+        <>
+          <div style={{marginBottom:12}}>
+            {items.map((it: any)=>(
+              <div key={it.id} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.rule}`}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+                    <span style={{fontSize:9,color:C.white,background:C.muted,padding:"2px 8px",borderRadius:2,textTransform:"uppercase",letterSpacing:"0.07em",flexShrink:0}}>{catLabel[it.cat]}</span>
+                    <span style={{fontSize:12,color:C.black}}>{it.qty>1?`${it.qty}× `:""}{it.name}</span>
+                  </div>
+                  {it.note&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{it.note}</p>}
+                  {it.addons?.length>0&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{it.addons.join(" · ")}</p>}
+                  {(it.usageLabel||it.exclLabel)&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px",paddingLeft:52}}>{[it.usageLabel,it.exclLabel].filter(Boolean).join(" · ")}</p>}
+                  {it.platforms?.length>0&&<p style={{fontSize:10.5,color:C.muted,margin:0,paddingLeft:52}}>{it.platforms.join(" · ")}</p>}
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,marginLeft:14}}>
+                  <span style={{fontSize:12,fontFamily:SERIF,color:C.black}}>{fmt(it.amt)}</span>
+                  <button onClick={()=>setItems(p=>p.filter((x: any)=>x.id!==it.id))} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:14,padding:0,lineHeight:1}}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:11,padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2}}>
+            <input type="checkbox" id="ret" checked={retOn} onChange={(e: any)=>setRetOn(e.target.checked)}/>
+            <label htmlFor="ret" style={{fontSize:10,cursor:"pointer"}}>Retainer{retOn?" (−20%)":""}</label>
+            {retOn&&<><I type="number" min={1} value={retMo} onChange={(e: any)=>setRetMo(parseInt(e.target.value)||6)} s={{width:50}}/><span style={{fontSize:9,color:C.muted}}>months</span></>}
+          </div>
+
+          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 16px",marginBottom:14}}>
+            {retOn&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:6,paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}><span style={{fontSize:9,color:C.muted}}>Subtotal</span><span style={{fontSize:10,color:C.muted}}>{fmt(subtotal)}</span></div>}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+              <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Total (EUR)</span>
+              <span style={{fontFamily:SERIF,fontSize:22,color:C.black}}>{fmt(grand)}</span>
+            </div>
+          </div>
+
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <B v="sec" onClick={()=>{if(window.confirm("Reset all items and start over?"))reset();}}>Reset</B>
+            <B s={{flex:"1 1 auto",textAlign:"center"}} onClick={openPreview}>{isRev?"Preview Revised Quote":"Preview & Generate Quote"}</B>
+          </div>
+        </>
+      ):(
+        <div style={{textAlign:"center",padding:"36px 0",borderTop:`1px solid ${C.rule}`}}>
+          <p style={{fontFamily:SERIF,fontSize:17,color:C.muted,margin:"0 0 4px",fontWeight:"normal"}}>No items yet</p>
+          <p style={{fontSize:9,color:C.light,margin:0}}>Configure an item above and click "+ Add to Quote"</p>
         </div>
       )}
     </div>
@@ -1564,12 +1544,13 @@ function RenewalModal({p,onSave,onClose,settings}: any) {
 }
 
 // ─── CLIENTS ──────────────────────────────────────────────
-function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset}: any) {
+function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange}: any) {
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
   const [typeFilter,setTypeFilter]=useState("all");
   const [sortOrder,setSortOrder]=useState("recent");
-  const [sel,setSel]=useState<string|null>(null);
+  const [sel,setSel_]=useState<string|null>(null);
+  const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
@@ -2231,6 +2212,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [nav,setNav]=useState(0);
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
+  const [clientSel,setClientSel]=useState<string|null>(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
@@ -2350,9 +2332,9 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
           </>
         )}
       </div>
-      <div style={{maxWidth:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px"}}>
+      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.2s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
-        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset}/>}
+        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
