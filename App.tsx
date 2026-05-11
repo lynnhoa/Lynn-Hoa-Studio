@@ -346,12 +346,10 @@ const scol = (s: string) => ({invoiced:C.amber,contracted:C.muted,quoted:C.light
 function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}) {
   if(!end) return null;
   const d=dLeft(end);
-  const exp=d!==null&&d<0;
-  const soon=d!==null&&d>=0&&d<=30;
-  const ok=!exp&&!soon;
-  const col=exp?"#b85c5c":soon?"#b8894a":ok?"#5a8a6a":C.muted;
-  const bg=exp?"#fdf0f0":soon?"#fdf8f0":ok?"#f0f7f2":"transparent";
-  const bd=exp?"#e8c8c8":soon?"#e8d8b8":ok?"#b8d8c4":C.rule;
+  const exp=d!==null&&d<0, soon=d!==null&&d>=0&&d<=30;
+  const col=exp?C.red:soon?C.amber:C.muted;
+  const bg=exp?C.redBg:soon?C.amberBg:"transparent";
+  const bd=exp?C.redBorder:soon?C.amberBorder:C.rule;
   return <span style={{fontSize:9.5,color:col,border:`1px solid ${bd}`,background:bg,padding:"2px 8px",borderRadius:2}}>
     {exp?`${label} expired`:`${label} ends ${fmtD(end)} · ${d}d left`}
   </span>;
@@ -1915,6 +1913,30 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         <B onClick={()=>setShowAdd((s: boolean)=>!s)}>+ New Client</B>
       </div>
       {flagged.length>0&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,padding:"9px 13px",marginBottom:10}}><p style={{fontSize:10.5,color:C.amber,margin:0}}>⚠ {flagged.length} client{flagged.length>1?"s":""} — no activity 3+ months</p></div>}
+      {(()=>{
+        const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
+          const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
+          const ue=uEnd(pr);
+          if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
+          (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
+          return items;
+        })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
+        if(!allLicenses.length)return null;
+        return(
+          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:11}}>
+            <p style={{fontSize:9.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0,padding:"9px 13px 8px",borderBottom:`1px solid ${C.rule}`}}>License Tracker</p>
+            {allLicenses.map((r: any,i: number)=>(
+              <div key={i} onClick={()=>setSel(r.cId)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 13px",borderBottom:i<allLicenses.length-1?`1px solid ${C.rule}`:"none",cursor:"pointer",gap:8}}>
+                <div style={{minWidth:0,overflow:"hidden"}}>
+                  <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.cName}</span>
+                  <span style={{fontSize:10.5,color:C.muted}}> · {r.prName}</span>
+                </div>
+                <UBadge end={r.end} label={r.label}/>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <I placeholder="Search clients, tags…" value={search} onChange={(e: any)=>setSearch(e.target.value)} s={{marginBottom:8}}/>
       <div style={{display:"flex",justifyContent:"flex-end",gap:7,marginBottom:11}}>
         <select
@@ -1974,7 +1996,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         });
         const multiProj=new Set(allRights.map((r: any)=>r.prName)).size>1;
         return(
-          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${sel===c.id?C.black:C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?C.white:"transparent",boxShadow:sel===c.id?"0 2px 12px rgba(0,0,0,0.07)":"none",transition:"border-color 0.15s,box-shadow 0.15s"}}>
+          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
                 <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{c.name}</p>
@@ -2006,7 +2028,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month"|"license">(null);
+  const [drill,setDrill]=useState<null|"year"|"month">(null);
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
@@ -2016,7 +2038,6 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
-  const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{const rows: any[]=[];const ue=uEnd(pr);if(ue)rows.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>rows.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."}));return rows;})).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
   const nowM=new Date().getMonth();
   const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -2039,33 +2060,6 @@ function Dashboard({clients,goTo,isMobile}: any) {
       {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
     </div>
   );
-  if(drill==="license"){
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>&#x2190; Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>License Tracker</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allLicenses.length} license{allLicenses.length!==1?"s":""} tracked &middot; sorted by urgency</p>
-        {allLicenses.length===0&&<p style={{fontSize:11,color:C.light}}>No active licenses tracked yet.</p>}
-        {allLicenses.map((r: any,i: number)=>{
-          const d=dLeft(r.end);
-          const exp=d!==null&&d<0;
-          const soon=d!==null&&d>=0&&d<=30;
-          const ok=!exp&&!soon;
-          const rowBg=exp?"#fdf0f0":soon?"#fdf8f0":ok?"#f7faf8":C.bg;
-          const rowBd=exp?"#e8c8c8":soon?"#e8d8b8":ok?"#c8dcd0":C.rule;
-          return(
-            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${rowBd}`,background:rowBg,borderRadius:2,padding:"11px 14px",marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
-              <div style={{minWidth:0}}>
-                <p style={{fontSize:12,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
-                <p style={{fontSize:10.5,color:C.muted,margin:0}}>{r.prName} &middot; {r.label}</p>
-              </div>
-              <UBadge end={r.end} label={r.label}/>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
   if(drill==="year"){
     return(
       <div>
@@ -2140,7 +2134,7 @@ function Dashboard({clients,goTo,isMobile}: any) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
-        <Card label="License Tracker" count={allLicenses.length} sub={expiring.length>0?`${expiring.length} expiring soon`:allLicenses.some((r:any)=>(dLeft(r.end)??1)<0)?"check expired licenses":"all licences clear"} warm={expiring.length>0||allLicenses.some((r:any)=>(dLeft(r.end)??1)<0)} onClick={()=>allLicenses.length>0?setDrill("license"):undefined}/>
+        <Card label="Expiring Usage Rights" count={expiring.length} items={expiring.map((pr: any)=>({...pr,amount:0}))} warm/>
       </div>
     </div>
   );
@@ -2480,7 +2474,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
           </div>
         )}
       </div>
-      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:appMobile?"100%":nav===0?1100:nav===1&&clientSel?"none":840,margin:"0 auto",padding:appMobile?"20px 12px":nav===1&&clientSel&&!appMobile?"28px 32px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile}/>}
