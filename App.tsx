@@ -1991,7 +1991,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
               <B v="sec" onClick={()=>{setShowAddP(false);setNewPN("");}}>Cancel</B>
             </div>
           </div>}
-          {cl.projects.map((pr: any,i: number)=>{const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);return(
+          {cl.projects.map((pr: any,i: number)=>{const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);const _r=(
             <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div style={{flex:1,minWidth:0}}>
@@ -2053,7 +2053,9 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
                 {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>← Undo</B>}
               </div>
             </div>
-          );})
+          );
+            return _r;
+          })}
         </div>
       )}
     </div>
