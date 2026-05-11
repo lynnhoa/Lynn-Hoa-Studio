@@ -967,7 +967,7 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
   return(
     <div style={{padding:"90px 62px 130px",fontSize:9.5,lineHeight:1.5,fontFamily:SANS,color:C.black,background:C.bg,minHeight:841}}>
       <div style={{marginBottom:22}}>
-        <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 4px"}}>{l?"Preiskarte":"Rate Card"}</h1>
+        <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 4px"}}>{l?"Preisliste":"Rate Card"}</h1>
         <p style={{fontSize:7.5,color:C.muted,margin:0}}>{card.sub}</p>
       </div>
       {card.sections.map((sec: any,si: number)=>(
@@ -976,7 +976,7 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
           {sec.items.map((it: any)=>(
             <div key={it.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
               <div><span style={{fontSize:8.5}}>{it.n}</span>{it.note&&<span style={{fontSize:7,color:C.light,display:"block"}}>{it.note}</span>}</div>
-              <span style={{fontFamily:SERIF,fontSize:8.5,whiteSpace:"nowrap",marginLeft:12}}>{it.p!=null?`€ ${it.p.toLocaleString("de-DE")}`:""}</span>
+              <span style={{fontFamily:SERIF,fontSize:8.5,whiteSpace:"nowrap",marginLeft:12}}>{it.p!=null?`€ ${it.p.toLocaleString("de-DE")}`:it.m||""}</span>
             </div>
           ))}
         </div>
@@ -1237,7 +1237,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
         <I value={projName} onChange={(e: any)=>setProjName(e.target.value)} placeholder="e.g. Spring Campaign 2026"/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:20}}>
-        <div><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)}/></div>
+        <div style={{minWidth:0}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{maxWidth:"100%"}}/></div>
         <div><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
       </div>
 
@@ -1879,271 +1879,31 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   );
 }
 
-// ─── INVOICES PAGE ────────────────────────────────────────
-function Invoices({clients,settings,isMobile,onOpenPDF}: any) {
-  const [filter,setFilter]=useState<"all"|string>("all"); // "all" | "YYYY" | "YYYY-MM"
-  const [downloading,setDownloading]=useState(false);
-  const [pdfInv,setPdfInv]=useState<any>(null);
-
-  const s={...SETTINGS_DEFAULT,...(settings||{})};
-  const MO=["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const MOS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-  // Collect all invoiced or paid projects as invoice records
-  const allInvoices=clients.flatMap((c: any)=>
-    c.projects
-      .filter((pr: any)=>["invoiced","paid"].includes(pr.status)||pr.paid)
-      .map((pr: any)=>{
-        const q=pr.qd||{};
-        const iNo=q.iNo||`INV-${(q.qNo||"").replace(/QUO-?/i,"").trim()||"001"}`;
-        const dateStr=pr.date||today();
-        return {
-          id:pr.id, cid:c.id, cName:c.name, prName:pr.name,
-          date:dateStr, amount:pr.amount, paid:pr.paid,
-          status:pr.paid?"paid":pr.status,
-          iNo, q, pr,
-          deliveryDate:pr.deliveryDate||"",
-          ctype:q.ctype||"Content Creator",
-          lines:q.lines||[],
-        };
-      })
-  ).sort((a: any,b: any)=>b.date.localeCompare(a.date));
-
-  // Build year/month grouping keys
-  const years=Array.from(new Set(allInvoices.map((inv: any)=>inv.date.slice(0,4)))).sort((a: any,b: any)=>b.localeCompare(a)) as string[];
-
-  // Filter
-  const filtered=filter==="all"?allInvoices
-    :filter.length===4?allInvoices.filter((inv: any)=>inv.date.startsWith(filter))
-    :allInvoices.filter((inv: any)=>inv.date.startsWith(filter));
-
-  // Group filtered by year then month
-  type Group={year:string,months:{month:string,label:string,invoices:any[]}[]};
-  const groups:Group[]=[];
-  filtered.forEach((inv: any)=>{
-    const y=inv.date.slice(0,4);
-    const ym=inv.date.slice(0,7);
-    const mo=parseInt(inv.date.slice(5,7),10)-1;
-    let yg=groups.find(g=>g.year===y);
-    if(!yg){yg={year:y,months:[]};groups.push(yg);}
-    let mg=yg.months.find(m=>m.month===ym);
-    if(!mg){mg={month:ym,label:`${MO[mo]} ${y}`,invoices:[]};yg.months.push(mg);}
-    mg.invoices.push(inv);
-  });
-
-  const fmtFileName=(inv: any)=>`${inv.date.replace(/-/g,"_")} ${inv.iNo} ${inv.cName}`;
-
-  // Single PDF download via PDFModal
-  const openSinglePDF=(inv: any)=>{
-    const iNo=inv.iNo;
-    setPdfInv({
-      data:{
-        brand:inv.cName, contact:inv.q?.contact||"", date:inv.date,
-        qNo:inv.q?.qNo||"", iNo, delivery:inv.deliveryDate,
-        ctype:inv.ctype, lines:inv.lines, total:inv.amount,
-        footer:"Thank you for the pleasure of working together.",
-        amendments:inv.pr?.amendments||[],
-      },
-      type:"invoice",
-    });
-  };
-
-  // Bulk PDF download for a set of invoices (renders hidden divs, one page per invoice)
-  const downloadBulk=async(invList: any[],label: string)=>{
-    if(downloading||invList.length===0)return;
-    setDownloading(true);
-    try{
-      const [{default:html2canvas},{default:jsPDF}]=await Promise.all([import("html2canvas"),import("jspdf")]);
-      const pdf=new (jsPDF as any)({orientation:"portrait",unit:"mm",format:"a4"});
-      const pdfW=pdf.internal.pageSize.getWidth(),pdfH=pdf.internal.pageSize.getHeight();
-      const container=document.createElement("div");
-      container.style.cssText="position:fixed;top:0;left:-9999px;width:595px;background:#faf9f7;z-index:-1;";
-      document.body.appendChild(container);
-      for(let i=0;i<invList.length;i++){
-        const inv=invList[i];
-        const wrapper=document.createElement("div");
-        wrapper.style.cssText="width:595px;height:841px;overflow:hidden;background:#faf9f7;";
-        container.appendChild(wrapper);
-        // We just render a simple invoice summary page for bulk
-        wrapper.innerHTML=`<div style="padding:80px 62px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10px;color:#1a1a1a;">
-          <div style="margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid #e8e4df;">
-            <div style="font-family:Georgia,serif;font-size:22px;font-weight:normal;margin:0 0 4px">${s.company||s.name||"Lynn Hoa"}</div>
-            <div style="font-size:8px;color:#888;letter-spacing:0.1em;text-transform:uppercase">${s.email||""} ${s.website?`· ${s.website}`:""}</div>
-          </div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:28px">
-            <div>
-              <div style="font-size:8px;color:#888;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Invoice To</div>
-              <div style="font-size:13px;font-weight:500">${inv.cName}</div>
-              <div style="font-size:10px;color:#888">${inv.q?.contact||""}</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:8px;color:#888;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Invoice</div>
-              <div style="font-size:13px;font-weight:500">${inv.iNo}</div>
-              <div style="font-size:10px;color:#888">${fmtD(inv.date)}</div>
-            </div>
-          </div>
-          <div style="border-top:1px solid #e8e4df;border-bottom:1px solid #e8e4df;padding:4px 0;display:grid;grid-template-columns:1fr 52px 46px;margin-bottom:0">
-            <span style="font-size:6px;letter-spacing:0.1em;text-transform:uppercase;color:#888">Description</span>
-            <span style="font-size:6px;letter-spacing:0.1em;text-transform:uppercase;color:#888;text-align:right">Unit</span>
-            <span style="font-size:6px;letter-spacing:0.1em;text-transform:uppercase;color:#888;text-align:right">Amount</span>
-          </div>
-          ${inv.lines.map((ln: any)=>`<div style="display:grid;grid-template-columns:1fr 52px 46px;padding:6px 0;border-bottom:1px solid #e8e4df;">
-            <span style="font-size:9px">${ln.name||""}</span>
-            <span style="font-size:9px;text-align:right">€ ${Number(ln.up||0).toLocaleString("de-DE")}</span>
-            <span style="font-size:9px;text-align:right">€ ${Number(ln.amt||0).toLocaleString("de-DE")}</span>
-          </div>`).join("")}
-          <div style="display:flex;justify-content:flex-end;margin-top:16px">
-            <div style="text-align:right">
-              <div style="font-size:6.5px;color:#888;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px">Total (EUR)</div>
-              <div style="font-family:Georgia,serif;font-size:18px">€ ${Number(inv.amount).toLocaleString("de-DE")}</div>
-            </div>
-          </div>
-          <div style="margin-top:24px;padding-top:14px;border-top:1px solid #e8e4df;font-size:7.5px;color:#b8b3ad;line-height:1.75">
-            ${s.bankName?`${s.bankName}${s.iban?` · IBAN: ${s.iban}`:""}${s.bic?` · BIC: ${s.bic}`:""}. `:""}${s.taxNote||""}
-          </div>
-        </div>`;
-        if(i>0)pdf.addPage();
-        const canvas=await (html2canvas as any)(wrapper,{scale:2,useCORS:true,backgroundColor:"#faf9f7"});
-        pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pdfW,pdfH);
-      }
-      document.body.removeChild(container);
-      const isMob=/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
-      if(isMob){const w=window.open("","_blank");if(w)w.location.href=pdf.output("bloburl") as string;}
-      else pdf.save(`${label.replace(/\s/g,"_")}_Invoices.pdf`);
-    }catch(e){console.error(e);}
-    finally{setDownloading(false);}
-  };
-
-  // Excel download
-  const downloadExcel=(invList: any[],label: string)=>{
-    const rows=[
-      ["Month","Invoice No.","Client","Project","Type of Work","Collab","TikToks","Reels","Posts","Stories","Income","Expenses","Delivery Date","Payment Status","Receipt Date"]
-    ];
-    invList.forEach((inv: any)=>{
-      const d=new Date(inv.date);
-      const mo=`${MOS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
-      rows.push([
-        mo, inv.iNo, inv.cName, inv.prName, inv.ctype,
-        "","","","","",
-        inv.amount, 0,
-        inv.deliveryDate?fmtD(inv.deliveryDate):"",
-        inv.paid?"paid":inv.status,
-        fmtD(inv.date),
-      ] as any);
-    });
-    const csvContent=rows.map(r=>r.map((c: any)=>`"${String(c??'').replace(/"/g,'""')}"`).join(",")).join("\n");
-    const blob=new Blob(["\uFEFF"+csvContent],{type:"text/csv;charset=utf-8;"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;a.download=`${label.replace(/\s/g,"_")}_Invoices.csv`;
-    a.click();URL.revokeObjectURL(url);
-  };
-
-  // Build filter options
-  const filterOpts:[string,string][]=[["all","All Invoices"]];
-  years.forEach(y=>{
-    filterOpts.push([y,y]);
-    const monthsInYear=Array.from(new Set(allInvoices.filter((inv: any)=>inv.date.startsWith(y)).map((inv: any)=>inv.date.slice(0,7)))).sort((a: any,b: any)=>b.localeCompare(a)) as string[];
-    monthsInYear.forEach(ym=>{
-      const mo=parseInt(ym.slice(5,7),10)-1;
-      filterOpts.push([ym,`${MOS[mo]} ${y}`]);
-    });
-  });
-
-  const filterLabel=filter==="all"?"All Invoices":filterOpts.find(([v])=>v===filter)?.[1]||filter;
-
-  if(pdfInv)return<PDFModal data={pdfInv.data} type={pdfInv.type} onClose={()=>setPdfInv(null)} settings={settings}/>;
-
-  return(
-    <div>
-      {/* Header + controls */}
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:18,gap:12,flexWrap:"wrap"}}>
-        <div>
-          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Invoices</h2>
-          <p style={{fontSize:10.5,color:C.muted,margin:0}}>{allInvoices.length} invoice{allInvoices.length!==1?"s":""} total</p>
-        </div>
-        {/* Top-right controls: filter + download buttons */}
-        <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",justifyContent:"flex-end"}}>
-          {/* Period filter */}
-          <select value={filter} onChange={e=>setFilter(e.target.value)}
-            style={{padding:"6px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",cursor:"pointer"}}>
-            {filterOpts.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-          </select>
-          {/* Download PDF */}
-          <button onClick={()=>downloadBulk(filtered,filterLabel)} disabled={downloading||filtered.length===0}
-            style={{padding:"6px 13px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:filtered.length?C.black:C.light,borderRadius:2,cursor:filtered.length?"pointer":"default",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>
-            {downloading?"…":"↓ PDF"}
-          </button>
-          {/* Download Excel/CSV */}
-          <button onClick={()=>downloadExcel(filtered,filterLabel)} disabled={filtered.length===0}
-            style={{padding:"6px 13px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:filtered.length?C.black:C.light,borderRadius:2,cursor:filtered.length?"pointer":"default",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>
-            ↓ Excel
-          </button>
-        </div>
-      </div>
-
-      {allInvoices.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects marked as Invoiced or Paid will appear here.</p>}
-
-      {/* Grouped list */}
-      {groups.map((yg: Group)=>(
-        <div key={yg.year}>
-          {/* Year separator */}
-          <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0 10px"}}>
-            <span style={{fontFamily:SERIF,fontSize:16,color:C.black}}>{yg.year}</span>
-            <div style={{flex:1,height:1,background:C.rule}}/>
-            <span style={{fontSize:9,color:C.muted,letterSpacing:"0.06em"}}>
-              {fmt(yg.months.flatMap(m=>m.invoices).reduce((s: number,inv: any)=>s+inv.amount,0))}
-            </span>
-          </div>
-          {yg.months.map((mg: any)=>(
-            <div key={mg.month}>
-              {/* Month separator */}
-              <div style={{display:"flex",alignItems:"center",gap:8,margin:"12px 0 6px"}}>
-                <span style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>{mg.label}</span>
-                <div style={{flex:1,height:1,background:C.rule}}/>
-                <span style={{fontSize:9,color:C.muted}}>
-                  {fmt(mg.invoices.reduce((s: number,inv: any)=>s+inv.amount,0))}
-                </span>
-              </div>
-              {/* Invoice rows */}
-              {mg.invoices.map((inv: any)=>(
-                <div key={inv.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:5,background:C.white}}>
-                  {/* File name + meta */}
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontSize:11,color:C.black,margin:"0 0 2px",fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fmtFileName(inv)}</p>
-                    <p style={{fontSize:10,color:C.muted,margin:0}}>{inv.prName}{inv.ctype?` · ${inv.ctype}`:""}</p>
-                  </div>
-                  {/* Amount */}
-                  <span style={{fontFamily:SERIF,fontSize:13,color:C.black,whiteSpace:"nowrap",flexShrink:0}}>{fmt(inv.amount)}</span>
-                  {/* Status badge */}
-                  <span style={{fontSize:9,color:inv.paid?C.green:C.amber,border:`1px solid ${inv.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase",flexShrink:0}}>{inv.paid?"Paid":"Invoiced"}</span>
-                  {/* View PDF button */}
-                  <button onClick={()=>openSinglePDF(inv)}
-                    style={{padding:"5px 11px",border:`1px solid ${C.rule}`,background:"none",borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,color:C.black,letterSpacing:"0.05em",flexShrink:0,whiteSpace:"nowrap"}}>
-                    View PDF
-                  </button>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile}: any) {
+  const [drill,setDrill]=useState<null|"year"|"month">(null);
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name})));
+  const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
-  const rev=all.filter((pr: any)=>pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0);
+  const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
-  const Card=({label,count,items,warm,sub}: any)=>(
-    <div onClick={()=>items?.length&&goTo(1)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:items?.length?"pointer":"default"}}>
+  const nowY=new Date().getFullYear();
+  const nowM=new Date().getMonth();
+  const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const yearOf=(pr: any)=>new Date(pr.date).getFullYear();
+  const monthOf=(pr: any)=>new Date(pr.date).getMonth();
+  const thisYearPaid=paid.filter((pr: any)=>yearOf(pr)===nowY);
+  const thisYearRev=thisYearPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const thisMonthPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===nowM);
+  const thisMonthRev=thisMonthPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
+  const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
+  const Card=({label,count,items,warm,sub,onClick}: any)=>(
+    <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
         <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>
         <span style={{fontFamily:SERIF,fontSize:22,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
@@ -2153,12 +1913,73 @@ function Dashboard({clients,goTo,isMobile}: any) {
       {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
     </div>
   );
+  if(drill==="year"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
+        {allYears.map((y: number)=>{
+          const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
+          const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+          return(
+            <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yPaid.length?8:0}}>
+                <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
+              </div>
+              {yPaid.slice(0,3).map((pr: any,i: number)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                </div>
+              ))}
+              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  if(drill==="month"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
+        {[...monthsToShow].reverse().map((m: number)=>{
+          const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
+          const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+          return(
+            <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
+                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
+              </div>
+              {mPaid.slice(0,3).map((pr: any,i: number)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                </div>
+              ))}
+              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
+              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
         <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
+        <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
+        <Card label={`${MO[nowM]} Revenue`} count={fmt(thisMonthRev)} sub={`${thisMonthPaid.length} paid project${thisMonthPaid.length!==1?"s":""}`} onClick={()=>setDrill("month")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
@@ -2272,7 +2093,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2298,7 +2119,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2316,7 +2137,6 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
-        {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
       </div>
     </div>
   );
