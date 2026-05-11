@@ -1237,7 +1237,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
         <I value={projName} onChange={(e: any)=>setProjName(e.target.value)} placeholder="e.g. Spring Campaign 2026"/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:20}}>
-        <div style={{minWidth:0,overflow:"hidden"}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{width:"100%",fontSize:isMobile?10:12}}/></div>
+        <div style={{minWidth:0}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{width:"100%",boxSizing:"border-box",padding:"7px 6px",fontSize:isMobile?10:12,textAlign:"center"}}/></div>
         <div><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
       </div>
 
@@ -2056,8 +2056,11 @@ function exportExcel(rows: any[]) {
 
 function Invoices({clients,settings,isMobile}: any) {
   const [pdfData,setPdfData]=useState<any>(null);
-  const [bulkOpen,setBulkOpen]=useState(false);
+  const [saveMode,setSaveMode]=useState<"year"|"month">("year");
+  const [dropOpen,setDropOpen]=useState(false);
   const allRows = buildInvoiceRows(clients);
+  const nowY=new Date().getFullYear();
+  const nowM=new Date().getMonth();
 
   const openPreview = (r: any) => {
     const pr=r.pr; const q=pr.qd;
@@ -2075,12 +2078,15 @@ function Invoices({clients,settings,isMobile}: any) {
     mg.rows.push(r);
   });
 
-  // build bulk export options
-  const bulkOptions: {label:string,rows:any[]}[] = [];
-  grouped.forEach(yg=>{
-    bulkOptions.push({label:`${yg.year} — Full Year`,rows:yg.months.flatMap(m=>m.rows)});
-    yg.months.forEach(mg=>bulkOptions.push({label:`${MO_LONG[mg.month]} ${yg.year}`,rows:mg.rows}));
-  });
+  const savePdfRows = saveMode==="year"
+    ? (grouped.find(g=>g.year===nowY)||grouped[0])?.months.flatMap(m=>m.rows)||allRows
+    : (grouped.find(g=>g.year===nowY)?.months.find(m=>m.month===nowM)||grouped[0]?.months[0])?.rows||allRows;
+  const savePdfLabel = saveMode==="year"
+    ? `Save PDF ${(grouped.find(g=>g.year===nowY)||grouped[0])?.year||nowY}`
+    : `Save PDF ${MO_SHORT[(grouped.find(g=>g.year===nowY)?.months.find(m=>m.month===nowM)||grouped[0]?.months[0])?.month??nowM]} ${(grouped.find(g=>g.year===nowY)||grouped[0])?.year||nowY}`;
+  const altLabel = saveMode==="year" ? "by Month" : "by Year";
+
+  const btnStyle: any = {height:28,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.07em",color:C.muted,display:"flex",alignItems:"center",whiteSpace:"nowrap"};
 
   if(pdfData) return <PDFModal data={pdfData.data} type={pdfData.type} onClose={()=>setPdfData(null)} settings={settings}/>;
 
@@ -2088,17 +2094,22 @@ function Invoices({clients,settings,isMobile}: any) {
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:8}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <button onClick={()=>exportExcel(allRows)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase",padding:0}}>Export Excel</button>
-          <div style={{position:"relative"}}>
-            {bulkOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setBulkOpen(false)}/>}
-            <button onClick={()=>setBulkOpen(o=>!o)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase",padding:0,position:"relative",zIndex:200}}>Bulk ▾</button>
-            {bulkOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 6px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",minWidth:190,zIndex:200}}>
-              {bulkOptions.map((opt,i)=>(
-                <button key={i} onClick={()=>{exportExcel(opt.rows);setBulkOpen(false);}} style={{display:"block",width:"100%",padding:"8px 13px",background:"none",border:"none",borderBottom:i<bulkOptions.length-1?`1px solid ${C.rule}`:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.03em",boxSizing:"border-box"}}>{opt.label}</button>
-              ))}
-            </div>}
+        <div style={{display:"flex",gap:5,alignItems:"center"}}>
+          {/* Save PDF button + dropdown toggle */}
+          <div style={{display:"flex",alignItems:"center",border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+            <button onClick={()=>exportExcel(savePdfRows)} style={{...btnStyle,border:"none",borderRadius:0,borderRight:`1px solid ${C.rule}`,paddingRight:9}}>{savePdfLabel}</button>
+            <div style={{position:"relative"}}>
+              {dropOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setDropOpen(false)}/>}
+              <button onClick={()=>setDropOpen(o=>!o)} style={{...btnStyle,border:"none",borderRadius:0,padding:"0 8px",position:"relative",zIndex:200}}>▾</button>
+              {dropOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 4px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",minWidth:130,zIndex:200}}>
+                <button onClick={()=>{setSaveMode(m=>m==="year"?"month":"year");setDropOpen(false);}} style={{display:"block",width:"100%",padding:"9px 13px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.03em",boxSizing:"border-box"}}>{altLabel}</button>
+              </div>}
+            </div>
           </div>
+          {/* Excel download icon */}
+          <button onClick={()=>exportExcel(allRows)} title="Export all as Excel" style={{...btnStyle,padding:"0 8px",fontSize:13}}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 1v8M7 9l-3-3M7 9l3-3M2 11h10" stroke={C.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
         </div>
       </div>
       {allRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects move here once invoiced or paid.</p>}
