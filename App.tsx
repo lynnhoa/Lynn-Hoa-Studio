@@ -1237,8 +1237,8 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
         <I value={projName} onChange={(e: any)=>setProjName(e.target.value)} placeholder="e.g. Spring Campaign 2026"/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:20}}>
-        <div><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)}/></div>
-        <div><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
+        <div style={{minWidth:0,overflow:"hidden"}}><Lbl>Quote Date</Lbl><I type="date" value={qDate} onChange={(e: any)=>setQDate(e.target.value)} s={{minWidth:0,WebkitAppearance:"none",appearance:"none"}}/></div>
+        <div style={{minWidth:0}}><Lbl>Valid for (days)</Lbl><I type="number" value={vDays} onChange={(e: any)=>setVDays(e.target.value)}/></div>
       </div>
 
       <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"16px 18px",marginBottom:16,background:C.white}}>
