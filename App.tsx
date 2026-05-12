@@ -346,23 +346,29 @@ const CATEGORY_SUGGESTIONS = ["Beauty","Fashion","Lifestyle","Food","Travel","Fi
 function TagInput({tags,onChange,placeholder="Add tag"}: {tags:string[],onChange:(t:string[])=>void,placeholder?:string}) {
   const [val,setVal]=useState("");
   const [open,setOpen]=useState(false);
-  const suggestions=CATEGORY_SUGGESTIONS.filter(s=>val.trim().length>=2&&s.toLowerCase().startsWith(val.toLowerCase())&&!tags.includes(s));
-  const add=(t: string)=>{const v=t.trim();if(!v||tags.includes(v))return;onChange([...tags,v]);setVal("");setOpen(false);};
+  const picking=useRef(false);
+  const hasTag=(v:string)=>tags.some(t=>t.toLowerCase()===v.toLowerCase());
+  const suggestions=CATEGORY_SUGGESTIONS.filter(s=>val.trim().length>=2&&s.toLowerCase().startsWith(val.trim().toLowerCase())&&!hasTag(s));
+  const add=(t:string)=>{const v=t.trim();if(!v||hasTag(v))return;onChange([...tags,v]);setVal("");setOpen(false);};
   return(
     <div>
       <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{tags.map((t:string)=><Tag key={t} onRemove={()=>onChange(tags.filter(x=>x!==t))}>{t}</Tag>)}</div>
       <div style={{position:"relative"}}>
         <div style={{display:"flex",gap:5}}>
-          <I value={val} onChange={(e:any)=>{setVal(e.target.value);setOpen(true);}} placeholder={placeholder}
+          <I value={val}
+            onChange={(e:any)=>{setVal(e.target.value);setOpen(true);}}
+            placeholder={placeholder}
             onKeyDown={(e:any)=>{if(e.key==="Enter"){e.preventDefault();if(suggestions.length>0)add(suggestions[0]);else add(val);}if(e.key==="Escape")setOpen(false);}}
-            onBlur={()=>setTimeout(()=>setOpen(false),120)}
-            onFocus={()=>setOpen(true)}/>
+            onFocus={()=>setOpen(true)}
+            onBlur={()=>{if(!picking.current)setOpen(false);picking.current=false;}}/>
           <B v="sec" onClick={()=>add(val)} s={{fontSize:9}}>+</B>
         </div>
         {open&&suggestions.length>0&&(
-          <div style={{position:"absolute",top:"100%",left:0,right:0,background:C.white,border:`1px solid ${C.rule}`,borderRadius:2,zIndex:50,boxShadow:"0 4px 12px rgba(0,0,0,0.08)",marginTop:2}}>
+          <div style={{position:"absolute",top:"calc(100% + 2px)",left:0,right:0,background:C.white,border:`1px solid ${C.rule}`,borderRadius:2,zIndex:300,boxShadow:"0 4px 12px rgba(0,0,0,0.10)",marginTop:0}}>
             {suggestions.map((s:string)=>(
-              <div key={s} onMouseDown={()=>add(s)} style={{padding:"7px 11px",fontSize:11,color:C.black,cursor:"pointer",borderBottom:`1px solid ${C.rule}`}}
+              <div key={s}
+                onMouseDown={()=>{picking.current=true;add(s);}}
+                style={{padding:"7px 11px",fontSize:11,color:C.black,cursor:"pointer",borderBottom:`1px solid ${C.rule}`}}
                 onMouseEnter={(e:any)=>e.currentTarget.style.background="rgba(0,0,0,0.03)"}
                 onMouseLeave={(e:any)=>e.currentTarget.style.background="transparent"}>{s}</div>
             ))}
