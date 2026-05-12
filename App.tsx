@@ -1397,6 +1397,19 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   );
 }
 
+// ─── ITEM CHECKBOXES (shared by AmendModal) ───────────────
+function ItemCheckboxes({origLines,sel,setSel,pfx}: {origLines:any[],sel:string[],setSel:(fn:(p:string[])=>string[])=>void,pfx:string}) {
+  const catShort: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
+  return <>{origLines.map((l: any,i: number)=>{
+    const on=sel.includes(l.id);
+    const cbId=`${pfx}-${i}`;
+    return <label key={cbId} htmlFor={cbId} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
+      <input id={cbId} type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
+      <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
+    </label>;
+  })}</>;
+}
+
 // ─── AMENDMENT MODAL ──────────────────────────────────────
 function AmendModal({p,onSave,onClose,settings,rc}: any) {
   const q=p.qd;
@@ -1474,15 +1487,6 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
     <Pill on={val==="total"} onClick={()=>set("total")}>Whole quote ({fmt(origTotal)})</Pill>
     <Pill on={val==="selected"} onClick={()=>set("selected")}>Selected items</Pill>
   </div>;
-  const catShort: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
-  const ItemCheckboxes=({sel,setSel,pfx}: any)=><>{origLines.map((l: any,i: number)=>{
-    const on=sel.includes(l.id);
-    const cbId=`${pfx||"cb"}-${i}`;
-    return<label key={cbId} htmlFor={cbId} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
-      <input id={cbId} type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
-      <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
-    </label>;
-  })}</>;
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}>
@@ -1536,7 +1540,7 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
           <SectionHead n="02" title="Usage Rights"/>
           <Lbl>Apply % to</Lbl>
           <BaseToggle val={uBase} set={setUBase}/>
-          {uBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={uSel} setSel={setUSel} pfx="u"/></div>}
+          {uBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes origLines={origLines} sel={uSel} setSel={setUSel} pfx="u"/></div>}
           <Lbl>Usage Rights</Lbl>
           <S value={uIdx} onChange={(e: any)=>setUIdx(parseInt(e.target.value))} s={{marginBottom:8}}>
             {usageOpts.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
@@ -1552,7 +1556,7 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
           <SectionHead n="03" title="Add-ons"/>
           <Lbl>Apply % to</Lbl>
           <BaseToggle val={aoBase} set={setAoBase}/>
-          {aoBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={aoSel} setSel={setAoSel} pfx="ao"/></div>}
+          {aoBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes origLines={origLines} sel={aoSel} setSel={setAoSel} pfx="ao"/></div>}
           <Lbl>Add-on</Lbl>
           <S value={aoId} onChange={(e: any)=>{setAoId(e.target.value);setAoCustom("");}} s={{marginBottom:7}}>
             <option value="">— Select add-on —</option>
