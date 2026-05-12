@@ -1853,7 +1853,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
     if(c){setSel(c.id);if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);}
     if(onPendingClear)setTimeout(()=>onPendingClear(),100);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
+  },[pendingClientName,pendingProjectQNo]);
   const [revInvT,setRevInvT]=useState<any>(null);
   const [pdf,setPdf]=useState<any>(null);
   const [showAddP,setShowAddP]=useState(false);
@@ -2714,7 +2714,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const handleAfterSave=(brand: string,qNo?: string)=>{
     setPendingClientName(brand);
     setPendingProjectQNo(qNo||null);
-    setTimeout(()=>setNav(1),100);
+    setNav(1);
   };
 
   const handleGoToCalc=(clientName: string)=>{
