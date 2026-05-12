@@ -2199,9 +2199,10 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile,setPendingClientName,settings}: any) {
+function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey}: any) {
   const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects"|"invoices">(null);
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
+  useEffect(()=>{setDrill(null);},[resetKey]);
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
@@ -2680,6 +2681,8 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
   const [menuOpen,setMenuOpen]=useState(false);
+  const [dashReset,setDashReset]=useState(0);
+  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);};
   const [appWinW,setAppWinW]=useState(()=>window.innerWidth);
   useEffect(()=>{const fn=()=>setAppWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   const appMobile=appWinW<700;
@@ -2755,7 +2758,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       <div style={{borderBottom:`1px solid ${C.rule}`,position:"sticky",top:0,background:C.bg,zIndex:100}}>
         {appMobile?(
           <>
-            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={()=>setNav(0)}>
+            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={goToDash}>
               <AppLogo/>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
@@ -2796,7 +2799,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                 <button onClick={logout} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
               </div>}
             </div>
-            <div style={{textAlign:"center",cursor:"pointer"}} onClick={()=>setNav(0)}><AppLogo size="web"/></div>
+            <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
               {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
@@ -2804,7 +2807,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} settings={settings}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} settings={settings} resetKey={dashReset}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
