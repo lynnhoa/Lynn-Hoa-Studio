@@ -1552,16 +1552,16 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
   const edt=editMode?ed:cl;
   return(
     <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
+      <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>&larr; Clients</button>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
         <div style={{minWidth:0}}>
           {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
         </div>
-        <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
+        <div style={{display:"flex",gap:6,flexShrink:0}}>
           {editMode
             ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
             :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
-          <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1771,16 +1771,16 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
     const edt=editMode?ed:cl;
     return(
       <div>
+        <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Clients</button>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
           <div style={{minWidth:0}}>
             {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
           </div>
-          <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
             {editMode
               ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
               :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
-            <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
@@ -2395,7 +2395,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   },[rc,clients,settings]);
 
   if(!authed)return<Auth onAuth={(r)=>{setRole(r);setAuthed(true);}} currentPass={settings.password||PASS}/>;
-  if(role==="creator")return<CreatorPage settings={settings} logout={()=>{setAuthed(false);setNav(0);}}/>;
+  if(role==="creator")return<CreatorPage settings={settings} clients={clients} logout={()=>{setAuthed(false);setNav(0);}}/>;
 
   const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string)=>{
     const ex=clients.find((c: any)=>c.name.toLowerCase()===brand.toLowerCase());
@@ -2502,10 +2502,147 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
-// ─── CREATOR PAGE (placeholder) ───────────────────────────
-function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
+// ─── CREATOR PAGE ─────────────────────────────────────────
+// Production stages: brief → create → edit → review → done
+const PROD_STAGES = ["Brief","Create","Edit","Review","Done"] as const;
+type ProdStage = typeof PROD_STAGES[number];
+
+// Persist creator task state separately in localStorage
+function useCreatorTasks() {
+  const [tasks,setTasksRaw]=useState<Record<string,ProdStage>>(()=>{
+    try{return JSON.parse(localStorage.getItem("lynnhoa_tasks")||"{}");}catch{return {};}
+  });
+  const setTasks=(fn: (p: Record<string,ProdStage>)=>Record<string,ProdStage>)=>{
+    setTasksRaw(prev=>{const next=fn(prev);try{localStorage.setItem("lynnhoa_tasks",JSON.stringify(next));}catch{}return next;});
+  };
+  return [tasks,setTasks] as const;
+}
+
+function useCreatorNotes() {
+  const [notes,setNotesRaw]=useState<Record<string,string>>(()=>{
+    try{return JSON.parse(localStorage.getItem("lynnhoa_notes")||"{}");}catch{return {};}
+  });
+  const setNotes=(fn: (p: Record<string,string>)=>Record<string,string>)=>{
+    setNotesRaw(prev=>{const next=fn(prev);try{localStorage.setItem("lynnhoa_notes",JSON.stringify(next));}catch{}return next;});
+  };
+  return [notes,setNotes] as const;
+}
+
+function stageColor(s: ProdStage){
+  if(s==="Done")return{col:C.green,bg:C.greenBg,bd:C.greenBorder};
+  if(s==="Review")return{col:C.amber,bg:C.amberBg,bd:C.amberBorder};
+  if(s==="Brief")return{col:C.light,bg:"transparent",bd:C.rule};
+  return{col:C.black,bg:"rgba(26,26,26,0.04)",bd:"rgba(26,26,26,0.18)"};
+}
+
+function CreatorPage({settings,clients,logout}: {settings:any,clients:any[],logout:()=>void}) {
   const [menuOpen,setMenuOpen]=useState(false);
+  const [selProj,setSelProj]=useState<{cid:string,pid:string}|null>(null);
+  const [tasks,setTasks]=useCreatorTasks();
+  const [notes,setNotes]=useCreatorNotes();
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
+
+  // Pull all contracted/production projects from manager data
+  const activeProjects=(clients||[]).flatMap((c:any)=>
+    (c.projects||[])
+      .filter((pr:any)=>["contracted","production"].includes(pr.status)&&!pr.paid)
+      .map((pr:any)=>({...pr,cName:c.name,cId:c.id}))
+  );
+
+  const selClient=selProj?clients.find((c:any)=>c.id===selProj.cid):null;
+  const selPr=selClient?(selClient.projects||[]).find((p:any)=>p.id===selProj.pid):null;
+
+  // Deliverable lines from quote (skip usage/exclusivity/addon lines)
+  const deliverables=(selPr?.qd?.lines||[]).filter((ln:any)=>
+    ln.amt>0&&!["usage","excl","paid ads","organic","whitelist","rush","revision","raw","kill","aspect","pinned","link in bio","boosting"].some((k:string)=>ln.name.toLowerCase().includes(k))
+  );
+
+  const taskKey=(pid:string,idx:number)=>`${pid}_${idx}`;
+  const getStage=(pid:string,idx:number):ProdStage=>tasks[taskKey(pid,idx)]||"Brief";
+  const setStage=(pid:string,idx:number,s:ProdStage)=>setTasks(p=>({...p,[taskKey(pid,idx)]:s}));
+
+  const projProgress=(pr:any)=>{
+    const lines=(pr.qd?.lines||[]).filter((ln:any)=>
+      ln.amt>0&&!["usage","excl","paid ads","organic","whitelist","rush","revision","raw","kill","aspect","pinned","link in bio","boosting"].some((k:string)=>ln.name.toLowerCase().includes(k))
+    );
+    if(!lines.length)return null;
+    const done=lines.filter((_:any,i:number)=>getStage(pr.id,i)==="Done").length;
+    return{done,total:lines.length};
+  };
+
+  // ── Project detail view ──
+  if(selProj&&selPr){
+    const noteKey=`note_${selPr.id}`;
+    const allDone=deliverables.length>0&&deliverables.every((_:any,i:number)=>getStage(selPr.id,i)==="Done");
+    return(
+      <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
+        {/* Nav */}
+        <div style={{borderBottom:`1px solid ${C.rule}`,padding:"0 20px",display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",minHeight:56,position:"sticky",top:0,background:C.bg,zIndex:100}}>
+          <div/><AppLogo/>
+          <div style={{display:"flex",justifyContent:"flex-end"}}>
+            <button onClick={()=>setMenuOpen(m=>!m)} style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center"}}>{initials}</button>
+          </div>
+        </div>
+        <div style={{maxWidth:680,margin:"0 auto",padding:"28px 20px"}}>
+          {/* Header */}
+          <button onClick={()=>setSelProj(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:18}}>← Projects</button>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6,gap:8}}>
+            <div>
+              <h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 4px"}}>{selPr.name}</h2>
+              <p style={{fontSize:11,color:C.muted,margin:0}}>{selClient?.name}{selPr.qd?.ctype?` · ${selPr.qd.ctype}`:""}</p>
+            </div>
+            {allDone&&<span style={{fontSize:10,color:C.green,border:`1px solid ${C.greenBorder}`,background:C.greenBg,padding:"4px 12px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase",whiteSpace:"nowrap"}}>Ready to Invoice</span>}
+          </div>
+          {selPr.deliveryDate&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 20px"}}>Delivery · {fmtD(selPr.deliveryDate)}</p>}
+
+          {/* Deliverables */}
+          {deliverables.length===0&&<p style={{fontSize:11,color:C.muted}}>No deliverables found on this contract.</p>}
+          {deliverables.map((ln:any,i:number)=>{
+            const stage=getStage(selPr.id,i);
+            const sc=stageColor(stage);
+            const prevStage=()=>{const idx=PROD_STAGES.indexOf(stage);if(idx>0)setStage(selPr.id,i,PROD_STAGES[idx-1]);};
+            const nextStage=()=>{const idx=PROD_STAGES.indexOf(stage);if(idx<PROD_STAGES.length-1)setStage(selPr.id,i,PROD_STAGES[idx+1]);};
+            return(
+              <div key={i} style={{border:`1px solid ${sc.bd}`,borderRadius:2,padding:"14px 16px",marginBottom:10,background:sc.bg}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:10}}>
+                  <div style={{minWidth:0}}>
+                    <p style={{fontSize:13,color:C.black,margin:"0 0 3px",fontWeight:"500"}}>{ln.qty>1?`${ln.qty}× `:""}{ln.name}</p>
+                    {ln.note&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>{ln.note}</p>}
+                  </div>
+                  <span style={{fontSize:9.5,color:sc.col,border:`1px solid ${sc.bd}`,background:C.white,padding:"2px 10px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase",whiteSpace:"nowrap",flexShrink:0}}>{stage}</span>
+                </div>
+                {/* Stage stepper */}
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  {PROD_STAGES.map((s,si)=>{
+                    const cur=PROD_STAGES.indexOf(stage);
+                    const past=si<cur,active=si===cur;
+                    return(
+                      <div key={s} style={{display:"flex",alignItems:"center",gap:6}}>
+                        <button onClick={()=>setStage(selPr.id,i,s)} style={{fontSize:9,padding:"3px 9px",borderRadius:2,border:`1px solid ${active?C.black:past?C.green:C.rule}`,background:active?C.black:past?C.greenBg:"transparent",color:active?C.white:past?C.green:C.light,cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase",whiteSpace:"nowrap"}}>{s}</button>
+                        {si<PROD_STAGES.length-1&&<span style={{fontSize:9,color:C.light}}>›</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{display:"flex",gap:7,marginTop:10}}>
+                  {PROD_STAGES.indexOf(stage)>0&&<button onClick={prevStage} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,letterSpacing:"0.04em"}}>← Back</button>}
+                  {PROD_STAGES.indexOf(stage)<PROD_STAGES.length-1&&<button onClick={nextStage} style={{fontSize:9,color:C.black,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,letterSpacing:"0.04em",fontWeight:"500"}}>Next → {PROD_STAGES[PROD_STAGES.indexOf(stage)+1]}</button>}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Notes */}
+          <div style={{marginTop:20}}>
+            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 7px"}}>Production Notes</p>
+            <textarea value={notes[noteKey]||""} onChange={(e:any)=>setNotes(p=>({...p,[noteKey]:e.target.value}))} placeholder="Brief details, shoot location, product received, revision feedback…" style={{width:"100%",minHeight:90,padding:"9px 11px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.white,fontFamily:SANS,fontSize:11,color:C.black,resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.6}}/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Project list view ──
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
       <div style={{borderBottom:`1px solid ${C.rule}`,padding:"0 20px",display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",minHeight:56,position:"sticky",top:0,background:C.bg,zIndex:100}}>
@@ -2514,7 +2651,7 @@ function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
         <div style={{display:"flex",justifyContent:"flex-end"}}>
           <div style={{position:"relative",display:"flex",alignItems:"center"}}>
             {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
-            <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",flexShrink:0,position:"relative",zIndex:200}}>{initials}</button>
+            <button onClick={()=>setMenuOpen(m=>!m)} style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:200}}>{initials}</button>
             {menuOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
               <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
                 <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
@@ -2525,9 +2662,46 @@ function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
           </div>
         </div>
       </div>
-      <div style={{maxWidth:840,margin:"0 auto",padding:"80px 20px",textAlign:"center"}}>
-        <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Creator View</p>
-        <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>This space is being built.<br/>Check back soon.</p>
+
+      <div style={{maxWidth:680,margin:"0 auto",padding:"28px 20px"}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Production</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 22px"}}>Active contracts · track deliverables through to ready-to-invoice</p>
+
+        {activeProjects.length===0&&(
+          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"32px 20px",textAlign:"center"}}>
+            <p style={{fontFamily:SERIF,fontSize:18,fontWeight:"normal",color:C.black,margin:"0 0 8px"}}>No active contracts</p>
+            <p style={{fontSize:11,color:C.muted,margin:0,lineHeight:1.7}}>Projects move here once marked Contracted<br/>in the manager view.</p>
+          </div>
+        )}
+
+        {activeProjects.map((pr:any)=>{
+          const prog=projProgress(pr);
+          const allDone=prog&&prog.done===prog.total;
+          return(
+            <div key={pr.id} onClick={()=>setSelProj({cid:pr.cId,pid:pr.id})} style={{border:`1px solid ${allDone?C.greenBorder:C.rule}`,borderRadius:2,padding:"14px 16px",marginBottom:9,cursor:"pointer",background:allDone?C.greenBg:C.white}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:prog?8:0}}>
+                <div style={{minWidth:0}}>
+                  <p style={{fontSize:13,color:C.black,margin:"0 0 3px",fontWeight:"500"}}>{pr.name}</p>
+                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.cName}{pr.qd?.ctype?` · ${pr.qd.ctype}`:""}{pr.deliveryDate?` · Due ${fmtD(pr.deliveryDate)}`:""}</p>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  {allDone
+                    ?<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 9px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>Ready to Invoice</span>
+                    :<span style={{fontSize:9.5,color:C.muted,border:`1px solid ${C.rule}`,padding:"2px 9px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.status}</span>
+                  }
+                </div>
+              </div>
+              {prog&&(
+                <div>
+                  <div style={{height:3,background:C.rule,borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${Math.round((prog.done/prog.total)*100)}%`,background:allDone?C.green:C.black,borderRadius:2,transition:"width 0.3s ease"}}/>
+                  </div>
+                  <p style={{fontSize:9.5,color:C.muted,margin:"5px 0 0"}}>{prog.done} of {prog.total} deliverable{prog.total!==1?"s":""} done</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
