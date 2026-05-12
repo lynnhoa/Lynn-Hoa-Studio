@@ -1913,30 +1913,6 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         <B onClick={()=>setShowAdd((s: boolean)=>!s)}>+ New Client</B>
       </div>
       {flagged.length>0&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,padding:"9px 13px",marginBottom:10}}><p style={{fontSize:10.5,color:C.amber,margin:0}}>⚠ {flagged.length} client{flagged.length>1?"s":""} — no activity 3+ months</p></div>}
-      {(()=>{
-        const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
-          const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
-          const ue=uEnd(pr);
-          if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
-          (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
-          return items;
-        })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
-        if(!allLicenses.length)return null;
-        return(
-          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:11}}>
-            <p style={{fontSize:9.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0,padding:"9px 13px 8px",borderBottom:`1px solid ${C.rule}`}}>License Tracker</p>
-            {allLicenses.map((r: any,i: number)=>(
-              <div key={i} onClick={()=>setSel(r.cId)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 13px",borderBottom:i<allLicenses.length-1?`1px solid ${C.rule}`:"none",cursor:"pointer",gap:8}}>
-                <div style={{minWidth:0,overflow:"hidden"}}>
-                  <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.cName}</span>
-                  <span style={{fontSize:10.5,color:C.muted}}> · {r.prName}</span>
-                </div>
-                <UBadge end={r.end} label={r.label}/>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
       <I placeholder="Search clients, tags…" value={search} onChange={(e: any)=>setSearch(e.target.value)} s={{marginBottom:8}}/>
       <div style={{display:"flex",justifyContent:"flex-end",gap:7,marginBottom:11}}>
         <select
@@ -2028,8 +2004,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month">(null);
-  const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name})));
+  const [drill,setDrill]=useState<null|"year"|"month"|"license">(null);
+  const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
@@ -2038,6 +2014,13 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
+  const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
+    const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
+    const ue=uEnd(pr);
+    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
+    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
+    return items;
+  })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
   const nowM=new Date().getMonth();
   const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -2117,6 +2100,36 @@ function Dashboard({clients,goTo,isMobile}: any) {
       </div>
     );
   }
+  if(drill==="license"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>License Tracker</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allLicenses.length} active license{allLicenses.length!==1?"s":""} · sorted by expiry</p>
+        {allLicenses.length===0&&<p style={{fontSize:11,color:C.muted}}>No active licenses tracked.</p>}
+        {allLicenses.map((r: any,i: number)=>{
+          const d=dLeft(r.end);
+          const urgent=d!==null&&d<=14;
+          const soon=d!==null&&d>14&&d<=30;
+          return(
+            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{minWidth:0}}>
+                  <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
+                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{r.prName}</p>
+                </div>
+                <UBadge end={r.end} label={r.label}/>
+              </div>
+              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{r.label} expires</span>
+                <span style={{fontSize:11,color:urgent?C.red:soon?C.amber:C.muted}}>{fmtD(r.end)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
@@ -2132,10 +2145,11 @@ function Dashboard({clients,goTo,isMobile}: any) {
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
         <Card label="Active Contracts" count={unsigned.length} items={unsigned}/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
         <Card label="Expiring Usage Rights" count={expiring.length} items={expiring.map((pr: any)=>({...pr,amount:0}))} warm/>
       </div>
+      <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
     </div>
   );
 }
