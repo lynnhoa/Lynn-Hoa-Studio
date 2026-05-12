@@ -1021,11 +1021,10 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
     </div>
   );
 }
-// ─── RATE CARD (nav tab · client-facing · preview + PDF) ──
-function RateCard({rc,settings}: any) {
-  const [tab,setTab]=useState("influencer");
+// ─── RATE CARD BUILDER PREVIEW ────────────────────────────
+function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
+  const [staged,setStaged]=useState<any>(JSON.parse(JSON.stringify(card)));
   const [pdfLang,setPdfLang]=useState("en");
-  const [showPreview,setShowPreview]=useState(false);
   const [downloading,setDownloading]=useState(false);
   const [docHeight,setDocHeight]=useState(841);
   const [winW,setWinW]=useState(()=>window.innerWidth);
@@ -1035,7 +1034,6 @@ function RateCard({rc,settings}: any) {
   const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
   const pageScale=winW<700?Math.min(1,(winW-32)/595):1;
   const sett={...SETTINGS_DEFAULT,...(settings||{})};
-  const card=rc[tab]||rc.influencer;
   const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
   useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   useEffect(()=>{
@@ -1058,7 +1056,7 @@ function RateCard({rc,settings}: any) {
       }
     };
     calc();const ro=new ResizeObserver(calc);ro.observe(el);return()=>ro.disconnect();
-  },[showPreview,tab,pdfLang]);
+  },[staged,pdfLang]);
   const isMobileDevice=()=>/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   const download=async()=>{
     if(downloading)return;
@@ -1078,57 +1076,226 @@ function RateCard({rc,settings}: any) {
         const canvas=await (html2canvas as any)(pages[i],{scale:2,useCORS:true,backgroundColor:"#faf9f7"});
         pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pdfW,pdfH);
       }
-      const fname=`rate-card-${(card.label||tab).toLowerCase().replace(/\s+/g,"-")}`;
+      const fname=`rate-card-${(staged.label||"custom").toLowerCase().replace(/\s+/g,"-")}`;
       if(mw){mw.location.href=pdf.output("bloburl") as string;}else{pdf.save(`${fname}.pdf`);}
     }finally{pages.forEach((p,i)=>{p.style.transform=savedT[i];});setDownloading(false);}
   };
-  const previewPortal=showPreview?createPortal(
+  const upI=(si: number,id: string,f: string,v: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})})}));
+  const remI=(si: number,id: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.filter((it: any)=>it.id!==id)})}));
+  const upSecT=(si: number,v: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,t:v})}));
+  return createPortal(
     <div style={{position:"fixed",inset:0,background:C.bg,zIndex:9999,display:"flex",flexDirection:"column",fontFamily:SANS}}>
-      <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:8,flexShrink:0}}>
-        <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flex:1,textAlign:"center",paddingLeft:40}}>{card.label} — Rate Card</span>
-        <B onClick={download} s={{minWidth:80,textAlign:"center"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={()=>setShowPreview(false)} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22}}>✕</button>
+      <div ref={measureRef} style={{position:"fixed",top:0,left:-9999,width:595,visibility:"hidden",pointerEvents:"none",zIndex:-1}}>
+        <RCContent card={staged} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
       </div>
-      <div style={{flex:1,background:"#888",overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:winW<700?"16px 0":"32px 28px",gap:winW<700?16:28}}>
-        {Array.from({length:numPages},(_,i)=>(
-          <div key={i} style={{width:595*pageScale,height:PAGE_H*pageScale,overflow:"hidden",flexShrink:0,boxShadow:"0 4px 24px rgba(0,0,0,0.32)"}}>
-            <div data-pdf-page="true" style={{width:595,height:PAGE_H,overflow:"hidden",background:C.bg,position:"relative",transform:pageScale<1?`scale(${pageScale})`:"none",transformOrigin:"top left"}}>
-              <div style={{position:"absolute",top:-i*PAGE_H,left:0,width:595}}><RCContent card={card} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/></div>
-              <div style={{position:"absolute",bottom:59,left:0,right:0,height:28,background:C.bg,zIndex:2,pointerEvents:"none"}}/>
-              <div style={{position:"absolute",top:0,left:0,right:0,background:C.bg,zIndex:3,borderBottom:`1px solid ${C.rule}`}}>
-                <div style={{padding:"13px 62px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{sett.company||sett.name||"Lynn Hoa"}</span>
-                  <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{card.label||"Content Creator"}</span>
-                </div>
+      {/* toolbar */}
+      <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:8,flexShrink:0}}>
+        <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flex:1,textAlign:"center"}}>{staged.label||"Rate Card"} — Preview</span>
+        <div style={{display:"flex",gap:4}}><Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill><Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill></div>
+        <B onClick={download} s={{minWidth:80,textAlign:"center"}}>{downloading?"Saving…":"Save PDF"}</B>
+        <B onClick={()=>onSave(staged)} s={{minWidth:80,textAlign:"center"}}>Save & Close</B>
+        <button onClick={onClose} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22}}>✕</button>
+      </div>
+      <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+        {/* edit panel */}
+        <div style={{width:260,flexShrink:0,borderRight:`1px solid ${C.rule}`,overflowY:"auto",padding:"14px 14px"}}>
+          <Lbl>Card Label</Lbl>
+          <I value={staged.label||""} onChange={(e: any)=>setStaged((p: any)=>({...p,label:e.target.value}))} s={{marginBottom:10}}/>
+          <Lbl>Subtitle</Lbl>
+          <I value={staged.sub||""} onChange={(e: any)=>setStaged((p: any)=>({...p,sub:e.target.value}))} s={{marginBottom:10}}/>
+          {staged.sections?.map((sec: any,si: number)=>(
+            <div key={si} style={{marginBottom:12,border:`1px solid ${C.rule}`,borderRadius:2,padding:"8px 10px",background:C.white}}>
+              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:7}}>
+                <I value={sec.t} onChange={(e: any)=>upSecT(si,e.target.value)} s={{flex:1,fontSize:9}}/>
               </div>
-              <div style={{position:"absolute",bottom:0,left:0,right:0,background:C.bg,zIndex:3,borderTop:`1px solid ${C.rule}`}}>
-                <div style={{padding:"26px 62px 22px",fontSize:7,color:C.muted,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span>{[sett.email,sett.website].filter(Boolean).join(" · ")||"your@email.com · yourwebsite.com"}</span>
-                  {numPages>1&&<span style={{letterSpacing:"0.04em",color:C.light}}>{i+1}</span>}
+              {sec.items.map((it: any)=>(
+                <div key={it.id} style={{display:"flex",gap:5,alignItems:"center",marginBottom:4}}>
+                  <I value={it.n} onChange={(e: any)=>upI(si,it.id,"n",e.target.value)} s={{flex:2,fontSize:9}}/>
+                  <I type="number" value={it.p??""} onChange={(e: any)=>upI(si,it.id,"p",e.target.value)} s={{width:52,fontSize:9}} placeholder="€"/>
+                  <button onClick={()=>remI(si,it.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:12,padding:0,flexShrink:0}}>✕</button>
+                </div>
+              ))}
+            </div>
+          ))}
+          <Lbl>Fine Print</Lbl>
+          <textarea value={staged.fine||""} onChange={(e: any)=>setStaged((p: any)=>({...p,fine:e.target.value}))} style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:52}}/>
+        </div>
+        {/* A4 preview */}
+        <div style={{flex:1,background:"#888",overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:winW<700?"16px 0":"32px 28px",gap:winW<700?16:28}}>
+          {Array.from({length:numPages},(_,i)=>(
+            <div key={i} style={{width:595*pageScale,height:PAGE_H*pageScale,overflow:"hidden",flexShrink:0,boxShadow:"0 4px 24px rgba(0,0,0,0.32)"}}>
+              <div data-pdf-page="true" style={{width:595,height:PAGE_H,overflow:"hidden",background:C.bg,position:"relative",transform:pageScale<1?`scale(${pageScale})`:"none",transformOrigin:"top left"}}>
+                <div style={{position:"absolute",top:-i*PAGE_H,left:0,width:595}}><RCContent card={staged} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/></div>
+                <div style={{position:"absolute",bottom:59,left:0,right:0,height:28,background:C.bg,zIndex:2,pointerEvents:"none"}}/>
+                <div style={{position:"absolute",top:0,left:0,right:0,background:C.bg,zIndex:3,borderBottom:`1px solid ${C.rule}`}}>
+                  <div style={{padding:"13px 62px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{sett.company||sett.name||"Lynn Hoa"}</span>
+                    <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{staged.label||"Rate Card"}</span>
+                  </div>
+                </div>
+                <div style={{position:"absolute",bottom:0,left:0,right:0,background:C.bg,zIndex:3,borderTop:`1px solid ${C.rule}`}}>
+                  <div style={{padding:"26px 62px 22px",fontSize:7,color:C.muted,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span>{[sett.email,sett.website].filter(Boolean).join(" · ")||"your@email.com · yourwebsite.com"}</span>
+                    {numPages>1&&<span style={{letterSpacing:"0.04em",color:C.light}}>{i+1}</span>}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>,document.body):null;
+    </div>,document.body);
+}
+
+// ─── RATE CARD BUILDER MODAL ──────────────────────────────
+function RateCardBuilderModal({rc,onSave,onClose}: any) {
+  const CAT_KEYS=["influencer","ugc","editorial"];
+  const CAT_LABEL: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
+  const DEFAULT_HEADINGS: Record<string,string[]>={
+    influencer:["01 — Brand Collaboration","02 — Packages","03 — Usage Rights","04 — Add-ons"],
+    ugc:["01 — UGC Creation","02 — Packages","03 — Usage Rights","04 — Add-ons"],
+    editorial:["01 — Editorial","02 — Packages","03 — Usage Rights","04 — Add-ons"],
+    other:["01 — Services","02 — Packages","03 — Usage Rights","04 — Add-ons"],
+  };
+  const [baseCat,setBaseCat]=useState<string|null>(null);
+  const [customName,setCustomName]=useState("");
+  const [sections,setSections]=useState<any[]>([]);
+  const [fine,setFine]=useState("");
+  const [showPreview,setShowPreview]=useState(false);
+
+  // all items from service catalog for picking
+  const allItems=CAT_KEYS.flatMap(k=>(rc[k]?.sections||[]).flatMap((sec: any)=>sec.items.map((it: any)=>({...it,_cat:k,_sec:sec.t}))));
+  const catItems=(cat: string)=>cat==="other"?allItems:allItems.filter((it: any)=>it._cat===cat);
+
+  const initBuilder=(cat: string)=>{
+    setBaseCat(cat);
+    const headings=DEFAULT_HEADINGS[cat]||DEFAULT_HEADINGS.other;
+    setSections(headings.map((h,i)=>({id:uid(),t:h,items:[]})));
+    setFine(rc[cat]?.fine||rc.influencer?.fine||"");
+  };
+
+  const addItemToSection=(si: number,it: any)=>{
+    setSections(prev=>prev.map((s,i)=>i!==si?s:{...s,items:[...s.items,{id:uid(),n:it.n,note:it.note||"",p:it.p,m:it.m}]}));
+  };
+  const remItemFromSection=(si: number,id: string)=>setSections(prev=>prev.map((s,i)=>i!==si?s:{...s,items:s.items.filter((it: any)=>it.id!==id)}));
+  const upSecT=(si: number,v: string)=>setSections(prev=>prev.map((s,i)=>i!==si?s:{...s,t:v}));
+  const addSection=()=>setSections(prev=>[...prev,{id:uid(),t:`0${prev.length+1} — New Section`,items:[]}]);
+  const remSection=(si: number)=>setSections(prev=>prev.filter((_,i)=>i!==si));
+
+  const label=baseCat==="other"?(customName||"Custom"):CAT_LABEL[baseCat||""]||"";
+  const builtCard={label,sub:rc[baseCat||""]?.sub||label,sections,fine,usage:rc[baseCat||""]?.usage||rc.influencer?.usage||[],excl:rc[baseCat||""]?.excl||rc.influencer?.excl||[]};
+  const catKey=baseCat==="other"?(customName.toLowerCase().replace(/\s+/g,"_")||"custom"):(baseCat||"custom");
+
+  if(showPreview)return<RateCardBuilderPreview card={builtCard} settings={null} onSave={(saved: any)=>{onSave(catKey,saved);setShowPreview(false);}} onClose={()=>setShowPreview(false)}/>;
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:C.bg,width:"100%",maxWidth:600,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",maxHeight:"92vh",overflowY:"auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h3 style={{fontFamily:SERIF,fontSize:18,fontWeight:"normal",margin:0}}>Add Rate Card</h3>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:C.muted}}>✕</button>
+        </div>
+
+        {/* Step 1 — choose base */}
+        {!baseCat&&<>
+          <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px"}}>Choose a base category or start custom:</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+            {CAT_KEYS.map(k=>(
+              <button key={k} onClick={()=>initBuilder(k)} style={{padding:"14px 12px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.white,cursor:"pointer",fontFamily:SANS,textAlign:"left"}}>
+                <p style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:"500"}}>{CAT_LABEL[k]}</p>
+                <p style={{fontSize:9.5,color:C.muted,margin:0}}>{rc[k]?.sections?.length||0} sections · {(rc[k]?.sections||[]).reduce((s: number,sec: any)=>s+sec.items.length,0)} items</p>
+              </button>
+            ))}
+            <button onClick={()=>initBuilder("other")} style={{padding:"14px 12px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.white,cursor:"pointer",fontFamily:SANS,textAlign:"left"}}>
+              <p style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:"500"}}>Custom / Other</p>
+              <p style={{fontSize:9.5,color:C.muted,margin:0}}>Pick from all categories</p>
+            </button>
+          </div>
+        </>}
+
+        {/* Step 2 — builder */}
+        {baseCat&&<>
+          {baseCat==="other"&&<div style={{marginBottom:12}}>
+            <Lbl>Card Name</Lbl>
+            <I value={customName} onChange={(e: any)=>setCustomName(e.target.value)} placeholder="e.g. Hotels, Campaign Bundle…"/>
+          </div>}
+
+          {sections.map((sec,si)=>{
+            const available=catItems(baseCat).filter((it: any)=>!sec.items.find((s: any)=>s.n===it.n));
+            return(
+              <div key={sec.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 12px",marginBottom:10,background:C.white}}>
+                {/* section heading */}
+                <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:8}}>
+                  <I value={sec.t} onChange={(e: any)=>upSecT(si,e.target.value)} s={{flex:1,fontSize:9,fontWeight:"500"}}/>
+                  <button onClick={()=>remSection(si)} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:13,padding:0,flexShrink:0}}>✕</button>
+                </div>
+                {/* picked items */}
+                {sec.items.map((it: any)=>(
+                  <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
+                    <div><span style={{fontSize:10.5}}>{it.n}</span>{it.note&&<span style={{fontSize:9,color:C.muted,display:"block"}}>{it.note}</span>}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0,marginLeft:8}}>
+                      <span style={{fontSize:10,fontFamily:SERIF,color:C.muted}}>{it.p!=null?`€ ${it.p}`:it.m||""}</span>
+                      <button onClick={()=>remItemFromSection(si,it.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:12,padding:0}}>✕</button>
+                    </div>
+                  </div>
+                ))}
+                {/* add item dropdown */}
+                {available.length>0&&<select onChange={(e: any)=>{const it=available.find((x: any)=>x.id===e.target.value);if(it)addItemToSection(si,it);e.target.value="";}} style={{marginTop:7,width:"100%",padding:"6px 8px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:9.5,color:C.muted,borderRadius:2,outline:"none"}}>
+                  <option value="">+ Add item from Service Catalog…</option>
+                  {baseCat==="other"&&<>
+                    {CAT_KEYS.map(ck=><optgroup key={ck} label={CAT_LABEL[ck]}>{available.filter((it: any)=>it._cat===ck).map((it: any)=><option key={it.id} value={it.id}>{it.n}{it.p!=null?` — € ${it.p}`:""}</option>)}</optgroup>)}
+                  </>}
+                  {baseCat!=="other"&&available.map((it: any)=><option key={it.id} value={it.id}>{it.n}{it.p!=null?` — € ${it.p}`:""}</option>)}
+                </select>}
+              </div>
+            );
+          })}
+
+          <button onClick={addSection} style={{fontSize:10,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:"0 0 12px",fontFamily:SANS,textDecoration:"underline",textDecorationColor:C.rule}}>+ Add section</button>
+
+          <div style={{display:"flex",gap:8,justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
+            <B v="sec" onClick={()=>setBaseCat(null)}>← Back</B>
+            <div style={{display:"flex",gap:8}}>
+              <B v="sec" onClick={onClose}>Cancel</B>
+              <B onClick={()=>setShowPreview(true)} s={{opacity:sections.some(s=>s.items.length>0)?1:0.4}}>Preview & Save</B>
+            </div>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ─── RATE CARD (nav tab · client-facing · preview + PDF) ──
+function RateCard({rc,setRc,settings}: any) {
+  const [tab,setTab]=useState("influencer");
+  const [showBuilder,setShowBuilder]=useState(false);
+  const [showPreview,setShowPreview]=useState(false);
+  // all available tabs = base 3 + any custom saved
+  const BASE=["influencer","ugc","editorial"];
+  const CAT_LABEL: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
+  const tabs=BASE.filter(k=>rc[k]).concat(Object.keys(rc).filter(k=>!BASE.includes(k)&&k!=="hotels"&&rc[k]?.label));
+  const card=rc[tab]||rc.influencer;
+  const saveBuilt=(key: string,saved: any)=>{
+    setRc((prev: any)=>({...prev,[key]:saved}));
+    setTab(key);
+    setShowBuilder(false);
+  };
   return(
     <div>
-      {previewPortal}
-      <div ref={measureRef} style={{position:"fixed",top:0,left:-9999,width:595,visibility:"hidden",pointerEvents:"none",zIndex:-1}}>
-        <RCContent card={card} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
-      </div>
+      {showBuilder&&<RateCardBuilderModal rc={rc} onSave={saveBuilt} onClose={()=>setShowBuilder(false)}/>}
+      {showPreview&&<RateCardBuilderPreview card={card} settings={settings} onSave={(saved: any)=>{setRc((prev: any)=>({...prev,[tab]:saved}));setShowPreview(false);}} onClose={()=>setShowPreview(false)}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18}}>
         <div><h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Rate Card</h2><p style={{fontSize:8,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0}}>Fashion · Beauty · Lifestyle</p></div>
-        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-          <div style={{display:"flex",gap:4}}><Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill><Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill></div>
-          <B onClick={()=>setShowPreview(true)}>Preview</B>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <B v="sec" onClick={()=>setShowPreview(true)}>Preview</B>
+          <B onClick={()=>setShowBuilder(true)}>+ Add Rate Card</B>
         </div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap"}}>
-        {["influencer","ugc","editorial","hotels"].map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{{influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial",hotels:"Hotels"}[k as keyof object]}</Pill>)}
+        {tabs.map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{rc[k]?.label||CAT_LABEL[k]||k}</Pill>)}
       </div>
-      {card.sections.map((sec: any,si: number)=>(
+      {card.sections?.map((sec: any,si: number)=>(
         <div key={si} style={{marginBottom:14}}>
           <div style={{padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
             <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.09em",textTransform:"uppercase",border:`1px solid ${C.rule}`,padding:"3px 9px",borderRadius:2}}>{sec.t}</span>
@@ -1141,7 +1308,7 @@ function RateCard({rc,settings}: any) {
           ))}
         </div>
       ))}
-      <p style={{fontSize:10.5,color:C.muted,lineHeight:1.75,marginTop:10}}>{card.fine}</p>
+      {card.fine&&<p style={{fontSize:10.5,color:C.muted,lineHeight:1.75,marginTop:10}}>{card.fine}</p>}
     </div>
   );
 }
@@ -2566,7 +2733,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
-        {nav===7&&<RateCard rc={rc} settings={settings}/>}
+        {nav===7&&<RateCard rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
