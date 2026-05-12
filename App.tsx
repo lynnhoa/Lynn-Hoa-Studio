@@ -358,15 +358,6 @@ function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}
     {exp?`${label} expired`:`${label} ends ${fmtD(end)} · ${d}d left`}
   </span>;
 }
-function licenseColors(end: string|null|undefined): {border:string,bg:string}|null {
-  if(!end) return null;
-  const d=dLeft(end);
-  if(d===null) return null;
-  if(d<0) return {border:"#f5c6c2",bg:"#fdf5f4"};
-  if(d<=14) return {border:"#f5c6c2",bg:"#fdf5f4"};
-  if(d<=30) return {border:"#f0dfc8",bg:"#fdf8f2"};
-  return {border:"#c2ddc2",bg:"#f4fbf4"};
-}
 
 // ─── PDF ENGINE ────────────────────────────────────────────
 function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) {
@@ -1505,9 +1496,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
       name:item?.n||"",note:item?.note||"",
       qty:bQty,up:item?.p||parseFloat(bNeg)||0,amt:price,
       usageLabel:usageSel?.sentinel?undefined:usageSel?.l,
-      usageMo:usageSel?.sentinel?0:(usageSel?.mo||0),
       exclLabel:exclSel?.sentinel?undefined:exclSel?.l,
-      exclMo:exclSel?.sentinel?0:(exclSel?.mo||0),
       addons:bAddons.map(aid=>addonList.find((x: any)=>x.id===aid)?.n).filter(Boolean),
       platforms:bPlatforms,
     }]);
@@ -1523,9 +1512,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
     const ctype=cats.length>1?"Content Creator":cats[0]==="ugc"?"UGC Creator":cats[0]==="editorial"?"Editorial Content Creator":"Content Creator (Influencer)";
-    const mo=Math.max(0,...items.map((it: any)=>it.usageMo||0));
-    const exclMo=Math.max(0,...items.map((it: any)=>it.exclMo||0));
-    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,mo:mo||undefined,exclMo:exclMo||undefined,
+    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
       lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
@@ -1671,12 +1658,6 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
-  const highlightRef=useRef<HTMLDivElement|null>(null);
-  useEffect(()=>{
-    if(highlightRef.current){
-      setTimeout(()=>highlightRef.current?.scrollIntoView({behavior:"smooth",block:"center"}),100);
-    }
-  },[highlightedProjectQNo]);
   return(
     <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
@@ -1746,13 +1727,10 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
         </div>
       </div>}
       {cl.projects.map((pr: any,i: number)=>{
-        const end=uEnd(pr);const ee2=exclEnd(pr);
-        const licEnd=[end,ee2].filter(Boolean).sort((a: any,b: any)=>(dLeft(a)??999999)-(dLeft(b)??999999))[0]||null;
-        const ns=nxt(pr.status);const ps=prv(pr.status);
+        const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
         const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
-        const lc=!isHighlighted?licenseColors(licEnd):null;
         return(
-          <div key={pr.id} ref={isHighlighted?highlightRef:null} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:lc?lc.border:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":lc?lc.bg:undefined}}>
+          <div key={pr.id} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
               <div style={{flex:1,minWidth:0}}>
                 {editPrName===pr.id
@@ -1861,22 +1839,6 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
   const [highlightedProjectQNo,setHighlightedProjectQNo]=useState<string|null>(null);
-  const mobileHighlightRef=useRef<HTMLDivElement|null>(null);
-  useEffect(()=>{
-    if(mobileHighlightRef.current){
-      setTimeout(()=>mobileHighlightRef.current?.scrollIntoView({behavior:"smooth",block:"center"}),100);
-    }
-  },[highlightedProjectQNo]);
-  useEffect(()=>{
-    if(!pendingClientName)return;
-    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
-    if(c){
-      setSel(c.id);
-      if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
-      setTimeout(()=>{if(onPendingClear)onPendingClear();},100);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
   const [tagI,setTagI]=useState("");
@@ -1884,6 +1846,14 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const [ed,setEd]=useState<any>(null);
   const [amendT,setAmendT]=useState<any>(null);
   const [renewT,setRenewT]=useState<any>(null);
+  useEffect(()=>{setSel(null);},[selReset]);
+  useEffect(()=>{
+    if(!pendingClientName)return;
+    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
+    if(c){setSel(c.id);if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);}
+    if(onPendingClear)setTimeout(()=>onPendingClear(),100);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   const [revInvT,setRevInvT]=useState<any>(null);
   const [pdf,setPdf]=useState<any>(null);
   const [showAddP,setShowAddP]=useState(false);
@@ -1928,7 +1898,6 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
-  const exclEnd=(pr: any)=>{if(!pr.deliveryDate||!pr.qd?.exclMo)return null;return addM(pr.deliveryDate,pr.qd.exclMo);};
   const fin=(c: any)=>{const paid=c.projects.filter((pr: any)=>pr.paid);const tot=paid.reduce((s: number,pr: any)=>s+pr.amount,0);const last=[...paid].sort((a: any,b: any)=>b.date.localeCompare(a.date))[0];return{total:tot,last:last?.amount||0,lastDate:last?.date||null,avg:paid.length?Math.round(tot/paid.length):0,count:paid.length,out:c.projects.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0)};};
   const flagged=clients.filter((c: any)=>{if(!c.projects.length)return false;if(c.projects.some((pr: any)=>pr.status==="invoiced"||pr.status==="paid"))return false;const lat=c.projects.reduce((a: any,b: any)=>a.date>b.date?a:b);return(new Date().getTime()-new Date(lat.date).getTime())/864e5>90;});
 
@@ -2032,13 +2001,10 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           </div>
         </div>}
         {cl.projects.map((pr: any,i: number)=>{
-          const end=uEnd(pr);const ee2=exclEnd(pr);
-          const licEnd=[end,ee2].filter(Boolean).sort((a: any,b: any)=>(dLeft(a)??999999)-(dLeft(b)??999999))[0]||null;
-          const ns=nxt(pr.status);const ps=prv(pr.status);
+          const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
           const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
-          const lc=!isHighlighted?licenseColors(licEnd):null;
           return(
-            <div key={pr.id} ref={isHighlighted?mobileHighlightRef:null} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:lc?lc.border:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":lc?lc.bg:undefined}}>
+            <div key={pr.id} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div style={{flex:1,minWidth:0}}>
                   {editPrName===pr.id
@@ -2199,9 +2165,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           const items: {prName:string,end:string,label:string}[]=[];
           const ue=uEnd(pr);
           if(ue)items.push({prName:pr.name,end:ue,label:"Usage"});
-          const ee=exclEnd(pr);
-          if(ee)items.push({prName:pr.name,end:ee,label:"Excl."});
-          (pr.renewals||[]).filter((r: any)=>r.endDate).forEach((r: any)=>{items.push({prName:pr.name,end:r.endDate,label:r.type==="excl"?"Excl. Renewal":"Usage Renewal"});});
+          (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({prName:pr.name,end:r.endDate,label:"Excl."});});
           return items;
         });
         const multiProj=new Set(allRights.map((r: any)=>r.prName)).size>1;
@@ -2238,17 +2202,16 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProjectQNo,settings,resetKey}: any) {
-  const goToProject=(cName: string,qNo?: string)=>{setPendingClientName(cName);if(qNo)setPendingProjectQNo(qNo);goTo(1);};
   const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
-  useEffect(()=>{setDrill(null);},[resetKey]);
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
+  useEffect(()=>{setDrill(null);},[resetKey]);
+  const goToProject=(cName: string,qNo?: string)=>{setPendingClientName(cName);if(qNo&&setPendingProjectQNo)setPendingProjectQNo(qNo);goTo(1);};
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
-  const unsignedContracts=all.filter((pr: any)=>pr.status==="contracted"&&pr.qd);
 
   const STATUS_ORDER: Record<string,number>={production:0,contracted:1,invoiced:2,quoted:3,revised:4};
   const NEXT_ACTION: Record<string,string>={quoted:"Awaiting client feedback",revised:"Awaiting client feedback",contracted:"Awaiting signature",production:"In production",invoiced:"Awaiting payment"};
@@ -2269,14 +2232,11 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
-  const exclEnd=(pr: any)=>{if(!pr.deliveryDate||!pr.qd?.exclMo)return null;return addM(pr.deliveryDate,pr.qd.exclMo);};
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
-    const items: {cName:string,cId:string,prName:string,prQNo:string,end:string,label:string}[]=[];
+    const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
     const ue=uEnd(pr);
-    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:ue,label:"Usage"});
-    const ee=exclEnd(pr);
-    if(ee)items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:ee,label:"Excl."});
-    (pr.renewals||[]).filter((r: any)=>r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:r.endDate,label:r.type==="excl"?"Excl. Renewal":"Usage Renewal"});});
+    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
+    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
@@ -2289,6 +2249,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const thisMonthPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===nowM);
   const thisMonthRev=thisMonthPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
+  const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
 
   const Card=({label,count,items,warm,sub,onClick}: any)=>(
     <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
@@ -2339,7 +2300,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           const next=NEXT_ACTION[pr.status]||"";
           const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
           return(
-            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
+            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
 
               {/* header row */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
@@ -2370,41 +2331,57 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       </div>
     );
   }
-  if(drill==="revenue"){
+  if(drill==="year"){
     return(
       <div>
         <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue</h2>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
         <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
-        {allYears.length===0&&<p style={{fontSize:11,color:C.muted}}>No paid projects yet.</p>}
         {allYears.map((y: number)=>{
           const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
           const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-          const yMonths=Array.from(new Set(yPaid.map((pr: any)=>monthOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
           return(
             <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yMonths.length?10:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yPaid.length?8:0}}>
                 <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
                 <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
               </div>
-              {yMonths.map((m: number)=>{
-                const mPaid=yPaid.filter((pr: any)=>monthOf(pr)===m);
-                const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-                return(
-                  <div key={m} style={{borderTop:`1px solid ${C.rule}`,paddingTop:7,marginTop:0,paddingBottom:7}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?5:0}}>
-                      <span style={{fontSize:10,color:C.muted,letterSpacing:"0.05em"}}>{MO[m]}</span>
-                      <span style={{fontSize:11,color:C.black}}>{fmt(mRev)}</span>
-                    </div>
-                    {mPaid.map((pr: any,i: number)=>(
-                      <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"2px 0 2px 10px"}}>
-                        <span style={{fontSize:10,color:C.light}}>{pr.cName} · {pr.name}</span>
-                        <span style={{fontSize:10,color:C.muted}}>{fmt(pr.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
+              {yPaid.slice(0,3).map((pr: any,i: number)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                </div>
+              ))}
+              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  if(drill==="month"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
+        {[...monthsToShow].reverse().map((m: number)=>{
+          const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
+          const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+          return(
+            <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
+                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
+              </div>
+              {mPaid.slice(0,3).map((pr: any,i: number)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                </div>
+              ))}
+              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
+              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
             </div>
           );
         })}
@@ -2423,7 +2400,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           const urgent=d!==null&&d<=14;
           const soon=d!==null&&d>14&&d<=30;
           return(
-            <div key={i} onClick={()=>goToProject(r.cName,r.prQNo)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
+            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                 <div style={{minWidth:0}}>
                   <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
@@ -2441,115 +2418,23 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       </div>
     );
   }
-  if(drill==="quotes"){
-    const sorted=[...openQ].sort((a: any,b: any)=>(a.date||"").localeCompare(b.date||""));
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Open Quotes</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{openQ.length} awaiting response</p>
-        {openQ.length===0&&<p style={{fontSize:11,color:C.muted}}>No open quotes.</p>}
-        {sorted.map((pr: any,i: number)=>{
-          const days=pr.date?Math.floor((new Date().getTime()-new Date(pr.date).getTime())/864e5):null;
-          const old=days!==null&&days>7;
-          return(
-            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                <div><p style={{fontSize:13,color:C.black,margin:"0 0 2px"}}>{pr.cName}</p><p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p></div>
-                <span style={{fontFamily:SERIF,fontSize:14,flexShrink:0}}>{fmt(pr.amount)}</span>
-              </div>
-              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${old?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>{pr.status}</span>
-                <span style={{fontSize:10,color:old?C.amber:C.muted}}>{days!==null?`Sent ${days}d ago`:fmtD(pr.date)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-  if(drill==="contracts"){
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Unsigned Contracts</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{unsignedContracts.length} awaiting signature</p>
-        {unsignedContracts.length===0&&<p style={{fontSize:11,color:C.muted}}>No unsigned contracts.</p>}
-        {unsignedContracts.map((pr: any,i: number)=>{
-          const days=pr.date?Math.floor((new Date().getTime()-new Date(pr.date).getTime())/864e5):null;
-          const old=days!==null&&days>7;
-          return(
-            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                <div><p style={{fontSize:13,color:C.black,margin:"0 0 2px"}}>{pr.cName}</p><p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p></div>
-                <span style={{fontFamily:SERIF,fontSize:14,flexShrink:0}}>{fmt(pr.amount)}</span>
-              </div>
-              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${old?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Contracted</span>
-                <span style={{fontSize:10,color:old?C.amber:C.muted}}>{days!==null?`${days}d ago`:fmtD(pr.date)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-  if(drill==="invoices"){
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
-          <div style={{display:"flex",gap:5}}>
-            <Pill on={invoiceTab==="unpaid"} onClick={()=>setInvoiceTab("unpaid")}>Unpaid</Pill>
-            <Pill on={invoiceTab==="paid"} onClick={()=>setInvoiceTab("paid")}>Paid</Pill>
-          </div>
-        </div>
-        <Invoices clients={clients} settings={settings} isMobile={isMobile} filterTab={invoiceTab}/>
-      </div>
-    );
-  }
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <div onClick={()=>setDrill("revenue")} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:"pointer"}}>
-          <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Revenue</span>
-          <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-              <span style={{fontSize:10.5,color:C.muted}}>{MO[nowM]}</span>
-              <span style={{fontFamily:SERIF,fontSize:20,color:thisMonthRev>0?C.black:C.light}}>{fmt(thisMonthRev)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",borderTop:`1px solid ${C.rule}`,paddingTop:5}}>
-              <span style={{fontSize:10.5,color:C.muted}}>{nowY}</span>
-              <span style={{fontFamily:SERIF,fontSize:14,color:thisYearRev>0?C.black:C.light}}>{fmt(thisYearRev)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",borderTop:`1px solid ${C.rule}`,paddingTop:5}}>
-              <span style={{fontSize:10.5,color:C.light}}>All time</span>
-              <span style={{fontFamily:SERIF,fontSize:11,color:rev>0?C.muted:C.light}}>{fmt(rev)}</span>
-            </div>
-          </div>
-        </div>
-        <div onClick={()=>setDrill("invoices")} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:"pointer"}}>
-          <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Invoices</span>
-          <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-              <span style={{fontSize:10.5,color:unpaid.length>0?C.amber:C.muted}}>{unpaid.length} unpaid</span>
-              <span style={{fontFamily:SERIF,fontSize:20,color:unpaid.length>0?C.amber:C.light}}>{fmt(out)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",borderTop:`1px solid ${C.rule}`,paddingTop:5}}>
-              <span style={{fontSize:10.5,color:C.muted}}>{paid.length} paid</span>
-              <span style={{fontFamily:SERIF,fontSize:14,color:paid.length>0?C.black:C.light}}>{fmt(rev)}</span>
-            </div>
-          </div>
-        </div>
+        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
+        <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Open Quotes" count={openQ.length} items={openQ} warm onClick={()=>setDrill("quotes")}/>
-        <Card label="Unsigned Contracts" count={unsignedContracts.length} items={unsignedContracts} warm onClick={()=>setDrill("contracts")}/>
+        <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
+        <Card label={`${MO[nowM]} Revenue`} count={fmt(thisMonthRev)} sub={`${thisMonthPaid.length} paid project${thisMonthPaid.length!==1?"s":""}`} onClick={()=>setDrill("month")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
+        <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
         <Card label="Active Projects" count={activeProjects.length} sub={`${fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress`} items={activeProjects} onClick={()=>setDrill("projects")}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
+        <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
         <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
       </div>
     </div>
@@ -2622,7 +2507,7 @@ function Invoices({clients,settings,isMobile,filterTab}: any) {
   const [dropOpen,setDropOpen]=useState(false);
   const [bulkStatus,setBulkStatus]=useState<string|null>(null);
   const allRows = buildInvoiceRows(clients);
-  const rows = filterTab==="unpaid" ? allRows.filter((r: any)=>!r.pr.paid) : filterTab==="paid" ? allRows.filter((r: any)=>r.pr.paid) : allRows;
+  const rows = filterTab==="unpaid"?allRows.filter((r: any)=>!r.pr.paid):filterTab==="paid"?allRows.filter((r: any)=>r.pr.paid):allRows;
 
   const openPreview = (r: any) => {
     const pr=r.pr; const q=pr.qd;
@@ -2672,7 +2557,6 @@ function Invoices({clients,settings,isMobile,filterTab}: any) {
     setBulkStatus(null);
   };
 
-  // group by year then month
   const grouped: {year:number,months:{month:number,rows:any[]}[]}[] = [];
   rows.forEach((r: any)=>{
     let yg=grouped.find(g=>g.year===r.year);
@@ -2776,16 +2660,17 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const doLogout=()=>{sessionStorage.removeItem("lh_authed");setAuthed(false);setNav(0);setMenuOpen(false);};
   const [role,setRole]=useState<"manager"|"creator">("manager");
   const [nav,setNav]=useState(0);
+  const [dashReset,setDashReset]=useState(0);
+  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);};
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
   const [clientSel,setClientSel]=useState<string|null>(null);
   const [pendingClientName,setPendingClientName]=useState<string|null>(null);
   const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
+  const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
   const [menuOpen,setMenuOpen]=useState(false);
-  const [dashReset,setDashReset]=useState(0);
-  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);};
   const [appWinW,setAppWinW]=useState(()=>window.innerWidth);
   useEffect(()=>{const fn=()=>setAppWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   const appMobile=appWinW<700;
