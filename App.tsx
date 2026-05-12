@@ -51,7 +51,7 @@ const addM  = (d: string, m: number) => { if(!d||!m) return null; const dt=new D
 const dLeft = (d: string | null | undefined) => d ? Math.ceil((new Date(d).getTime()-new Date().getTime())/864e5) : null;
 const uid   = () => Math.random().toString(36).slice(2,9);
 const PASS  = "lynnhoa2025";
-const STATUS = ["lead","quoted","revised","contracted","production","invoiced","paid"];
+const STATUS = ["lead","quoted","signed","invoiced","paid"];
 
 const SETTINGS_DEFAULT = {
   name:"",company:"",street:"",plz:"",city:"",country:"Deutschland",
@@ -341,7 +341,7 @@ const Pill = ({on,onClick,children}: any) => <button onClick={onClick} style={{p
 const Lbl = ({children}: any) => <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"12px 0 5px"}}>{children}</p>;
 const Tag = ({children,onRemove}: any) => <span style={{display:"inline-flex",alignItems:"center",gap:4,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 8px",fontSize:10,color:C.muted}}>{children}{onRemove&&<button onClick={onRemove} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:10,padding:0}}>✕</button>}</span>;
 const IR = ({label,value}: any) => <div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.rule}`}}><span style={{fontSize:10.5,color:C.muted}}>{label}</span><span style={{fontSize:10.5,color:C.black,fontWeight:"500",maxWidth:"60%",textAlign:"right"}}>{value||"—"}</span></div>;
-const scol = (s: string) => ({invoiced:C.amber,contracted:C.muted,quoted:C.light,revised:"#b8a090",production:"#8fa89a",paid:C.green,lead:C.light}[s as keyof typeof C]||C.light);
+const scol = (s: string) => ({invoiced:C.amber,signed:C.muted,quoted:C.light,paid:C.green,lead:C.light}[s as keyof typeof C]||C.light);
 
 function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}) {
   if(!end) return null;
@@ -1655,7 +1655,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 </div>
               </div>
             </div>
-            {["production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
+            {["signed","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
               <span style={{fontSize:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase"}}>Delivery Date</span>
               <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
             </div>}
@@ -1676,17 +1676,19 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
               {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
               {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
-              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
+              {["signed","invoiced","paid"].includes(pr.status)&&(pr.cd||pr.qd)&&<B v="sec" s={{fontSize:8}} onClick={()=>pr.cd?setPdf({cid:cl.id,pid:pr.id,data:pr.cd,type:"contract",lang:"en"}):openPDF(pr,"contract","en",cl.id)}>Contract{pr.cRev>0?` R${pr.cRev}`:""}</B>}
               {(pr.amendments||[]).map((a: any,ai: number)=>(
                 <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
               ))}
-              {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
+              {["invoiced","paid"].includes(pr.status)&&pr.inv&&<B v="sec" s={{fontSize:8}} onClick={()=>setPdf({cid:cl.id,pid:pr.id,data:pr.inv,type:"invoice",lang:"en"})}>Invoice</B>}
             </div>
             <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-              {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
-              {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"Contracted":ns==="invoiced"?"Invoiced":ns.charAt(0).toUpperCase()+ns.slice(1)}</B>}
-              {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
-              {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT&&setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
+              {["quoted","signed"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
+              {["quoted","signed"].includes(pr.status)&&!pr.paid&&pr.cd&&<B v="sec" s={{fontSize:8}} onClick={()=>setPdf({cid:cl.id,pid:pr.id,data:{...pr.cd,rev:(pr.cRev||0)+1},type:"contract",lang:"en"})}>Revise Contract</B>}
+              {pr.status==="quoted"&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"signed")}>Mark Signed</B>}
+              {pr.status==="signed"&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
+              {pr.status==="signed"&&!pr.paid&&pr.qd&&!pr.inv&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({cid:cl.id,pid:pr.id,data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice",lang:"en"});} }>Create Invoice</B>}
+              {pr.status==="signed"&&!pr.paid&&pr.inv&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Mark Invoiced</B>}
               {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
               {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
               {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
@@ -1723,7 +1725,6 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   const [ed,setEd]=useState<any>(null);
   const [amendT,setAmendT]=useState<any>(null);
   const [renewT,setRenewT]=useState<any>(null);
-  const [revInvT,setRevInvT]=useState<any>(null);
   const [pdf,setPdf]=useState<any>(null);
   const [showAddP,setShowAddP]=useState(false);
   const [newPN,setNewPN]=useState("");
@@ -1747,7 +1748,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
     });
     const latestDate=(c: any)=>c.projects.reduce((d: string,pr: any)=>pr.date>d?pr.date:d,"");
     const totalRev=(c: any)=>c.projects.filter((pr: any)=>pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0);
-    const STATUS_PRI: Record<string,number>={invoiced:0,production:1,contracted:2,revised:3,quoted:4,lead:5,paid:6};
+    const STATUS_PRI: Record<string,number>={invoiced:0,signed:1,quoted:2,lead:3,paid:4};
     const bestPri=(c: any)=>c.projects.length?Math.min(...c.projects.map((pr: any)=>STATUS_PRI[pr.paid?"paid":pr.status]??99)):99;
     if(sortOrder==="status")return [...arr].sort((a: any,b: any)=>bestPri(a)-bestPri(b));
     if(sortOrder==="name_az")return [...arr].sort((a: any,b: any)=>a.name.localeCompare(b.name));
@@ -1776,12 +1777,14 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
     setPdf({cid,pid:pr.id,data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),validUntil:q?.validUntil,qNo:q?.qNo,rev:q?.rev||0,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:type==="invoice"?"Thank you for the pleasure of working together.":"Looking forward to working together."},type,lang});
   };
 
-  if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);setRevInvT(null);}} settings={settings}
-    onSave={revInvT
-      ?(doc: any)=>{const tot=(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(revInvT.cid,revInvT.pid,{qd:{...revInvT.p.qd,lines:doc.lines},amount:tot});}
-      :(pdf.cid&&pdf.pid)
-        ?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(pdf.cid,pdf.pid,{qd:doc,amount:tot});}
-        :undefined}/>;
+  if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);}} settings={settings}
+    onSave={(pdf.cid&&pdf.pid)
+      ?(doc: any)=>{
+          if(pdf.type==="contract"){upP(pdf.cid,pdf.pid,{cd:doc,cRev:doc.rev||0,status:"signed"});}
+          else if(pdf.type==="invoice"){upP(pdf.cid,pdf.pid,{inv:doc});}
+          else{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(pdf.cid,pdf.pid,{qd:doc,amount:tot});}
+        }
+      :undefined}/>;
   if(amendT)return<AmendModal p={amendT.p} onSave={(a: any)=>saveAmend(amendT.cid,amendT.pid,a)} onClose={()=>setAmendT(null)} settings={settings} rc={rc}/>;
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} settings={settings}/>;
 
@@ -1883,7 +1886,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
                   </div>
                 </div>
               </div>
-              {["production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
+              {["signed","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
                 <span style={{fontSize:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase"}}>Delivery Date</span>
                 <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
               </div>}
@@ -1904,17 +1907,19 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
               <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
                 {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
                 {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
-                {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
+                {["signed","invoiced","paid"].includes(pr.status)&&(pr.cd||pr.qd)&&<B v="sec" s={{fontSize:8}} onClick={()=>pr.cd?setPdf({cid:cl.id,pid:pr.id,data:pr.cd,type:"contract",lang:"en"}):openPDF(pr,"contract","en",cl.id)}>Contract{pr.cRev>0?` R${pr.cRev}`:""}</B>}
                 {(pr.amendments||[]).map((a: any,ai: number)=>(
                   <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
                 ))}
-                {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
+                {["invoiced","paid"].includes(pr.status)&&pr.inv&&<B v="sec" s={{fontSize:8}} onClick={()=>setPdf({cid:cl.id,pid:pr.id,data:pr.inv,type:"invoice",lang:"en"})}>Invoice</B>}
               </div>
               <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-                {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
-                {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"→ Contracted":ns==="invoiced"?"→ Invoiced":`→ ${ns.charAt(0).toUpperCase()+ns.slice(1)}`}</B>}
-                {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
-                {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
+                {["quoted","signed"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
+                {["quoted","signed"].includes(pr.status)&&!pr.paid&&pr.cd&&<B v="sec" s={{fontSize:8}} onClick={()=>setPdf({cid:cl.id,pid:pr.id,data:{...pr.cd,rev:(pr.cRev||0)+1},type:"contract",lang:"en"})}>Revise Contract</B>}
+                {pr.status==="quoted"&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"signed")}>Mark Signed</B>}
+                {pr.status==="signed"&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
+                {pr.status==="signed"&&!pr.paid&&pr.qd&&!pr.inv&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({cid:cl.id,pid:pr.id,data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice",lang:"en"});} }>Create Invoice</B>}
+                {pr.status==="signed"&&!pr.paid&&pr.inv&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Mark Invoiced</B>}
                 {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
                 {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
                 {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
@@ -1945,9 +1950,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
           <optgroup label="Status">
             <option value="lead">Lead</option>
             <option value="quoted">Quoted</option>
-            <option value="revised">Revised</option>
-            <option value="contracted">Contracted</option>
-            <option value="production">Production</option>
+            <option value="signed">Signed</option>
             <option value="invoiced">Invoiced</option>
             <option value="paid">Paid</option>
           </optgroup>
@@ -2029,8 +2032,8 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const [drill,setDrill]=useState<null|"year"|"month"|"license">(null);
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
-  const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
-  const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
+  const openQ=all.filter((pr: any)=>pr.status==="quoted");
+  const unsigned=all.filter((pr: any)=>pr.status==="signed"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
@@ -2182,7 +2185,7 @@ const MO_LONG = ["January","February","March","April","May","June","July","Augus
 const MO_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function getTypeOfWork(pr: any): string {
-  if(!pr.amount||pr.amount===0||pr.status==="lead"||pr.status==="quoted"||pr.status==="revised") return "Unpaid";
+  if(!pr.amount||pr.amount===0||pr.status==="lead"||pr.status==="quoted") return "Unpaid";
   const ctab = pr.qd?.ctab||"";
   return CTYPE_LABEL[ctab]||"Unpaid";
 }
@@ -2422,7 +2425,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string)=>{
     const ex=clients.find((c: any)=>c.name.toLowerCase()===brand.toLowerCase());
     if(isRev&&ex){
-      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===q.qNo?{...pr,qd:q,status:"revised",amount:q.total}:pr)}));
+      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===q.qNo?{...pr,qd:q,status:"quoted",amount:q.total}:pr)}));
     } else {
       const existPr=ex?.projects?.find((pr: any)=>pr.qd?.qNo===q.qNo);
       if(existPr&&ex){
