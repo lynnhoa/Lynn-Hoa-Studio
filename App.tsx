@@ -1870,7 +1870,11 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   useEffect(()=>{
     if(!pendingClientName)return;
     const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
-    if(c){setSel(c.id);if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);if(onPendingClear)onPendingClear();}
+    if(c){
+      setSel(c.id);
+      if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
+      setTimeout(()=>{if(onPendingClear)onPendingClear();},0);
+    }
   },[pendingClientName,pendingProjectQNo,clients]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
@@ -2825,7 +2829,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const handleAfterSave=(brand: string,qNo?: string)=>{
     setPendingClientName(brand);
     setPendingProjectQNo(qNo||null);
-    setTimeout(()=>setNav(1),50);
+    setNav(1);
   };
 
   const handleGoToCalc=(clientName: string)=>{
