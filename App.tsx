@@ -515,18 +515,21 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
-  const setStaged=(fn: any)=>setHs(prev=>{
-    const curr=prev.hist[prev.idx];
-    const newD=typeof fn==="function"?fn(curr):fn;
-    const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
-    return{hist:next,idx:next.length-1};
-  });
   const [preview,setPreview]=useState<any>(init);
   const [lang,setLang]=useState("en");
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
   const [confirmClose,setConfirmClose]=useState(false);
-  const [savedClean,setSavedClean]=useState(true);
+  const [savedClean,setSavedClean]=useState(false);
+  const setStaged=(fn: any)=>{
+    setSavedClean(false);
+    setHs(prev=>{
+      const curr=prev.hist[prev.idx];
+      const newD=typeof fn==="function"?fn(curr):fn;
+      const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
+      return{hist:next,idx:next.length-1};
+    });
+  };
   const [downloading,setDownloading]=useState(false);
   const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
   const docRef=useRef<HTMLDivElement>(null);
@@ -1039,22 +1042,24 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
   const init=()=>JSON.parse(JSON.stringify(card));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
-  const setStaged=(fn: any)=>setHs(prev=>{
-    const curr=prev.hist[prev.idx];
-    const newD=typeof fn==="function"?fn(curr):fn;
-    const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
-    return{hist:next,idx:next.length-1};
-  });
-  const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
-  const undo=()=>{const ni=Math.max(0,hs.idx-1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
-  const redo=()=>{const ni=Math.min(hs.hist.length-1,hs.idx+1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
-
   const [pdfLang,setPdfLang]=useState("en");
   const [downloading,setDownloading]=useState(false);
   const [docHeight,setDocHeight]=useState(841);
   const [winW,setWinW]=useState(()=>window.innerWidth);
   const [rcSecGuards,setRcSecGuards]=useState<number[]>([]);
-  const [savedClean,setSavedClean]=useState(true);
+  const [savedClean,setSavedClean]=useState(false);
+  const setStaged=(fn: any)=>{
+    setSavedClean(false);
+    setHs(prev=>{
+      const curr=prev.hist[prev.idx];
+      const newD=typeof fn==="function"?fn(curr):fn;
+      const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
+      return{hist:next,idx:next.length-1};
+    });
+  };
+  const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
+  const undo=()=>{const ni=Math.max(0,hs.idx-1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
+  const redo=()=>{const ni=Math.min(hs.hist.length-1,hs.idx+1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
   const [flash,setFlash]=useState(false);
   const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
