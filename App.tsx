@@ -1853,11 +1853,14 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   },[highlightedProjectQNo]);
   useEffect(()=>{
     if(!pendingClientName)return;
-    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
-    if(c)setSel(c.id);
-    if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
-    if(onPendingClear)onPendingClear();
-  },[pendingClientName]);
+    const run=()=>{
+      const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
+      if(c)setSel(c.id);
+      if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
+      if(onPendingClear)onPendingClear();
+    };
+    setTimeout(run,50);
+  },[pendingClientName,pendingProjectQNo]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
   const [tagI,setTagI]=useState("");
