@@ -333,6 +333,51 @@ const RENEWAL_OPTS: Record<string, any[]> = {
 
 const isSingle = (t: string) => !["package","usage","excl","add","volume","brand ambass","retainer","hosted"].some(k=>t.toLowerCase().includes(k));
 
+// ─── CATEGORY TAGS ───────────────────────────────────────
+const CATEGORY_TAGS = [
+  "Fashion","Jewelry","Bags","Beauty","Skincare","Haircare",
+  "Lifestyle","Soft Luxe","Hotels","Travel","Restaurants","Fine Dining",
+  "Interior","Home Decor","Soft Tech","Apps","Productivity"
+];
+
+function TagInput({tags,onAdd,onRemove}: {tags:string[],onAdd:(t:string)=>void,onRemove:(t:string)=>void}) {
+  const [val,setVal]=useState("");
+  const suggestions=val.trim().length>0
+    ?CATEGORY_TAGS.filter(t=>t.toLowerCase().startsWith(val.toLowerCase())&&!tags.includes(t))
+    :CATEGORY_TAGS.filter(t=>!tags.includes(t));
+  const add=(t: string)=>{
+    const clean=t.trim();
+    if(clean&&!tags.includes(clean)){onAdd(clean);}
+    setVal("");
+  };
+  return(
+    <div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>
+        {tags.map((t: string)=><Tag key={t} onRemove={()=>onRemove(t)}>{t}</Tag>)}
+      </div>
+      <div style={{display:"flex",gap:5}}>
+        <input
+          value={val}
+          onChange={(e: any)=>setVal(e.target.value)}
+          onKeyDown={(e: any)=>{if(e.key==="Enter"&&val.trim()){e.preventDefault();add(val);}if(e.key==="Escape")setVal("");}}
+          placeholder="Type to filter or add…"
+          style={{flex:1,padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}
+        />
+        {val.trim()&&!tags.includes(val.trim())&&<button type="button" onClick={()=>add(val)} style={{padding:"7px 14px",border:"none",background:C.black,color:C.white,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:10.5,letterSpacing:"0.08em",textTransform:"uppercase" as const,whiteSpace:"nowrap" as const}}>Add</button>}
+      </div>
+      {suggestions.length>0&&(
+        <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:4}}>
+          {suggestions.map((t: string)=>(
+            <button key={t} type="button" onClick={()=>add(t)} style={{padding:"4px 11px",border:`1px solid ${C.rule}`,background:"transparent",color:C.muted,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.02em"}}>
+              + {t}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── ATOMS ────────────────────────────────────────────────
 const I = ({s,...p}: any) => <input style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box",...s}} {...p}/>;
 const S = ({s,...p}: any) => <select style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box",...s}} {...p}/>;
@@ -1571,8 +1616,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
             <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
             <Lbl>Tags</Lbl>
-            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
-            <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
+            <TagInput tags={edt.tags||[]} onAdd={(t: string)=>setEd((p: any)=>({...p,tags:[...(p.tags||[]),t]}))} onRemove={(t: string)=>setEd((p: any)=>({...p,tags:(p.tags||[]).filter((x: string)=>x!==t)}))}/>
           </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
         </div>
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
@@ -1790,8 +1834,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
               <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
               <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
               <Lbl>Tags</Lbl>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
-              <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
+              <TagInput tags={edt.tags||[]} onAdd={(t: string)=>setEd((p: any)=>({...p,tags:[...(p.tags||[]),t]}))} onRemove={(t: string)=>setEd((p: any)=>({...p,tags:(p.tags||[]).filter((x: string)=>x!==t)}))}/>
             </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
           </div>
           <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
@@ -1976,8 +2019,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
             <div><Lbl>Agency / Direct</Lbl><S value={nb.agency} onChange={(e: any)=>setNb(p=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S></div>
             <div><Lbl>Country</Lbl><I value={nb.country} onChange={(e: any)=>setNb(p=>({...p,country:e.target.value}))} placeholder="Germany"/></div>
             <div><Lbl>Tags</Lbl>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>{nb.tags.map(t=><Tag key={t} onRemove={()=>setNb(p=>({...p,tags:p.tags.filter(x=>x!==t)}))}>{t}</Tag>)}</div>
-              <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Beauty, Fashion…" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setNb(p=>({...p,tags:[...p.tags,tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setNb(p=>({...p,tags:[...p.tags,tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
+              <TagInput tags={nb.tags} onAdd={(t: string)=>setNb(p=>({...p,tags:[...p.tags,t]}))} onRemove={(t: string)=>setNb(p=>({...p,tags:p.tags.filter(x=>x!==t)}))}/>
             </div>
           </div>
           <div style={{marginTop:9}}><Lbl>Relationship Notes</Lbl><I value={nb.notes} onChange={(e: any)=>setNb(p=>({...p,notes:e.target.value}))} placeholder="Fast payer, luxury aesthetic…"/></div>
@@ -1996,7 +2038,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         });
         const multiProj=new Set(allRights.map((r: any)=>r.prName)).size>1;
         return(
-          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer"}}>
+          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${sel===c.id?"#c8c4be":C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?"#f5f3f0":"transparent",transition:"background 0.15s,border-color 0.15s"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
                 <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{c.name}</p>
