@@ -526,8 +526,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
   const [confirmClose,setConfirmClose]=useState(false);
-  const [savedClean,setSavedClean]=useState(true);
-  const [downloading,setDownloading]=useState(false);
+  const [savedClean,setSavedClean]=useState(false);
   const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
   const docRef=useRef<HTMLDivElement>(null);
   const [docHeight,setDocHeight]=useState(841);
@@ -1054,8 +1053,7 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
   const [docHeight,setDocHeight]=useState(841);
   const [winW,setWinW]=useState(()=>window.innerWidth);
   const [rcSecGuards,setRcSecGuards]=useState<number[]>([]);
-  const [savedClean,setSavedClean]=useState(true);
-  const [flash,setFlash]=useState(false);
+  const [savedClean,setSavedClean]=useState(false);
   const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
