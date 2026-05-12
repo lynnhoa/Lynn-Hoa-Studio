@@ -513,6 +513,7 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
   const [lang,setLang]=useState("en");
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
+  const [confirmClose,setConfirmClose]=useState(false);
   const [downloading,setDownloading]=useState(false);
   const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
   const docRef=useRef<HTMLDivElement>(null);
@@ -700,8 +701,18 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
         <div style={{flex:1}}/>
         {isMobile&&<button onClick={()=>setShowEdit(e=>!e)} style={{padding:"5px 12px",background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase",color:C.black,marginRight:4}}>{showEdit?"View PDF":"Edit"}</button>}
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={onClose} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
+        <button onClick={()=>onSave?setConfirmClose(true):onClose()} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
+      {confirmClose&&<div style={{position:"absolute",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.85)"}}>
+        <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"22px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
+          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save this {type==="revised"?"revised quote":type==="amendment"?"amendment":type==="renewal"?"renewal":type==="invoice"?"invoice":"quote"}?</p>
+          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px",letterSpacing:"0.03em"}}>Unsaved changes will be lost.</p>
+          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+            <B onClick={()=>{if(onSave)onSave(staged);setConfirmClose(false);onClose();}} s={{minWidth:64}}>Yes</B>
+            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}} s={{minWidth:64}}>No</B>
+          </div>
+        </div>
+      </div>}
       <div style={{flex:1,display:"flex",overflow:"hidden",flexDirection:isMobile?"column":"row"}}>
         {(!isMobile||showEdit)&&<div style={{width:isMobile?"100%":panelW,flexShrink:0,display:"flex",flexDirection:"column",borderRight:isMobile?"none":`1px solid ${C.rule}`,borderBottom:isMobile?`1px solid ${C.rule}`:"none",maxHeight:isMobile?"50%":undefined}}>
           <div style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
@@ -1141,7 +1152,7 @@ function RateCards({rc,setRc,settings}: any) {
 }
 
 // ─── CALCULATOR ───────────────────────────────────────────
-function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
+function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,goTo,onAfterSave}: any) {
   const isRev=prefill?.isRev||false;
   const revN=prefill?.revN||1;
 
@@ -1225,7 +1236,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
   return(
     <div>
       {pdf&&<PDFModal data={pdf} type={isRev?"revised":"quote"} onClose={()=>{setPdf(null);}} settings={settings}
-        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);}}/>}
+        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);if(onAfterSave)onAfterSave(doc.brand||brand);}}/>}
       <div style={{marginBottom:18}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Calculator</h2>
         <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
@@ -1689,7 +1700,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
 }
 
 // ─── CLIENTS ──────────────────────────────────────────────
-function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange}: any) {
+function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear}: any) {
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
   const [typeFilter,setTypeFilter]=useState("all");
@@ -1697,6 +1708,12 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   const [sel,setSel_]=useState<string|null>(null);
   const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
+  useEffect(()=>{
+    if(!pendingClientName)return;
+    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
+    if(c)setSel(c.id);
+    if(onPendingClear)onPendingClear();
+  },[pendingClientName]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
   const [tagI,setTagI]=useState("");
@@ -2374,6 +2391,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
   const [clientSel,setClientSel]=useState<string|null>(null);
+  const [pendingClientName,setPendingClientName]=useState<string|null>(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
@@ -2415,6 +2433,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     setPrefill(null);
   };
 
+  const handleAfterSave=(brand: string)=>{setPendingClientName(brand);setNav(1);};
   const handleGoToCalc=(clientName: string)=>{
     setPrefill({brand:clientName,contact:""});
     setNav(2);
@@ -2491,8 +2510,8 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
-        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel}/>}
-        {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile}/>}
+        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>setPendingClientName(null)}/>}
+        {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} goTo={setNav} onAfterSave={handleAfterSave}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
