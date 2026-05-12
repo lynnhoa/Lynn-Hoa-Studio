@@ -2200,7 +2200,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey}: any) {
-  const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices">(null);
+  const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   useEffect(()=>{setDrill(null);},[resetKey]);
   const [pFilter,setPFilter]=useState<string>("all");
@@ -2209,6 +2209,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
+  const unsignedContracts=all.filter((pr: any)=>pr.status==="contracted"&&pr.qd);
 
   const STATUS_ORDER: Record<string,number>={production:0,contracted:1,invoiced:2,quoted:3,revised:4};
   const NEXT_ACTION: Record<string,string>={quoted:"Awaiting client feedback",revised:"Awaiting client feedback",contracted:"Awaiting signature",production:"In production",invoiced:"Awaiting payment"};
@@ -2398,6 +2399,59 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
       </div>
     );
   }
+  if(drill==="quotes"){
+    const sorted=[...openQ].sort((a: any,b: any)=>(a.date||"").localeCompare(b.date||""));
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Open Quotes</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{openQ.length} awaiting response</p>
+        {openQ.length===0&&<p style={{fontSize:11,color:C.muted}}>No open quotes.</p>}
+        {sorted.map((pr: any,i: number)=>{
+          const days=pr.date?Math.floor((new Date().getTime()-new Date(pr.date).getTime())/864e5):null;
+          const old=days!==null&&days>7;
+          return(
+            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div><p style={{fontSize:13,color:C.black,margin:"0 0 2px"}}>{pr.cName}</p><p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p></div>
+                <span style={{fontFamily:SERIF,fontSize:14,flexShrink:0}}>{fmt(pr.amount)}</span>
+              </div>
+              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${old?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>{pr.status}</span>
+                <span style={{fontSize:10,color:old?C.amber:C.muted}}>{days!==null?`Sent ${days}d ago`:fmtD(pr.date)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  if(drill==="contracts"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Unsigned Contracts</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{unsignedContracts.length} awaiting signature</p>
+        {unsignedContracts.length===0&&<p style={{fontSize:11,color:C.muted}}>No unsigned contracts.</p>}
+        {unsignedContracts.map((pr: any,i: number)=>{
+          const days=pr.date?Math.floor((new Date().getTime()-new Date(pr.date).getTime())/864e5):null;
+          const old=days!==null&&days>7;
+          return(
+            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div><p style={{fontSize:13,color:C.black,margin:"0 0 2px"}}>{pr.cName}</p><p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p></div>
+                <span style={{fontFamily:SERIF,fontSize:14,flexShrink:0}}>{fmt(pr.amount)}</span>
+              </div>
+              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${old?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Contracted</span>
+                <span style={{fontSize:10,color:old?C.amber:C.muted}}>{days!==null?`${days}d ago`:fmtD(pr.date)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   if(drill==="invoices"){
     return(
       <div>
@@ -2434,13 +2488,26 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
             </div>
           </div>
         </div>
-        <Card label="Invoices" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`} onClick={()=>setDrill("invoices")}/>
+        <div onClick={()=>setDrill("invoices")} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:"pointer"}}>
+          <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Invoices</span>
+          <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+              <span style={{fontSize:10.5,color:unpaid.length>0?C.amber:C.muted}}>{unpaid.length} unpaid</span>
+              <span style={{fontFamily:SERIF,fontSize:20,color:unpaid.length>0?C.amber:C.light}}>{fmt(out)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",borderTop:`1px solid ${C.rule}`,paddingTop:5}}>
+              <span style={{fontSize:10.5,color:C.muted}}>{paid.length} paid</span>
+              <span style={{fontFamily:SERIF,fontSize:14,color:paid.length>0?C.black:C.light}}>{fmt(rev)}</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
+        <Card label="Open Quotes" count={openQ.length} items={openQ} warm onClick={()=>setDrill("quotes")}/>
+        <Card label="Unsigned Contracts" count={unsignedContracts.length} items={unsignedContracts} warm onClick={()=>setDrill("contracts")}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Active Projects" count={activeProjects.length} sub={`${fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress`} items={activeProjects} onClick={()=>setDrill("projects")}/>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
       </div>
     </div>
