@@ -2052,8 +2052,8 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const Card=({label,count,items,warm,sub,onClick}: any)=>(
     <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
-        <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>
-        <span style={{fontFamily:SERIF,fontSize:22,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
+        <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>{label}</span>
+        <span style={{fontFamily:SERIF,fontSize:16,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
       </div>
       {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 8px"}}>{sub}</p>}
       {items?.slice(0,3).map((pr: any,i: number)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}><span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span><span style={{fontSize:10.5}}>{pr.amount?fmt(pr.amount):""}</span></div>)}
