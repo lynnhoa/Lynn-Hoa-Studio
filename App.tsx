@@ -1673,6 +1673,8 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               </div>
             ))}
             {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
+
+            {/* ── DOCUMENTS ── */}
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
               {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
               {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
@@ -1682,15 +1684,44 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               ))}
               {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
             </div>
-            <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-              {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
-              {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"Contracted":ns==="invoiced"?"Invoiced":ns.charAt(0).toUpperCase()+ns.slice(1)}</B>}
-              {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
-              {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT&&setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
-              {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
-              {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
-              {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
-              {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+
+            {/* ── ACTIONS ── */}
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
+
+              {/* Stage: Quote sent — awaiting client response */}
+              {["quoted","revised"].includes(pr.status)&&<>
+                <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
+                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+              </>}
+
+              {/* Stage: Contract created — awaiting signature */}
+              {pr.status==="contracted"&&<>
+                <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Revise Contract</B>
+                <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
+              </>}
+
+              {/* Stage: Signed / in production */}
+              {pr.status==="production"&&<>
+                <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
+                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+              </>}
+
+              {/* Stage: Invoiced */}
+              {pr.status==="invoiced"&&!pr.paid&&<>
+                {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT&&setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
+                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>
+                <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+              </>}
+
+              {/* Stage: Paid */}
+              {pr.paid&&<>
+                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>
+                <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
+              </>}
+
+              {/* Undo step — always available while not paid, not at quote stage */}
+              {ps&&!pr.paid&&!["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+
             </div>
           </div>
         );
