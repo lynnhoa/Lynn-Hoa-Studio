@@ -104,15 +104,15 @@ const RC0: Record<string, any> = {
     ],
     fine:"All collaborations paid. 1 revision included per deliverable. Product provided by brand, not part of fee. Travel expenses billed separately if applicable.",
     usage:[
-      {l:"None — not clarified",pct:0,mo:0},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
       {l:"Organic — 3 months (included)",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+30%)",pct:30,mo:1},
       {l:"Paid ads — 3 months (+60%)",pct:60,mo:3},
       {l:"Paid ads — 6 months (+100%)",pct:100,mo:6},
       {l:"Paid ads — 12 months (+150%)",pct:150,mo:12}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+30%)",pct:30,mo:1},
       {l:"Category — 3 months (+60%)",pct:60,mo:3},
       {l:"Full — 1 month (+75%)",pct:75,mo:1},
@@ -162,14 +162,15 @@ const RC0: Record<string, any> = {
     ],
     fine:"Organic usage included for 3 months. Usage rights always time-limited. 1 revision included per deliverable. Product provided by brand, not part of fee. Music license fee not included.",
     usage:[
-      {l:"Organic social — 3 months",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
+      {l:"Organic — 3 months (included)",pct:0,mo:3},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+20%)",pct:20,mo:1},
       {l:"Paid ads — 3 months (+50%)",pct:50,mo:3},
       {l:"Paid ads — 6 months (+80%)",pct:80,mo:6},
       {l:"Paid ads — 12 months (+120%)",pct:120,mo:12}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+25%)",pct:25,mo:1},
       {l:"Category — 3 months (+50%)",pct:50,mo:3},
       {l:"Full — 1 month (+50%)",pct:50,mo:1},
@@ -214,15 +215,15 @@ const RC0: Record<string, any> = {
     ],
     fine:"Product provided by brand, not part of fee. Usage rights always time-limited. 1 revision included per deliverable. Concept approved before production. Min. 2 weeks from brief to delivery.",
     usage:[
-      {l:"None — not clarified",pct:0,mo:0},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
       {l:"Organic — 3 months (included)",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+30%)",pct:30,mo:1},
       {l:"Paid ads — 3 months (+60%)",pct:60,mo:3},
       {l:"Paid ads — 6 months (+100%)",pct:100,mo:6},
       {l:"Paid ads — 12 months (+150%)",pct:150,mo:12}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+30%)",pct:30,mo:1},
       {l:"Category — 3 months (+60%)",pct:60,mo:3},
       {l:"Full — 1 month (+75%)",pct:75,mo:1},
@@ -267,13 +268,14 @@ const RC0: Record<string, any> = {
     ],
     fine:"Scope of hosted collaboration to be agreed per project. All content production invoiced separately. Organic usage included for 3 months. Usage rights always time-limited.",
     usage:[
-      {l:"Organic social — 3 months",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
+      {l:"Organic — 3 months (included)",pct:0,mo:3},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+20%)",pct:20,mo:1},
       {l:"Paid ads — 3 months (+50%)",pct:50,mo:3},
       {l:"Paid ads — 6 months (+80%)",pct:80,mo:6}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+25%)",pct:25,mo:1},
       {l:"Category — 3 months (+50%)",pct:50,mo:3},
       {l:"Full — 1 month (+50%)",pct:50,mo:1},
@@ -387,11 +389,21 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
   const TRow=({ln,prevLn,idx}: any)=>{
     const showCat=!!(ln.cat&&catBadgeLabel[ln.cat]&&ln.cat!==(prevLn?.cat));
+    const subDetails=[
+      ln.usageLabel,
+      ln.exclLabel,
+      ...(ln.addons||[]),
+      ...(ln.platforms||[])
+    ].filter(Boolean);
     return(
       <div data-trow={idx} style={{paddingTop:tRowGuards?.[idx]||0,borderBottom:`1px solid ${C.rule}`}}>
         {showCat&&<div style={{paddingTop:10,paddingBottom:1}}><span style={{fontSize:5.5,letterSpacing:"0.14em",textTransform:"uppercase",color:C.light}}>{catBadgeLabel[ln.cat]}</span></div>}
         <div style={{padding:"4px 0",display:"grid",gridTemplateColumns:"1fr 28px 52px 46px",alignItems:"baseline"}}>
-          <div><span style={{fontSize:8.5}}>{ln.name}</span>{ln.note&&<span style={{fontSize:7,color:C.light,display:"block"}}>{ln.note}</span>}</div>
+          <div>
+            <span style={{fontSize:8.5}}>{ln.name}</span>
+            {ln.note&&<span style={{fontSize:7,color:C.light,display:"block"}}>{ln.note}</span>}
+            {subDetails.length>0&&<span style={{fontSize:7,color:C.muted,display:"block"}}>{subDetails.join(" · ")}</span>}
+          </div>
           <span style={{fontSize:8,textAlign:"right",color:C.muted}}>{ln.qty||""}</span>
           <span style={{fontSize:8,textAlign:"right",color:C.muted}}>{ln.up?`€ ${Number(ln.up).toLocaleString("de-DE")}`:""}</span>
           <span style={{fontSize:8,textAlign:"right"}}>€ {Number(ln.amt||0).toLocaleString("de-DE")}</span>
@@ -1175,10 +1187,10 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   const [vDays,setVDays]=useState(14);
 
   const [bCat,setBCat]=useState("influencer");
-  const [bDel,setBDel]=useState(0);
+  const [bDel,setBDel]=useState(-1); // -1 = sentinel "— Select deliverable —"
   const [bQty,setBQty]=useState(1);
-  const [bUsage,setBUsage]=useState(0);
-  const [bExcl,setBExcl]=useState(0);
+  const [bUsage,setBUsage]=useState(0); // 0 = sentinel
+  const [bExcl,setBExcl]=useState(0);  // 0 = sentinel
   const [bNeg,setBNeg]=useState("");
   const [bVol,setBVol]=useState(false);
   const [bAddons,setBAddons]=useState<string[]>([]);
@@ -1202,30 +1214,36 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   const addonList=AO[bCat]||[];
 
   const computePrice=()=>{
-    const item=deliverables[bDel];
+    const item=bDel>=0?deliverables[bDel]:null;
     const base=bNeg!==""?parseFloat(bNeg)||0:(item?.p||0);
     const lb=base*(bQty||1);
     let vp=0;if(bVol){if(bCat==="editorial")vp=10;else if(bQty>=10)vp=20;else if(bQty>=3)vp=15;}
     const av=lb*(1-vp/100);
-    const up=card.usage[bUsage]?.pct||0,ep=card.excl[bExcl]?.pct||0;
-    const am=av*(1+up/100+ep/100);
+    const usagePct=card.usage[bUsage]?.sentinel?0:(card.usage[bUsage]?.pct||0);
+    const exclPct=card.excl[bExcl]?.sentinel?0:(card.excl[bExcl]?.pct||0);
+    const am=av*(1+(usagePct+exclPct)/100);
     let at=0;bAddons.forEach(aid=>{const a=addonList.find((x: any)=>x.id===aid);if(!a)return;if(a.flat)at+=a.flat;else if(a.pct)at+=am*a.pct/100;});
     return Math.round(am+at+(parseFloat(bCAmt)||0));
   };
 
+  const canAdd=bDel>=0; // must have a deliverable selected
+
   const addItem=()=>{
+    if(!canAdd)return;
     const item=deliverables[bDel];
     const price=computePrice();
+    const usageSel=card.usage[bUsage];
+    const exclSel=card.excl[bExcl];
     setItems(prev=>[...prev,{
       id:uid(),cat:bCat,
       name:item?.n||"",note:item?.note||"",
       qty:bQty,up:item?.p||parseFloat(bNeg)||0,amt:price,
-      usageLabel:card.usage[bUsage]?.l,
-      exclLabel:card.excl[bExcl]?.l,
+      usageLabel:usageSel?.sentinel?undefined:usageSel?.l,
+      exclLabel:exclSel?.sentinel?undefined:exclSel?.l,
       addons:bAddons.map(aid=>addonList.find((x: any)=>x.id===aid)?.n).filter(Boolean),
       platforms:bPlatforms,
     }]);
-    setBDel(0);setBQty(1);setBUsage(0);setBExcl(0);setBNeg("");setBAddons([]);setBVol(false);setBCLabel("");setBCAmt("");setBPlatforms([]);
+    setBDel(-1);setBQty(1);setBUsage(0);setBExcl(0);setBNeg("");setBAddons([]);setBVol(false);setBCLabel("");setBCAmt("");setBPlatforms([]);
   };
 
   const subtotal=items.reduce((s,it)=>s+it.amt,0);
@@ -1238,7 +1256,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
     const cats=[...new Set(items.map(it=>it.cat))];
     const ctype=cats.includes("ugc")?"UGC Creator":cats.includes("editorial")?"Editorial Content Creator":"Content Creator";
     setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
-      lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[]})),
+      lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
 
@@ -1284,21 +1302,28 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
       <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"16px 18px",marginBottom:16,background:C.white}}>
         <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 13px"}}>Add Item</p>
         <div style={{display:"flex",gap:6,marginBottom:13,flexWrap:"wrap"}}>
-          {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={bCat===k} onClick={()=>{setBCat(k);setBDel(0);setBAddons([]);}}>{catLabel[k]}</Pill>)}
+          {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={bCat===k} onClick={()=>{setBCat(k);setBDel(-1);setBAddons([]);}}>{catLabel[k]}</Pill>)}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:8,marginBottom:9}}>
-          <div><Lbl>Deliverable</Lbl><S value={bDel} onChange={(e: any)=>setBDel(parseInt(e.target.value))}>{deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}</S></div>
+          <div><Lbl>Deliverable</Lbl><S value={bDel} onChange={(e: any)=>setBDel(parseInt(e.target.value))}>
+            <option value={-1}>— Select deliverable —</option>
+            {deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}
+          </S></div>
           <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e: any)=>setBQty(parseInt(e.target.value)||1)}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:9}}>
           <div>
             <Lbl>Usage Rights</Lbl>
-            <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>{card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{u.pct>0?` (+${u.pct}%)`:""}</option>)}</S>
+            <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>
+              {card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
+            </S>
             <div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:5}}>
               {(["Instagram","TikTok","YouTube","Other"] as const).map(p=>{const on=bPlatforms.includes(p);return<button key={p} type="button" onClick={()=>setBPlatforms(pr=>on?pr.filter(x=>x!==p):[...pr,p])} style={{padding:"3px 8px",border:`1px solid ${on?C.black:C.rule}`,background:on?C.black:C.bg,color:on?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:8.5,letterSpacing:"0.05em",borderRadius:2}}>{p}</button>;})}
             </div>
           </div>
-          <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>{card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{e.pct>0?` (+${e.pct}%)`:""}</option>)}</S></div>
+          <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>
+            {card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{!e.sentinel&&e.pct>0?` (+${e.pct}%)`:""}</option>)}
+          </S></div>
         </div>
         <div style={{marginBottom:9}}>
           <Lbl>Add-ons</Lbl>
@@ -1315,8 +1340,8 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
           <label style={{display:"flex",alignItems:"center",gap:5,fontSize:9,cursor:"pointer",paddingBottom:8,whiteSpace:"nowrap"}}><input type="checkbox" checked={bVol} onChange={(e: any)=>setBVol(e.target.checked)}/>Vol. disc.</label>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
-          <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:C.black,fontFamily:SERIF,fontSize:17}}>{fmt(computePrice())}</strong></span>
-          <B onClick={addItem} s={{paddingLeft:20,paddingRight:20}}>+ Add to Quote</B>
+          <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:canAdd?C.black:C.light,fontFamily:SERIF,fontSize:17}}>{canAdd?fmt(computePrice()):"—"}</strong></span>
+          <B onClick={addItem} s={{paddingLeft:20,paddingRight:20,opacity:canAdd?1:0.4,cursor:canAdd?"pointer":"default"}}>+ Add to Quote</B>
         </div>
       </div>
 
