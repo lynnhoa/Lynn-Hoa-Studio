@@ -1658,6 +1658,12 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
+  const highlightRef=useRef<HTMLDivElement|null>(null);
+  useEffect(()=>{
+    if(highlightRef.current){
+      setTimeout(()=>highlightRef.current?.scrollIntoView({behavior:"smooth",block:"center"}),100);
+    }
+  },[highlightedProjectQNo]);
   return(
     <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
@@ -1730,7 +1736,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
         const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
         const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
         return(
-          <div key={pr.id} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
+          <div key={pr.id} ref={isHighlighted?highlightRef:null} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
               <div style={{flex:1,minWidth:0}}>
                 {editPrName===pr.id
@@ -1839,6 +1845,12 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
   const [highlightedProjectQNo,setHighlightedProjectQNo]=useState<string|null>(null);
+  const mobileHighlightRef=useRef<HTMLDivElement|null>(null);
+  useEffect(()=>{
+    if(mobileHighlightRef.current){
+      setTimeout(()=>mobileHighlightRef.current?.scrollIntoView({behavior:"smooth",block:"center"}),100);
+    }
+  },[highlightedProjectQNo]);
   useEffect(()=>{
     if(!pendingClientName)return;
     const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
@@ -2003,7 +2015,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
           const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
           return(
-            <div key={pr.id} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
+            <div key={pr.id} ref={isHighlighted?mobileHighlightRef:null} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div style={{flex:1,minWidth:0}}>
                   {editPrName===pr.id
