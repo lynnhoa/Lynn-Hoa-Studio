@@ -1505,7 +1505,9 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
       name:item?.n||"",note:item?.note||"",
       qty:bQty,up:item?.p||parseFloat(bNeg)||0,amt:price,
       usageLabel:usageSel?.sentinel?undefined:usageSel?.l,
+      usageMo:usageSel?.sentinel?0:(usageSel?.mo||0),
       exclLabel:exclSel?.sentinel?undefined:exclSel?.l,
+      exclMo:exclSel?.sentinel?0:(exclSel?.mo||0),
       addons:bAddons.map(aid=>addonList.find((x: any)=>x.id===aid)?.n).filter(Boolean),
       platforms:bPlatforms,
     }]);
@@ -1521,7 +1523,9 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
     const ctype=cats.length>1?"Content Creator":cats[0]==="ugc"?"UGC Creator":cats[0]==="editorial"?"Editorial Content Creator":"Content Creator (Influencer)";
-    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
+    const mo=Math.max(0,...items.map((it: any)=>it.usageMo||0));
+    const exclMo=Math.max(0,...items.map((it: any)=>it.exclMo||0));
+    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,mo:mo||undefined,exclMo:exclMo||undefined,
       lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
@@ -1742,9 +1746,11 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
         </div>
       </div>}
       {cl.projects.map((pr: any,i: number)=>{
-        const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
+        const end=uEnd(pr);const ee2=exclEnd(pr);
+        const licEnd=[end,ee2].filter(Boolean).sort((a: any,b: any)=>(dLeft(a)??999999)-(dLeft(b)??999999))[0]||null;
+        const ns=nxt(pr.status);const ps=prv(pr.status);
         const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
-        const lc=!isHighlighted?licenseColors(end):null;
+        const lc=!isHighlighted?licenseColors(licEnd):null;
         return(
           <div key={pr.id} ref={isHighlighted?highlightRef:null} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:lc?lc.border:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":lc?lc.bg:undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -1863,14 +1869,9 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   },[highlightedProjectQNo]);
   useEffect(()=>{
     if(!pendingClientName)return;
-    const run=()=>{
-      const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
-      if(c)setSel(c.id);
-      if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
-      if(onPendingClear)onPendingClear();
-    };
-    setTimeout(run,50);
-  },[pendingClientName,pendingProjectQNo]);
+    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
+    if(c){setSel(c.id);if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);if(onPendingClear)onPendingClear();}
+  },[pendingClientName,pendingProjectQNo,clients]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
   const [tagI,setTagI]=useState("");
@@ -1922,6 +1923,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
+  const exclEnd=(pr: any)=>{if(!pr.deliveryDate||!pr.qd?.exclMo)return null;return addM(pr.deliveryDate,pr.qd.exclMo);};
   const fin=(c: any)=>{const paid=c.projects.filter((pr: any)=>pr.paid);const tot=paid.reduce((s: number,pr: any)=>s+pr.amount,0);const last=[...paid].sort((a: any,b: any)=>b.date.localeCompare(a.date))[0];return{total:tot,last:last?.amount||0,lastDate:last?.date||null,avg:paid.length?Math.round(tot/paid.length):0,count:paid.length,out:c.projects.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0)};};
   const flagged=clients.filter((c: any)=>{if(!c.projects.length)return false;if(c.projects.some((pr: any)=>pr.status==="invoiced"||pr.status==="paid"))return false;const lat=c.projects.reduce((a: any,b: any)=>a.date>b.date?a:b);return(new Date().getTime()-new Date(lat.date).getTime())/864e5>90;});
 
@@ -2025,9 +2027,11 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           </div>
         </div>}
         {cl.projects.map((pr: any,i: number)=>{
-          const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
+          const end=uEnd(pr);const ee2=exclEnd(pr);
+          const licEnd=[end,ee2].filter(Boolean).sort((a: any,b: any)=>(dLeft(a)??999999)-(dLeft(b)??999999))[0]||null;
+          const ns=nxt(pr.status);const ps=prv(pr.status);
           const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
-          const lc=!isHighlighted?licenseColors(end):null;
+          const lc=!isHighlighted?licenseColors(licEnd):null;
           return(
             <div key={pr.id} ref={isHighlighted?mobileHighlightRef:null} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:lc?lc.border:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":lc?lc.bg:undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -2190,7 +2194,9 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           const items: {prName:string,end:string,label:string}[]=[];
           const ue=uEnd(pr);
           if(ue)items.push({prName:pr.name,end:ue,label:"Usage"});
-          (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({prName:pr.name,end:r.endDate,label:"Excl."});});
+          const ee=exclEnd(pr);
+          if(ee)items.push({prName:pr.name,end:ee,label:"Excl."});
+          (pr.renewals||[]).filter((r: any)=>r.endDate).forEach((r: any)=>{items.push({prName:pr.name,end:r.endDate,label:r.type==="excl"?"Excl. Renewal":"Usage Renewal"});});
           return items;
         });
         const multiProj=new Set(allRights.map((r: any)=>r.prName)).size>1;
@@ -2258,11 +2264,14 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
+  const exclEnd=(pr: any)=>{if(!pr.deliveryDate||!pr.qd?.exclMo)return null;return addM(pr.deliveryDate,pr.qd.exclMo);};
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
-    const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
+    const items: {cName:string,cId:string,prName:string,prQNo:string,end:string,label:string}[]=[];
     const ue=uEnd(pr);
     if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:ue,label:"Usage"});
-    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:r.endDate,label:"Excl."});});
+    const ee=exclEnd(pr);
+    if(ee)items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:ee,label:"Excl."});
+    (pr.renewals||[]).filter((r: any)=>r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:r.endDate,label:r.type==="excl"?"Excl. Renewal":"Usage Renewal"});});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
@@ -2813,7 +2822,11 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     }
     setPrefill(null);
   };
-  const handleAfterSave=(brand: string,qNo?: string)=>{setPendingClientName(brand);setPendingProjectQNo(qNo||null);setNav(1);};
+  const handleAfterSave=(brand: string,qNo?: string)=>{
+    setPendingClientName(brand);
+    setPendingProjectQNo(qNo||null);
+    setTimeout(()=>setNav(1),50);
+  };
 
   const handleGoToCalc=(clientName: string)=>{
     setPrefill({brand:clientName,contact:""});
