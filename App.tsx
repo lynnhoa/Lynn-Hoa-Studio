@@ -1944,12 +1944,29 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month"|"license">(null);
+  const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects">(null);
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
+
+  // Active projects — everything in motion, not lead, not paid
+  const STATUS_ORDER: Record<string,number>={production:0,contracted:1,invoiced:2,quoted:3,revised:4};
+  const NEXT_ACTION: Record<string,string>={
+    quoted:"Awaiting client feedback",
+    revised:"Awaiting client feedback",
+    contracted:"Awaiting signature",
+    production:"In production",
+    invoiced:"Awaiting payment",
+  };
+  const STATUS_COLOR: Record<string,string>={
+    quoted:C.amber,revised:C.amber,contracted:C.amber,production:C.black,invoiced:C.green
+  };
+  const activeProjects=all
+    .filter((pr: any)=>!pr.paid&&pr.status&&pr.status!=="lead"&&pr.status!=="paid")
+    .sort((a: any,b: any)=>(STATUS_ORDER[a.status]??9)-(STATUS_ORDER[b.status]??9));
+
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
@@ -1983,6 +2000,38 @@ function Dashboard({clients,goTo,isMobile}: any) {
       {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
     </div>
   );
+
+  // ── Active Projects drill ──
+  if(drill==="projects"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Active Projects</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{activeProjects.length} project{activeProjects.length!==1?"s":""} in progress</p>
+        {activeProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No active projects.</p>}
+        {activeProjects.map((pr: any,i: number)=>{
+          const col=STATUS_COLOR[pr.status]||C.muted;
+          const next=NEXT_ACTION[pr.status]||"";
+          return(
+            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:7}}>
+                <div style={{minWidth:0}}>
+                  <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{pr.cName}</p>
+                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p>
+                </div>
+                <span style={{fontFamily:SERIF,fontSize:15,flexShrink:0}}>{fmt(pr.amount)}</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
+                <span style={{fontSize:9,letterSpacing:"0.08em",textTransform:"uppercase",color:col,border:`1px solid ${col}`,padding:"2px 7px",borderRadius:2,opacity:0.85}}>{pr.status}</span>
+                <span style={{fontSize:10,color:C.muted}}>{next}</span>
+                {pr.deliveryDate&&<span style={{fontSize:10,color:C.muted}}>Due {fmtD(pr.deliveryDate)}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   if(drill==="year"){
     return(
       <div>
@@ -2084,6 +2133,9 @@ function Dashboard({clients,goTo,isMobile}: any) {
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
         <Card label="Active Contracts" count={unsigned.length} items={unsigned}/>
+      </div>
+      <div style={{marginBottom:9}}>
+        <Card label="Active Projects" count={activeProjects.length} sub={`${activeProjects.length} project${activeProjects.length!==1?"s":""} in progress — click for full overview`} onClick={()=>setDrill("projects")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
