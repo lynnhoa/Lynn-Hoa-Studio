@@ -1400,157 +1400,198 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 // ─── AMENDMENT MODAL ──────────────────────────────────────
 function AmendModal({p,onSave,onClose,settings,rc}: any) {
   const q=p.qd;
+  const origLines=q?.lines||[];
+  const origTotal=origLines.reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
   const defCat=(q?.ctab&&["influencer","ugc","editorial"].includes(q.ctab)?q.ctab:"influencer") as "influencer"|"ugc"|"editorial";
   const [lines,setLines]=useState<any[]>([]);
   const [pdf,setPdf]=useState<any>(null);
-  // Rate card picker
+
+  // ── Section 1: Extra deliverables ──
   const [aCat,setACat]=useState(defCat);
-  const [aMode,setAMode]=useState<"del"|"ao">("del");
-  const [aDel,setADel]=useState(0);
-  const [aAddon,setAAddon]=useState("");
+  const [aDel,setADel]=useState(-1);
   const [aQty,setAQty]=useState(1);
   const [aNeg,setANeg]=useState("");
-  // Manual entry
   const [showMan,setShowMan]=useState(false);
   const [manName,setManName]=useState("");
   const [manQty,setManQty]=useState(1);
   const [manUp,setManUp]=useState("");
-
   const card=rc?.[aCat]||rc?.influencer;
   const deliverables=card?card.sections.filter((s: any)=>isSingle(s.t)).flatMap((s: any)=>s.items):[];
-  const addonList=AO[aCat]||[];
-  const selDel=deliverables[aDel];
-  const selAddon=addonList.find((x: any)=>x.id===aAddon);
-  const isPct=aMode==="ao"&&selAddon?.pct&&!selAddon?.flat;
-
-  const rcPrice=()=>{
-    if(aMode==="del"){return Math.round((aNeg!==""?parseFloat(aNeg)||0:(selDel?.p||0))*(aQty||1));}
-    if(!selAddon)return 0;
-    return Math.round((aNeg!==""?parseFloat(aNeg)||0:(selAddon.flat||0))*(aQty||1));
-  };
-  const addRC=()=>{
-    let name="",note="",up=0;
-    if(aMode==="del"){if(!selDel)return;name=selDel.n;note=selDel.note||"";up=aNeg!==""?parseFloat(aNeg)||0:(selDel.p||0);}
-    else{if(!selAddon)return;name=selAddon.n;up=aNeg!==""?parseFloat(aNeg)||0:(selAddon.flat||0);}
-    setLines(prev=>[...prev,{id:uid(),name,note,qty:aQty,up,amt:Math.round(up*(aQty||1))}]);
-    setANeg("");setAQty(1);
+  const selDel=aDel>=0?deliverables[aDel]:null;
+  const addDeliverable=()=>{
+    if(!selDel&&!aNeg)return;
+    const up=aNeg!==""?parseFloat(aNeg)||0:(selDel?.p||0);
+    if(!up)return;
+    setLines(prev=>[...prev,{id:uid(),name:selDel?.n||"Custom deliverable",note:selDel?.note||"",qty:aQty,up,amt:Math.round(up*aQty),kind:"deliverable"}]);
+    setADel(-1);setAQty(1);setANeg("");
   };
   const addManual=()=>{
     if(!manName.trim())return;
     const up=parseFloat(manUp)||0;
-    setLines(prev=>[...prev,{id:uid(),name:manName,note:"",qty:manQty,up,amt:Math.round(up*(manQty||1))}]);
+    setLines(prev=>[...prev,{id:uid(),name:manName,note:"",qty:manQty,up,amt:Math.round(up*manQty),kind:"deliverable"}]);
     setManName("");setManQty(1);setManUp("");
+  };
+
+  // ── Section 2: Usage rights ──
+  const [uBase,setUBase]=useState<"total"|"selected">("total");
+  const [uSel,setUSel]=useState<string[]>([]);
+  const [uIdx,setUIdx]=useState(0);
+  const usageOpts=card?.usage||[];
+  const uOpt=usageOpts[uIdx];
+  const uBase$=uBase==="total"?origTotal:uSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.id===id||x.name===id);return s+(parseFloat(l?.amt)||0);},0);
+  const uAmt=uOpt&&!uOpt.sentinel?Math.round(uBase$*(uOpt.pct/100)):0;
+  const addUsage=()=>{
+    if(!uOpt||uOpt.sentinel||uAmt===0)return;
+    const ref=uBase==="total"?"Whole quote":uSel.map(id=>origLines.find((x: any)=>x.name===id)?.name||id).join(", ");
+    setLines(prev=>[...prev,{id:uid(),name:`Usage Rights — ${uOpt.l}`,note:`Applies to: ${ref}`,qty:1,up:uAmt,amt:uAmt,kind:"usage"}]);
+    setUIdx(0);setUSel([]);
+  };
+
+  // ── Section 3: Add-ons ──
+  const [aoBase,setAoBase]=useState<"total"|"selected">("total");
+  const [aoSel,setAoSel]=useState<string[]>([]);
+  const addonList=AO[aCat]||[];
+  const [aoId,setAoId]=useState("");
+  const [aoCustom,setAoCustom]=useState("");
+  const selAo=addonList.find((x: any)=>x.id===aoId);
+  const aoBase$=aoBase==="total"?origTotal:aoSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.name===id);return s+(parseFloat(l?.amt)||0);},0);
+  const aoAmt=aoCustom!==""?parseFloat(aoCustom)||0:selAo?.flat||Math.round(aoBase$*(selAo?.pct||0)/100);
+  const addAddon=()=>{
+    if(!selAo||!aoAmt)return;
+    const ref=aoBase==="total"?"Whole quote":aoSel.map(id=>origLines.find((x: any)=>x.name===id)?.name||id).join(", ");
+    setLines(prev=>[...prev,{id:uid(),name:selAo.n,note:`Applies to: ${ref}`,qty:1,up:aoAmt,amt:aoAmt,kind:"addon"}]);
+    setAoId("");setAoCustom("");setAoSel([]);
   };
 
   const aTotal=lines.reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
   const aNo=`AMD-${(q?.qNo||"").replace("QUO","").trim()||"001"}-${String((p.amendments?.length||0)+1).padStart(2,"0")}`;
 
   if(pdf)return<PDFModal data={pdf} type="amendment" onClose={()=>setPdf(null)} settings={settings}
-    onSave={(doc: any)=>{onSave({id:uid(),aNo:doc.aNo||aNo,lines:doc.lines||lines,amendTotal:doc.lines?.reduce((s: number,l: any)=>s+(l.amt||0),0)||Math.round(aTotal)});}}/>;
+    onSave={(doc: any)=>{onSave({id:uid(),aNo:doc.aNo||aNo,lines:doc.lines||lines,amendTotal:doc.lines?.reduce((s: number,l: any)=>s+(l.amt||0),0)||Math.round(aTotal),signed:false});}}/>;
+
+  const SectionHead=({n,title}: any)=><p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>{n} — {title}</p>;
+  const BaseToggle=({val,set}: any)=><div style={{display:"flex",gap:4,marginBottom:8}}>
+    <Pill on={val==="total"} onClick={()=>set("total")}>Whole quote ({fmt(origTotal)})</Pill>
+    <Pill on={val==="selected"} onClick={()=>set("selected")}>Selected items</Pill>
+  </div>;
+  const ItemCheckboxes=({sel,setSel}: any)=><>{origLines.map((l: any,i: number)=>{
+    const on=sel.includes(l.name);
+    return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
+      <input type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.name):[...p,l.name])} style={{accentColor:C.black}}/>
+      <span>{l.name}</span><span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
+    </label>;
+  })}</>;
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}>
-      <div style={{background:C.bg,width:"100%",maxWidth:520,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",maxHeight:"90vh",overflowY:"auto"}}>
-
+      <div style={{background:C.bg,width:"100%",maxWidth:560,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
           <h3 style={{fontFamily:SERIF,fontSize:17,fontWeight:"normal",margin:0}}>Add Amendment</h3>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button>
         </div>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px"}}>Project: <strong style={{color:C.black,fontWeight:500}}>{p.name}</strong> · Original: <strong style={{color:C.black,fontWeight:500,fontFamily:SERIF}}>{fmt(p.amount)}</strong></p>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 16px"}}>Project: <strong style={{color:C.black}}>{p.name}</strong> · Original: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(origTotal)}</strong></p>
 
-        {rc&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>From Rate Card</p>
+        {/* ── 1. Extra deliverables ── */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <SectionHead n="01" title="Extra Deliverables"/>
           <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
-            {(["influencer","ugc","editorial"] as const).map(k=>(
-              <Pill key={k} on={aCat===k} onClick={()=>{setACat(k);setADel(0);setAAddon("");setANeg("");}}>
-                {{influencer:"Influencer",ugc:"UGC",editorial:"Editorial"}[k]}
-              </Pill>
-            ))}
+            {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={aCat===k} onClick={()=>{setACat(k);setADel(-1);setAoId("");}}>{({influencer:"Influencer",ugc:"UGC",editorial:"Editorial"})[k]}</Pill>)}
           </div>
-          <div style={{display:"flex",gap:5,marginBottom:10}}>
-            <button onClick={()=>{setAMode("del");setANeg("");}} style={{padding:"4px 12px",border:`1px solid ${aMode==="del"?C.black:C.rule}`,background:aMode==="del"?C.black:"transparent",color:aMode==="del"?"#fff":C.muted,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.07em",textTransform:"uppercase"}}>Deliverable</button>
-            <button onClick={()=>{setAMode("ao");setANeg("");}} style={{padding:"4px 12px",border:`1px solid ${aMode==="ao"?C.black:C.rule}`,background:aMode==="ao"?C.black:"transparent",color:aMode==="ao"?"#fff":C.muted,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.07em",textTransform:"uppercase"}}>Add-on</button>
-          </div>
-
-          {aMode==="del"&&<>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 70px",gap:8,marginBottom:8}}>
-              <div><Lbl>Deliverable</Lbl><S value={aDel} onChange={(e: any)=>{setADel(parseInt(e.target.value));setANeg("");}}>{deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}</S></div>
-              <div><Lbl>Qty</Lbl><I type="number" min={1} value={aQty} onChange={(e: any)=>setAQty(parseInt(e.target.value)||1)}/></div>
-            </div>
-            <div style={{marginBottom:10}}>
-              <Lbl>Negotiated Rate <span style={{fontWeight:"normal",color:C.light}}>(leave blank to use card price)</span></Lbl>
-              <I type="number" placeholder={`Card rate: € ${selDel?.p||0}`} value={aNeg} onChange={(e: any)=>setANeg(e.target.value)}/>
-            </div>
-          </>}
-
-          {aMode==="ao"&&<>
-            <div style={{marginBottom:8}}>
-              <Lbl>Add-on</Lbl>
-              <S value={aAddon} onChange={(e: any)=>{setAAddon(e.target.value);setANeg("");}}>
-                <option value="">— Select add-on —</option>
-                {addonList.map((a: any)=><option key={a.id} value={a.id}>{a.n}{a.flat?` — € ${a.flat}`:a.pct?` — ${a.pct}% of base`:""}</option>)}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 60px",gap:7,marginBottom:7}}>
+            <div><Lbl>Deliverable</Lbl>
+              <S value={aDel} onChange={(e: any)=>{setADel(parseInt(e.target.value));setANeg("");}}>
+                <option value={-1}>— Select deliverable —</option>
+                {deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}
               </S>
-              {isPct&&<p style={{fontSize:10,color:C.amber,margin:"4px 0 0"}}>Percentage-based — enter the amount manually below</p>}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 70px",gap:8,marginBottom:10}}>
-              <div>
-                <Lbl>Price (€) {selAddon?.flat&&<span style={{fontWeight:"normal",color:C.light}}>card: € {selAddon.flat}</span>}</Lbl>
-                <I type="number" placeholder={selAddon?.flat?`€ ${selAddon.flat}`:isPct?"Enter amount":"—"} value={aNeg} onChange={(e: any)=>setANeg(e.target.value)}/>
+            <div><Lbl>Qty</Lbl><I type="number" min={1} value={aQty} onChange={(e: any)=>setAQty(parseInt(e.target.value)||1)}/></div>
+          </div>
+          <div style={{marginBottom:8}}>
+            <Lbl>Negotiated rate <span style={{fontWeight:"normal",color:C.light}}>(leave blank for card price)</span></Lbl>
+            <I type="number" placeholder={selDel?`Card: € ${selDel.p||0}`:"—"} value={aNeg} onChange={(e: any)=>setANeg(e.target.value)}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+            <B onClick={addDeliverable} s={{opacity:(selDel||aNeg)?1:0.4}}>+ Add Deliverable</B>
+          </div>
+          {!showMan
+            ?<button onClick={()=>setShowMan(true)} style={{fontSize:10,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,textDecoration:"underline",textDecorationColor:C.rule}}>+ Add manual line</button>
+            :<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"10px 11px",background:C.bg}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
+                <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Manual</span>
+                <button onClick={()=>setShowMan(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:12,padding:0}}>✕</button>
               </div>
-              <div><Lbl>Qty</Lbl><I type="number" min={1} value={aQty} onChange={(e: any)=>setAQty(parseInt(e.target.value)||1)}/></div>
-            </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 50px 80px",gap:7,marginBottom:7}}>
+                <div><Lbl>Description</Lbl><I placeholder="e.g. Extra BTS video" value={manName} onChange={(e: any)=>setManName(e.target.value)}/></div>
+                <div><Lbl>Qty</Lbl><I type="number" min={1} value={manQty} onChange={(e: any)=>setManQty(parseInt(e.target.value)||1)}/></div>
+                <div><Lbl>Price (€)</Lbl><I type="number" placeholder="0" value={manUp} onChange={(e: any)=>setManUp(e.target.value)}/></div>
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end"}}><B onClick={addManual} s={{opacity:manName.trim()?1:0.4}}>+ Add</B></div>
+            </div>}
+        </div>
+
+        {/* ── 2. Usage rights ── */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <SectionHead n="02" title="Usage Rights"/>
+          <Lbl>Apply % to</Lbl>
+          <BaseToggle val={uBase} set={setUBase}/>
+          {uBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={uSel} setSel={setUSel}/></div>}
+          <Lbl>Usage Rights</Lbl>
+          <S value={uIdx} onChange={(e: any)=>setUIdx(parseInt(e.target.value))} s={{marginBottom:8}}>
+            {usageOpts.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
+          </S>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:10.5,color:C.muted}}>Fee: <strong style={{color:C.black,fontFamily:SERIF}}>{uOpt&&!uOpt.sentinel&&uAmt>0?fmt(uAmt):"—"}</strong></span>
+            <B onClick={addUsage} s={{opacity:uOpt&&!uOpt.sentinel&&uAmt>0?1:0.4}}>+ Add Usage Rights</B>
+          </div>
+        </div>
+
+        {/* ── 3. Add-ons ── */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <SectionHead n="03" title="Add-ons"/>
+          <Lbl>Apply % to</Lbl>
+          <BaseToggle val={aoBase} set={setAoBase}/>
+          {aoBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={aoSel} setSel={setAoSel}/></div>}
+          <Lbl>Add-on</Lbl>
+          <S value={aoId} onChange={(e: any)=>{setAoId(e.target.value);setAoCustom("");}} s={{marginBottom:7}}>
+            <option value="">— Select add-on —</option>
+            {addonList.map((a: any)=><option key={a.id} value={a.id}>{a.n}{a.flat?` — € ${a.flat}`:a.pct?` — ${a.pct}%`:""}</option>)}
+          </S>
+          {selAo&&<>
+            <Lbl>Amount (€) <span style={{fontWeight:"normal",color:C.light}}>{selAo.flat?`card: € ${selAo.flat}`:selAo.pct?`suggested: € ${Math.round(aoBase$*selAo.pct/100)}`:""}</span></Lbl>
+            <I type="number" placeholder={selAo.flat?`${selAo.flat}`:selAo.pct?`${Math.round(aoBase$*selAo.pct/100)}`:"0"} value={aoCustom} onChange={(e: any)=>setAoCustom(e.target.value)} s={{marginBottom:8}}/>
           </>}
-
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,borderTop:`1px solid ${C.rule}`}}>
-            <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:C.black,fontFamily:SERIF,fontSize:16}}>{fmt(rcPrice())}</strong></span>
-            <B onClick={addRC} s={{paddingLeft:16,paddingRight:16}}>+ Add Line</B>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:10.5,color:C.muted}}>Fee: <strong style={{color:C.black,fontFamily:SERIF}}>{selAo&&aoAmt>0?fmt(aoAmt):"—"}</strong></span>
+            <B onClick={addAddon} s={{opacity:selAo&&aoAmt>0?1:0.4}}>+ Add Add-on</B>
           </div>
-        </div>}
+        </div>
 
-        {!showMan
-          ?<button onClick={()=>setShowMan(true)} style={{fontSize:10,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:"0 0 12px",fontFamily:SANS,letterSpacing:"0.04em",textDecoration:"underline",textDecorationColor:C.rule}}>+ Add manual line</button>
-          :<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 12px",marginBottom:12,background:C.white}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Manual Entry</p>
-              <button onClick={()=>setShowMan(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:13,padding:0}}>✕</button>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 50px 80px",gap:7,marginBottom:8}}>
-              <div><Lbl>Description</Lbl><I placeholder="Custom item" value={manName} onChange={(e: any)=>setManName(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addManual()}/></div>
-              <div><Lbl>Qty</Lbl><I type="number" min={1} value={manQty} onChange={(e: any)=>setManQty(parseInt(e.target.value)||1)}/></div>
-              <div><Lbl>Unit Price (€)</Lbl><I type="number" placeholder="0" value={manUp} onChange={(e: any)=>setManUp(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addManual()}/></div>
-            </div>
-            <div style={{display:"flex",justifyContent:"flex-end"}}>
-              <B onClick={addManual} s={{paddingLeft:16,paddingRight:16}}>+ Add</B>
-            </div>
-          </div>
-        }
-
+        {/* ── Lines summary ── */}
         {lines.length>0&&<>
           <div style={{marginBottom:10}}>
             {lines.map((l: any)=>(
-              <div key={l.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"8px 0",borderBottom:`1px solid ${C.rule}`}}>
+              <div key={l.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"7px 0",borderBottom:`1px solid ${C.rule}`}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontSize:11.5,color:C.black,margin:"0 0 1px"}}>{l.qty>1?`${l.qty}× `:""}{l.name||"—"}</p>
-                  {l.note&&<p style={{fontSize:10,color:C.muted,margin:0}}>{l.note}</p>}
+                  <p style={{fontSize:11,color:C.black,margin:"0 0 1px"}}>{l.qty>1?`${l.qty}× `:""}{l.name}</p>
+                  {l.note&&<p style={{fontSize:9.5,color:C.muted,margin:0}}>{l.note}</p>}
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,marginLeft:12}}>
-                  <span style={{fontSize:13,fontFamily:SERIF,color:C.black}}>{fmt(l.amt)}</span>
+                  <span style={{fontSize:12,fontFamily:SERIF,color:C.black}}>{fmt(l.amt)}</span>
                   <button onClick={()=>setLines(prev=>prev.filter((x: any)=>x.id!==l.id))} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:14,padding:0}}>✕</button>
                 </div>
               </div>
             ))}
           </div>
-          <div style={{padding:"10px 14px",background:C.white,border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
             <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Amendment Total</span>
-            <span style={{fontFamily:SERIF,fontSize:19}}>{fmt(Math.round(aTotal))}</span>
+            <span style={{fontFamily:SERIF,fontSize:18}}>{fmt(Math.round(aTotal))}</span>
           </div>
         </>}
-
         {lines.length===0&&<div style={{borderTop:`1px solid ${C.rule}`,marginBottom:14}}/>}
 
         <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}>
           <B v="sec" onClick={onClose}>Cancel</B>
-          <B s={{opacity:lines.length===0?0.45:1}} onClick={()=>{if(!lines.length)return;setPdf({brand:q?.brand,contact:q?.contact,date:today(),ctype:q?.ctype||"Content Creator",qNo:q?.qNo,aNo,lines,amendTotal:Math.round(aTotal),origTotal:p.amount});}}>Preview & Generate PDF</B>
+          <B s={{opacity:lines.length===0?0.4:1}} onClick={()=>{if(!lines.length)return;setPdf({brand:q?.brand,contact:q?.contact,date:today(),ctype:q?.ctype||"Content Creator",qNo:q?.qNo,aNo,lines,amendTotal:Math.round(aTotal),origTotal:p.amount});}}>Preview & Generate PDF</B>
         </div>
       </div>
     </div>
@@ -1558,106 +1599,129 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
 }
 
 // ─── RENEWAL MODAL ────────────────────────────────────────
-const RENEWAL_ADDONS=[
-  {id:"ra1",n:"Whitelisting / boosting",note:"Ads through Lynn's account · per month",p:null,pct:30},
-  {id:"ra2",n:"Link in bio",note:"Per week",p:100},
-  {id:"ra3",n:"Pinned post",note:"Post kept pinned",p:100},
-  {id:"ra4",n:"Additional Story frame",note:"Per frame",p:50},
-  {id:"ra5",n:"Aspect ratio adaptation",note:"Per format",p:65},
-];
-function RenewalModal({p,onSave,onClose,settings}: any) {
+function RenewalModal({p,onSave,onClose,settings,rc}: any) {
   const q=p.qd;
-  const [rtype,setRtype]=useState("usage");
-  const [oi,setOi]=useState(2);
-  const [custFee,setCustFee]=useState("");
+  const origLines=q?.lines||[];
+  const origTotal=origLines.reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
+  const defCat=(q?.ctab&&["influencer","ugc","editorial"].includes(q.ctab)?q.ctab:"influencer") as "influencer"|"ugc"|"editorial";
+  const card=(rc?.[defCat]||rc?.influencer)||{usage:[],excl:[]};
+
+  // Content scope
+  const [rBase,setRBase]=useState<"total"|"selected">("total");
+  const [rSel,setRSel]=useState<string[]>([]);
+  const base$=rBase==="total"?origTotal:rSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.name===id);return s+(parseFloat(l?.amt)||0);},0);
+
+  // Usage rights
+  const [uIdx,setUIdx]=useState(0);
+  const uOpt=card.usage[uIdx];
+  const uAmt=uOpt&&!uOpt.sentinel?Math.round(base$*(uOpt.pct/100)):0;
+
+  // Exclusivity
+  const [eIdx,setEIdx]=useState(0);
+  const eOpt=card.excl[eIdx];
+  const eAmt=eOpt&&!eOpt.sentinel?Math.round(base$*(eOpt.pct/100)):0;
+
+  // Dates
   const [startD,setStartD]=useState(today());
+  const maxMo=Math.max(uOpt?.sentinel?0:(uOpt?.mo||0),eOpt?.sentinel?0:(eOpt?.mo||0));
+  const endD=maxMo>0?addM(startD,maxMo):null;
+
+  // Custom fee override
+  const [custFee,setCustFee]=useState("");
+  const suggestedFee=uAmt+eAmt;
+  const fee=custFee!==""?parseFloat(custFee)||0:suggestedFee;
+
   const [pdf,setPdf]=useState<any>(null);
-  // add-ons
-  const [addons,setAddons]=useState<{id:string,amt:string}[]>([]);
-  const toggleAddon=(id: string)=>setAddons(prev=>prev.find(a=>a.id===id)?prev.filter(a=>a.id!==id):[...prev,{id,amt:""}]);
-  const setAddonAmt=(id: string,amt: string)=>setAddons(prev=>prev.map(a=>a.id===id?{...a,amt}:a));
-  const opt=RENEWAL_OPTS[rtype][oi];
-  const base=q?.total||0;
-  const suggested=Math.round(base*(opt.pct/100));
-  const licenseFee=custFee!==""?parseFloat(custFee)||0:suggested;
-  const addonTotal=addons.reduce((s,a)=>{
-    const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
-    if(!def)return s;
-    const v=parseFloat(a.amt)||0;
-    if(v>0)return s+v;
-    if(def.p)return s+def.p;
-    if(def.pct)return s+Math.round(licenseFee*def.pct/100);
-    return s;
-  },0);
-  const fee=licenseFee+addonTotal;
-  const endD=addM(startD,opt.mo);
+
   const rNo=`INV-${new Date().getFullYear()}-RN${String((p.renewals||[]).length+1).padStart(2,"0")}`;
   const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;
+  const refContent=rBase==="total"?origLines:origLines.filter((l: any)=>rSel.includes(l.name));
+  const termParts=[uOpt&&!uOpt.sentinel?uOpt.l:null,eOpt&&!eOpt.sentinel?eOpt.l:null].filter(Boolean).join(" + ");
+
   const buildDoc=()=>{
-    const lines=[
-      {name:`License Renewal — ${opt.l}`,note:`${fmtD(startD)} – ${fmtD(endD)}`,qty:1,up:licenseFee,amt:licenseFee},
-      ...addons.map(a=>{
-        const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
-        const v=parseFloat(a.amt)||def?.p||(def?.pct?Math.round(licenseFee*def.pct/100):0);
-        return{name:def?.n||"",note:def?.note||"",qty:1,up:v,amt:v};
-      }).filter(a=>a.amt>0)
-    ];
-    return{brand:q?.brand,contact:q?.contact,date:today(),rNo,iNo,delivery:startD,
-      ctype:q?.ctype||"Content Creator",projName:p.name,rType:opt.l,
-      origContent:q?.lines||[],footer:"Thank you for the pleasure of working together.",
-      lines,total:fee,endDate:endD,startDate:startD,optLabel:opt.l,mo:opt.mo};
+    const lines=[];
+    if(uOpt&&!uOpt.sentinel&&uAmt>0)lines.push({name:`Usage Rights — ${uOpt.l}`,note:`${fmtD(startD)}${endD?` – ${fmtD(endD)}`:""}`,qty:1,up:uAmt,amt:uAmt});
+    if(eOpt&&!eOpt.sentinel&&eAmt>0)lines.push({name:`Exclusivity — ${eOpt.l}`,note:`${fmtD(startD)}${endD?` – ${fmtD(endD)}`:""}`,qty:1,up:eAmt,amt:eAmt});
+    // if custom fee differs from suggested, use a single line
+    const finalLines=custFee!==""?[{name:`License Renewal — ${termParts||"Custom"}`,note:`${fmtD(startD)}${endD?` – ${fmtD(endD)}`:""}`,qty:1,up:fee,amt:fee}]:lines;
+    return{
+      brand:q?.brand,contact:q?.contact,date:today(),rNo,iNo,delivery:startD,
+      ctype:q?.ctype||"Content Creator",projName:p.name,rType:termParts,
+      origContent:refContent,footer:"Thank you for the pleasure of working together.",
+      lines:finalLines,total:fee,endDate:endD,startDate:startD,
+      optLabel:termParts||"Custom",mo:maxMo
+    };
   };
+
+  const canPreview=(uOpt&&!uOpt.sentinel)||(eOpt&&!eOpt.sentinel)||custFee!=="";
+
   if(pdf)return<PDFModal data={pdf} type="renewal" onClose={()=>setPdf(null)} settings={settings}
-    onSave={(doc: any)=>{onSave({id:uid(),type:rtype,optLabel:opt.l,mo:opt.mo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,signed:false,paid:false,doc});}}/>;
+    onSave={(doc: any)=>{onSave({id:uid(),optLabel:termParts||"Custom",mo:maxMo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,signed:false,paid:false,doc});}}/>;
+
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:C.bg,width:"100%",maxWidth:460,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.15)",maxHeight:"90vh",overflowY:"auto"}}>
+      <div style={{background:C.bg,width:"100%",maxWidth:480,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.15)",maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
           <h3 style={{fontFamily:SERIF,fontSize:16,fontWeight:"normal",margin:0}}>Add Renewal</h3>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button>
         </div>
-        <p style={{fontSize:11,color:C.muted,margin:"0 0 12px",lineHeight:1.6}}>Project: <strong style={{color:C.black}}>{p.name}</strong><br/>Original total: <strong style={{color:C.black}}>{fmt(base)}</strong></p>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px",lineHeight:1.6}}>Project: <strong style={{color:C.black}}>{p.name}</strong><br/>Original total: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(origTotal)}</strong></p>
 
-        <Lbl>License Type</Lbl>
-        <div style={{display:"flex",gap:6,marginBottom:9}}>
-          <Pill on={rtype==="usage"} onClick={()=>{setRtype("usage");setOi(2);}}>Usage Rights</Pill>
-          <Pill on={rtype==="excl"} onClick={()=>{setRtype("excl");setOi(0);}}>Exclusivity</Pill>
+        {/* ── Content scope ── */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>01 — Which Content</p>
+          <div style={{display:"flex",gap:4,marginBottom:8}}>
+            <Pill on={rBase==="total"} onClick={()=>setRBase("total")}>Whole quote ({fmt(origTotal)})</Pill>
+            <Pill on={rBase==="selected"} onClick={()=>setRBase("selected")}>Selected items</Pill>
+          </div>
+          {rBase==="selected"&&<div style={{padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}>
+            {origLines.map((l: any,i: number)=>{
+              const on=rSel.includes(l.name);
+              return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
+                <input type="checkbox" checked={on} onChange={()=>setRSel(p=>on?p.filter(x=>x!==l.name):[...p,l.name])} style={{accentColor:C.black}}/>
+                <span>{l.name}</span><span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
+              </label>;
+            })}
+            {rSel.length>0&&<p style={{fontSize:9.5,color:C.muted,margin:"6px 0 0"}}>Selected base: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(base$)}</strong></p>}
+          </div>}
         </div>
-        <Lbl>Scope & Duration</Lbl>
-        <S value={oi} onChange={(e: any)=>setOi(parseInt(e.target.value))} s={{marginBottom:9}}>{RENEWAL_OPTS[rtype].map((o: any,i: number)=><option key={i} value={i}>{o.l}</option>)}</S>
+
+        {/* ── Usage rights ── */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>02 — Usage Rights</p>
+          <S value={uIdx} onChange={(e: any)=>setUIdx(parseInt(e.target.value))}>
+            {card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
+          </S>
+          {uOpt&&!uOpt.sentinel&&<p style={{fontSize:10,color:C.muted,margin:"5px 0 0"}}>Fee contribution: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(uAmt)}</strong></p>}
+        </div>
+
+        {/* ── Exclusivity ── */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>03 — Exclusivity</p>
+          <S value={eIdx} onChange={(e: any)=>setEIdx(parseInt(e.target.value))}>
+            {card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{!e.sentinel&&e.pct>0?` (+${e.pct}%)`:""}</option>)}
+          </S>
+          {eOpt&&!eOpt.sentinel&&<p style={{fontSize:10,color:C.muted,margin:"5px 0 0"}}>Fee contribution: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(eAmt)}</strong></p>}
+        </div>
+
+        {/* ── Dates + fee ── */}
         <Lbl>Start Date</Lbl>
         <I type="date" value={startD} onChange={(e: any)=>setStartD(e.target.value)} s={{marginBottom:4}}/>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 10px"}}>End date: <strong style={{color:C.black}}>{fmtD(endD)}</strong></p>
-        <Lbl>License Fee</Lbl>
+        {endD&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 10px"}}>End date: <strong style={{color:C.black}}>{fmtD(endD)}</strong></p>}
+        <Lbl>Custom Fee Override <span style={{fontWeight:"normal",color:C.light}}>(leave blank to use calculated)</span></Lbl>
         <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:3}}>
-          <I type="number" placeholder={`Suggested: € ${suggested}`} value={custFee} onChange={(e: any)=>setCustFee(e.target.value)}/>
+          <I type="number" placeholder={suggestedFee>0?`Suggested: € ${suggestedFee}`:"Enter fee"} value={custFee} onChange={(e: any)=>setCustFee(e.target.value)}/>
           {custFee!==""&&<B v="sec" s={{fontSize:8}} onClick={()=>setCustFee("")}>Reset</B>}
         </div>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px"}}>{opt.pct>0?`Suggested: ${opt.pct}% of original total`:"Set your fee freely"}</p>
 
-        <Lbl>Add-ons <span style={{fontWeight:"normal",color:C.light,textTransform:"none",letterSpacing:0}}>(optional)</span></Lbl>
-        {RENEWAL_ADDONS.map(a=>{
-          const sel=addons.find(x=>x.id===a.id);
-          return(
-            <div key={a.id} style={{marginBottom:6}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <input type="checkbox" checked={!!sel} onChange={()=>toggleAddon(a.id)} style={{accentColor:C.black,flexShrink:0}}/>
-                <span style={{fontSize:10.5,color:C.black}}>{a.n}</span>
-                <span style={{fontSize:9.5,color:C.muted,flex:1}}>{a.note}</span>
-                <span style={{fontSize:9.5,color:C.muted,flexShrink:0}}>{a.p?`€ ${a.p}`:a.pct?`+${a.pct}%`:""}</span>
-              </div>
-              {sel&&(a.p==null)&&<I type="number" placeholder={a.pct?`Suggested: € ${Math.round(licenseFee*a.pct/100)}`:"Amount"} value={sel.amt} onChange={(e: any)=>setAddonAmt(a.id,e.target.value)} s={{marginTop:4,fontSize:10}}/>}
-            </div>
-          );
-        })}
-
-        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,margin:"14px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Total</span>
+        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,margin:"12px 0",display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Renewal Total</span>
           <span style={{fontFamily:SERIF,fontSize:18}}>{fmt(fee)}</span>
         </div>
+
         <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}>
           <B v="sec" onClick={onClose}>Cancel</B>
-          <B onClick={()=>setPdf(buildDoc())}>Preview & Save</B>
+          <B s={{opacity:canPreview?1:0.4}} onClick={()=>{if(!canPreview)return;setPdf(buildDoc());}}>Preview & Save</B>
         </div>
       </div>
     </div>
@@ -1947,7 +2011,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           ?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}
           :undefined}/>;
   if(amendT)return<AmendModal p={amendT.p} onSave={(a: any)=>saveAmend(amendT.cid,amendT.pid,a)} onClose={()=>setAmendT(null)} settings={settings} rc={rc}/>;
-  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} settings={settings}/>;
+  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} settings={settings} rc={rc}/>;
 
   if(cl&&isMobile){
     const f=fin(cl);
