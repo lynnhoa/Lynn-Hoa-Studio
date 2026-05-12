@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { C, SERIF, SANS, fmt, fmtD, dLeft, today, addM, uid } from "./constants";
+import { C, SERIF, SANS, fmt, fmtD, dLeft, today, addM } from "./constants";
 import { UBadge, scol } from "./atoms";
 import { PDFModal } from "./PDFEngine";
 
@@ -303,7 +303,7 @@ export function Dashboard({clients,goTo,isMobile,settings}: any) {
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 9px",paddingBottom:5,borderBottom:`1px solid ${C.rule}`}}>License Watch</p>
       <div style={{marginBottom:18}}>
         <Card label="Expiring Licenses" count={expiring.length>0?expiring.length:allLicenses.length}
-          warm={expiring.length>0} urgent={expiring.filter((r: any)=>dLeft(r.end)!==null&&dLeft(r.end)!<=14).length>0}
+          warm={expiring.length>0} urgent={expiring.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<=14;}).length>0}
           drillKey="licenses"
           sub={expiring.length>0?`${expiring.length} expiring within 30 days`:`${allLicenses.length} active license${allLicenses.length!==1?"s":""}`}
           items={expiring.slice(0,3).map((r: any)=>({cName:r.cName,name:r.prName,amount:null}))}/>

@@ -68,7 +68,7 @@ export function ItemPool({pool,setPool}: {pool: any[], setPool: (fn: any)=>void}
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:8,marginBottom:8}}>
                   <div><Lbl>Name</Lbl><I value={draft.n} onChange={(e: any)=>setDraft((p: any)=>({...p,n:e.target.value}))}/></div>
                   <div><Lbl>Note</Lbl><I value={draft.note||""} onChange={(e: any)=>setDraft((p: any)=>({...p,note:e.target.value}))}/></div>
-                  <div><Lbl>Price (€)</Lbl><I type="number" value={(draft.p??"")} onChange={(e: any)=>setDraft((p: any)=>({...p,p:e.target.value====""?null:parseFloat(e.target.value)||0}))}/></div>
+                  <div><Lbl>Price (€)</Lbl><I type="number" value={draft.p!==null&&draft.p!==undefined?String(draft.p):""} onChange={(e: any)=>setDraft((p: any)=>({...p,p:e.target.value====""?null:parseFloat(e.target.value)||0}))}/></div>
                 </div>
                 <div style={{display:"flex",gap:6}}>
                   <B onClick={saveEdit} s={{fontSize:8}}>Save</B>

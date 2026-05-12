@@ -108,7 +108,7 @@ export function ChangePassword({settings,setSettings}: any) {
       </div>
       <div style={{maxWidth:380}}>
         <Lbl>Current Password</Lbl><I type="password" value={curPw} onChange={(e: any)=>setCurPw(e.target.value)} placeholder="Current password" s={{marginBottom:9}}/>
-        <Lbl>New Password</Lbl><I type="number" value={newPw} onChange={(e: any)=>setNewPw(e.target.value)} placeholder="Min. 6 characters" s={{marginBottom:9}}/>
+        <Lbl>New Password</Lbl><I type="password" value={newPw} onChange={(e: any)=>setNewPw(e.target.value)} placeholder="Min. 6 characters" s={{marginBottom:9}}/>
         <Lbl>Confirm New Password</Lbl><I type="password" value={confPw} onChange={(e: any)=>setConfPw(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&changePass()} placeholder="Repeat" s={{marginBottom:12}}/>
         <B v="sec" onClick={changePass}>Change Password</B>
         {pwMsg&&<p style={{fontSize:10.5,color:pwMsg.ok?C.green:C.red,margin:"10px 0 0"}}>{pwMsg.text}</p>}

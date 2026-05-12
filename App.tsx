@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { C, SANS, SERIF, SETTINGS_DEFAULT, PASS, uid, isSingle } from "./constants";
+import { C, SANS, SERIF, SETTINGS_DEFAULT, PASS, uid } from "./constants";
 import { POOL_DEFAULT } from "./pool";
 import { RC0, initClients } from "./rateCards";
 import { AppLogo, Auth } from "./atoms";
@@ -93,7 +93,6 @@ function AppInner({initialClients,initialRc,initialSettings,initialPool}: any) {
   const handleGoToCalc=(clientName: string)=>{setPrefill({brand:clientName,contact:""});setNav(2);};
   const handleRevise=(pr: any,_cl: any)=>{
     const q=pr.qd;
-    const prefillLines=(q?.lines||[]).map((ln: any)=>({id:uid(),name:ln.name||"",note:ln.note||"",qty:ln.qty||1,up:ln.up||0,amt:ln.amt||0}));
     setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isRev:true,revN:(q?.rev||0)+1,ctab:q?.ctab||"influencer",origLines:q?.lines||[]});
     setNav(2);
   };
@@ -185,9 +184,15 @@ export default function App() {
     const hasClients=Array.isArray(data.clients)&&data.clients.length>0;
     const hasRc=data.rc&&Object.keys(data.rc).length>0;
     const hasPool=Array.isArray(data.pool)&&data.pool.length>0;
+    // Only seed what's missing — never wipe existing client/rc data
     if(!hasClients||!hasRc||!hasPool){
       seeded.current=true;
-      saveData.mutate({data:{clients:initClients,rc:RC0,settings:SETTINGS_DEFAULT,pool:POOL_DEFAULT}});
+      saveData.mutate({data:{
+        clients:hasClients?data.clients:initClients,
+        rc:hasRc?data.rc:RC0,
+        settings:data.settings||SETTINGS_DEFAULT,
+        pool:hasPool?data.pool:POOL_DEFAULT,
+      }});
     }
   },[data]);
 

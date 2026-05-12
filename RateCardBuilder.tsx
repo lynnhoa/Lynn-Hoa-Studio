@@ -258,7 +258,7 @@ function RateCardEditor({catKey,card,setRc,pool,settings}: any) {
                 ?<div style={{flex:1,display:"flex",gap:6,alignItems:"center"}}>
                    <I value={it.n} onChange={(e: any)=>upI(si,it.id,"n",e.target.value)} s={{flex:1}}/>
                    <I value={it.note||""} onChange={(e: any)=>upI(si,it.id,"note",e.target.value)} s={{flex:1}}/>
-                   <I type="number" value={(it.p??"")} onChange={(e: any)=>upI(si,it.id,"p",e.target.value)} s={{width:60}}/>
+                   <I type="number" value={it.p!==null&&it.p!==undefined?String(it.p):""} onChange={(e: any)=>upI(si,it.id,"p",e.target.value)} s={{width:60}}/>
                    {it.m!==undefined&&<I value={it.m||""} onChange={(e: any)=>upI(si,it.id,"m",e.target.value)} s={{width:52}}/>}
                    <button onClick={()=>remI(si,it.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:13}}>✕</button>
                  </div>
