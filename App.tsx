@@ -725,6 +725,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
         {isMobile&&<button onClick={()=>setShowEdit(e=>!e)} style={{padding:"5px 12px",background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase",color:C.black,marginRight:4}}>{showEdit?"View PDF":"Edit"}</button>}
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
         <button onClick={()=>{
+          if(isNew){setConfirmClose(true);return;}
           if(savedClean){onClose();return;}
           const isDirty=JSON.stringify(staged)!==JSON.stringify(data);
           isDirty?setConfirmClose(true):onClose();
@@ -732,8 +733,8 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
       </div>
       {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
         <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
-          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save before closing?</p>
-          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
+          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>{isNew?"Save this document?":"Save before closing?"}</p>
+          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>{isNew?"It will be added to the client's project.":"Changes will be lost if you don't save."}</p>
           <div style={{display:"flex",gap:8,justifyContent:"center"}}>
             <B onClick={()=>{handleSave();setConfirmClose(false);onClose();}}>Yes, save</B>
             <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
