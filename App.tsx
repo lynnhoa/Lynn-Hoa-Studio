@@ -2393,7 +2393,9 @@ const initClients=[
 ];
 
 function AppInner({initialClients,initialRc,initialSettings}: {initialClients: any[], initialRc: any, initialSettings: any}) {
-  const [authed,setAuthed]=useState(false);
+  const [authed,setAuthed]=useState(()=>sessionStorage.getItem("lh_authed")==="1");
+  const doAuth=(r: string)=>{sessionStorage.setItem("lh_authed","1");setRole(r);setAuthed(true);};
+  const doLogout=()=>{sessionStorage.removeItem("lh_authed");setAuthed(false);setNav(0);setMenuOpen(false);};
   const [role,setRole]=useState<"manager"|"creator">("manager");
   const [nav,setNav]=useState(0);
   const [prefill,setPrefill]=useState<any>(null);
@@ -2421,8 +2423,8 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     return()=>{if(timerRef.current)clearTimeout(timerRef.current);};
   },[rc,clients,settings]);
 
-  if(!authed)return<Auth onAuth={(r)=>{setRole(r);setAuthed(true);}} currentPass={settings.password||PASS}/>;
-  if(role==="creator")return<CreatorPage settings={settings} logout={()=>{setAuthed(false);setNav(0);}}/>;
+  if(!authed)return<Auth onAuth={(r)=>doAuth(r)} currentPass={settings.password||PASS}/>;
+  if(role==="creator")return<CreatorPage settings={settings} logout={()=>{doLogout();}}/>;
 
   const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string,isAmend?: boolean,amendN?: number,origLines?: any[])=>{
     const ex=clients.find((c: any)=>c.name.toLowerCase()===brand.toLowerCase());
@@ -2472,7 +2474,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     setNav(2);
   };
 
-  const logout=()=>{setAuthed(false);setNav(0);setMenuOpen(false);};
+  const logout=()=>doLogout();
   const NAV=["Dashboard","Clients","Calculator","Rate Card"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
   return(
@@ -2480,7 +2482,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       <div style={{borderBottom:`1px solid ${C.rule}`,position:"sticky",top:0,background:C.bg,zIndex:100}}>
         {appMobile?(
           <>
-            <div style={{textAlign:"center",padding:"10px 20px 7px"}}>
+            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={()=>setNav(0)}>
               <AppLogo/>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
@@ -2521,7 +2523,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                 <button onClick={logout} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
               </div>}
             </div>
-            <div style={{textAlign:"center"}}><AppLogo size="web"/></div>
+            <div style={{textAlign:"center",cursor:"pointer"}} onClick={()=>setNav(0)}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
               {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
