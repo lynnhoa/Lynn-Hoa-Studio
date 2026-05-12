@@ -2386,7 +2386,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   };
 
   const logout=()=>{setAuthed(false);setNav(0);setMenuOpen(false);};
-  const NAV=["Dashboard","Clients","Calculator"];
+  const NAV=["Dashboard","Clients","Calculator","Rate Card"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
