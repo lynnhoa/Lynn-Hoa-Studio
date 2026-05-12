@@ -702,16 +702,16 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
         <button onClick={()=>onSave?setConfirmClose(true):onClose()} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
-      {confirmClose&&<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
+      {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
         <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
-          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save this quote?</p>
+          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save this {type==="revised"?"revised quote":type==="amendment"?"amendment":type==="renewal"?"renewal":type==="invoice"?"invoice":"quote"}?</p>
           <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
           <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-            <B onClick={()=>{onSave(preview);setConfirmClose(false);onClose();}}>Yes</B>
+            <B onClick={()=>{onSave(staged);setConfirmClose(false);onClose();}}>Yes</B>
             <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No</B>
           </div>
         </div>
-      </div>}
+      </div>,document.body)}
       <div style={{flex:1,display:"flex",overflow:"hidden",flexDirection:isMobile?"column":"row"}}>
         {(!isMobile||showEdit)&&<div style={{width:isMobile?"100%":panelW,flexShrink:0,display:"flex",flexDirection:"column",borderRight:isMobile?"none":`1px solid ${C.rule}`,borderBottom:isMobile?`1px solid ${C.rule}`:"none",maxHeight:isMobile?"50%":undefined}}>
           <div style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
