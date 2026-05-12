@@ -2200,7 +2200,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects"|"invoices">(null);
+  const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices">(null);
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   useEffect(()=>{setDrill(null);},[resetKey]);
   const [pFilter,setPFilter]=useState<string>("all");
@@ -2246,7 +2246,6 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
   const thisMonthPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===nowM);
   const thisMonthRev=thisMonthPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
-  const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
 
   const Card=({label,count,items,warm,sub,onClick}: any)=>(
     <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
@@ -2328,57 +2327,41 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
       </div>
     );
   }
-  if(drill==="year"){
+  if(drill==="revenue"){
     return(
       <div>
         <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue</h2>
         <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
+        {allYears.length===0&&<p style={{fontSize:11,color:C.muted}}>No paid projects yet.</p>}
         {allYears.map((y: number)=>{
           const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
           const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+          const yMonths=Array.from(new Set(yPaid.map((pr: any)=>monthOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
           return(
             <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yPaid.length?8:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yMonths.length?10:0}}>
                 <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
                 <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
               </div>
-              {yPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
-                </div>
-              ))}
-              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-  if(drill==="month"){
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
-        {[...monthsToShow].reverse().map((m: number)=>{
-          const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
-          const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-          return(
-            <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
-                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
-              </div>
-              {mPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
-                </div>
-              ))}
-              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
-              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
+              {yMonths.map((m: number)=>{
+                const mPaid=yPaid.filter((pr: any)=>monthOf(pr)===m);
+                const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+                return(
+                  <div key={m} style={{borderTop:`1px solid ${C.rule}`,paddingTop:7,marginTop:0,paddingBottom:7}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?5:0}}>
+                      <span style={{fontSize:10,color:C.muted,letterSpacing:"0.05em"}}>{MO[m]}</span>
+                      <span style={{fontSize:11,color:C.black}}>{fmt(mRev)}</span>
+                    </div>
+                    {mPaid.map((pr: any,i: number)=>(
+                      <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"2px 0 2px 10px"}}>
+                        <span style={{fontSize:10,color:C.light}}>{pr.cName} · {pr.name}</span>
+                        <span style={{fontSize:10,color:C.muted}}>{fmt(pr.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -2434,12 +2417,24 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
+        <div onClick={()=>setDrill("revenue")} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:"pointer"}}>
+          <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Revenue</span>
+          <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+              <span style={{fontSize:10.5,color:C.muted}}>{MO[nowM]}</span>
+              <span style={{fontFamily:SERIF,fontSize:20,color:thisMonthRev>0?C.black:C.light}}>{fmt(thisMonthRev)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",borderTop:`1px solid ${C.rule}`,paddingTop:5}}>
+              <span style={{fontSize:10.5,color:C.muted}}>{nowY}</span>
+              <span style={{fontFamily:SERIF,fontSize:14,color:thisYearRev>0?C.black:C.light}}>{fmt(thisYearRev)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",borderTop:`1px solid ${C.rule}`,paddingTop:5}}>
+              <span style={{fontSize:10.5,color:C.light}}>All time</span>
+              <span style={{fontFamily:SERIF,fontSize:11,color:rev>0?C.muted:C.light}}>{fmt(rev)}</span>
+            </div>
+          </div>
+        </div>
         <Card label="Invoices" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`} onClick={()=>setDrill("invoices")}/>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
-        <Card label={`${MO[nowM]} Revenue`} count={fmt(thisMonthRev)} sub={`${thisMonthPaid.length} paid project${thisMonthPaid.length!==1?"s":""}`} onClick={()=>setDrill("month")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
