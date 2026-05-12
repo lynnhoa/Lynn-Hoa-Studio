@@ -1943,34 +1943,35 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile}: any) {
+function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
   const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects">(null);
+  const [pFilter,setPFilter]=useState<string>("all");
+  const [pSort,setPSort]=useState<string>("status");
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
 
-  // Active projects — everything in motion, not lead, not paid
   const STATUS_ORDER: Record<string,number>={production:0,contracted:1,invoiced:2,quoted:3,revised:4};
-  const NEXT_ACTION: Record<string,string>={
-    quoted:"Awaiting client feedback",
-    revised:"Awaiting client feedback",
-    contracted:"Awaiting signature",
-    production:"In production",
-    invoiced:"Awaiting payment",
-  };
-  const STATUS_COLOR: Record<string,string>={
-    quoted:C.amber,revised:C.amber,contracted:C.amber,production:C.black,invoiced:C.green
-  };
-  const activeProjects=all
-    .filter((pr: any)=>!pr.paid&&pr.status&&pr.status!=="lead"&&pr.status!=="paid")
-    .sort((a: any,b: any)=>(STATUS_ORDER[a.status]??9)-(STATUS_ORDER[b.status]??9));
+  const NEXT_ACTION: Record<string,string>={quoted:"Awaiting client feedback",revised:"Awaiting client feedback",contracted:"Awaiting signature",production:"In production",invoiced:"Awaiting payment"};
+  const STATUS_COLOR: Record<string,string>={quoted:C.amber,revised:C.amber,contracted:C.amber,production:C.black,invoiced:C.green};
+
+  const activeProjects=all.filter((pr: any)=>!pr.paid&&pr.status&&pr.status!=="lead"&&pr.status!=="paid");
+
+  const filteredProjects=(()=>{
+    let list=activeProjects;
+    if(pFilter!=="all")list=list.filter((pr: any)=>pr.status===pFilter);
+    if(pSort==="status")list=[...list].sort((a: any,b: any)=>(STATUS_ORDER[a.status]??9)-(STATUS_ORDER[b.status]??9));
+    else if(pSort==="amount_hi")list=[...list].sort((a: any,b: any)=>b.amount-a.amount);
+    else if(pSort==="amount_lo")list=[...list].sort((a: any,b: any)=>a.amount-b.amount);
+    else if(pSort==="delivery")list=[...list].sort((a: any,b: any)=>(a.deliveryDate||"9999").localeCompare(b.deliveryDate||"9999"));
+    return list;
+  })();
 
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
-  const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
     const ue=uEnd(pr);
@@ -1989,6 +1990,7 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const thisMonthRev=thisMonthPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
   const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
+
   const Card=({label,count,items,warm,sub,onClick}: any)=>(
     <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
@@ -2003,29 +2005,57 @@ function Dashboard({clients,goTo,isMobile}: any) {
 
   // ── Active Projects drill ──
   if(drill==="projects"){
+    const FILTERS=[["all","All"],["production","Production"],["contracted","Contracted"],["invoiced","Invoiced"],["quoted","Quoted"]];
+    const SORTS=[["status","By Stage"],["amount_hi","Amount ↓"],["amount_lo","Amount ↑"],["delivery","Delivery"]];
     return(
       <div>
         <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Active Projects</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{activeProjects.length} project{activeProjects.length!==1?"s":""} in progress</p>
-        {activeProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No active projects.</p>}
-        {activeProjects.map((pr: any,i: number)=>{
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+          <div>
+            <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 3px"}}>Active Projects</h2>
+            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{filteredProjects.length} of {activeProjects.length} project{activeProjects.length!==1?"s":""}</p>
+          </div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+              {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            </S>
+            <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+              {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            </S>
+          </div>
+        </div>
+
+        {filteredProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No projects match this filter.</p>}
+        {filteredProjects.map((pr: any,i: number)=>{
           const col=STATUS_COLOR[pr.status]||C.muted;
           const next=NEXT_ACTION[pr.status]||"";
+          const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
           return(
-            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:7}}>
+            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
+
+              {/* header row */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
                 <div style={{minWidth:0}}>
-                  <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{pr.cName}</p>
-                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p>
+                  <p style={{fontSize:12,color:C.muted,margin:"0 0 2px",letterSpacing:"0.04em"}}>{pr.cName}</p>
+                  <p style={{fontSize:15,color:C.black,margin:0,fontFamily:SERIF,fontWeight:"normal"}}>{pr.name}</p>
                 </div>
                 <span style={{fontFamily:SERIF,fontSize:15,flexShrink:0}}>{fmt(pr.amount)}</span>
               </div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-                <span style={{fontSize:9,letterSpacing:"0.08em",textTransform:"uppercase",color:col,border:`1px solid ${col}`,padding:"2px 7px",borderRadius:2,opacity:0.85}}>{pr.status}</span>
-                <span style={{fontSize:10,color:C.muted}}>{next}</span>
+
+              {/* meta row */}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
+                <span style={{fontSize:9,letterSpacing:"0.08em",textTransform:"uppercase",color:col,border:`1px solid ${col}`,padding:"2px 7px",borderRadius:2}}>{pr.status}</span>
                 {pr.deliveryDate&&<span style={{fontSize:10,color:C.muted}}>Due {fmtD(pr.deliveryDate)}</span>}
+                {(pr.amendments||[]).length>0&&<span style={{fontSize:10,color:unsignedAmends>0?C.amber:C.muted}}>{pr.amendments.length} amend{unsignedAmends>0?` · ${unsignedAmends} unsigned`:""}</span>}
+                {(pr.renewals||[]).length>0&&<span style={{fontSize:10,color:C.green}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
               </div>
+
+              {/* next action */}
+              <div style={{paddingTop:7,borderTop:`1px solid ${C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:10,color:C.muted}}>Next: <strong style={{color:C.black}}>{next}</strong></span>
+                <span style={{fontSize:9,color:C.light,letterSpacing:"0.06em"}}>→ Open in Clients</span>
+              </div>
+
             </div>
           );
         })}
@@ -2494,7 +2524,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
