@@ -104,15 +104,15 @@ const RC0: Record<string, any> = {
     ],
     fine:"All collaborations paid. 1 revision included per deliverable. Product provided by brand, not part of fee. Travel expenses billed separately if applicable.",
     usage:[
-      {l:"None — not clarified",pct:0,mo:0},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
       {l:"Organic — 3 months (included)",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+30%)",pct:30,mo:1},
       {l:"Paid ads — 3 months (+60%)",pct:60,mo:3},
       {l:"Paid ads — 6 months (+100%)",pct:100,mo:6},
       {l:"Paid ads — 12 months (+150%)",pct:150,mo:12}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+30%)",pct:30,mo:1},
       {l:"Category — 3 months (+60%)",pct:60,mo:3},
       {l:"Full — 1 month (+75%)",pct:75,mo:1},
@@ -162,14 +162,15 @@ const RC0: Record<string, any> = {
     ],
     fine:"Organic usage included for 3 months. Usage rights always time-limited. 1 revision included per deliverable. Product provided by brand, not part of fee. Music license fee not included.",
     usage:[
-      {l:"Organic social — 3 months",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
+      {l:"Organic — 3 months (included)",pct:0,mo:3},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+20%)",pct:20,mo:1},
       {l:"Paid ads — 3 months (+50%)",pct:50,mo:3},
       {l:"Paid ads — 6 months (+80%)",pct:80,mo:6},
       {l:"Paid ads — 12 months (+120%)",pct:120,mo:12}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+25%)",pct:25,mo:1},
       {l:"Category — 3 months (+50%)",pct:50,mo:3},
       {l:"Full — 1 month (+50%)",pct:50,mo:1},
@@ -214,15 +215,15 @@ const RC0: Record<string, any> = {
     ],
     fine:"Product provided by brand, not part of fee. Usage rights always time-limited. 1 revision included per deliverable. Concept approved before production. Min. 2 weeks from brief to delivery.",
     usage:[
-      {l:"None — not clarified",pct:0,mo:0},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
       {l:"Organic — 3 months (included)",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+30%)",pct:30,mo:1},
       {l:"Paid ads — 3 months (+60%)",pct:60,mo:3},
       {l:"Paid ads — 6 months (+100%)",pct:100,mo:6},
       {l:"Paid ads — 12 months (+150%)",pct:150,mo:12}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+30%)",pct:30,mo:1},
       {l:"Category — 3 months (+60%)",pct:60,mo:3},
       {l:"Full — 1 month (+75%)",pct:75,mo:1},
@@ -267,13 +268,14 @@ const RC0: Record<string, any> = {
     ],
     fine:"Scope of hosted collaboration to be agreed per project. All content production invoiced separately. Organic usage included for 3 months. Usage rights always time-limited.",
     usage:[
-      {l:"Organic social — 3 months",pct:0,mo:3},
-      {l:"Organic — 12 months",pct:0,mo:12},
+      {l:"— Select usage rights —",pct:0,mo:0,sentinel:true},
+      {l:"Organic — 3 months (included)",pct:0,mo:3},
+      {l:"Organic — 12 months (included)",pct:0,mo:12},
       {l:"Paid ads — 1 month (+20%)",pct:20,mo:1},
       {l:"Paid ads — 3 months (+50%)",pct:50,mo:3},
       {l:"Paid ads — 6 months (+80%)",pct:80,mo:6}],
     excl:[
-      {l:"None",pct:0,mo:0},
+      {l:"— Select exclusivity —",pct:0,mo:0,sentinel:true},
       {l:"Category — 1 month (+25%)",pct:25,mo:1},
       {l:"Category — 3 months (+50%)",pct:50,mo:3},
       {l:"Full — 1 month (+50%)",pct:50,mo:1},
@@ -333,47 +335,6 @@ const RENEWAL_OPTS: Record<string, any[]> = {
 
 const isSingle = (t: string) => !["package","usage","excl","add","volume","brand ambass","retainer","hosted"].some(k=>t.toLowerCase().includes(k));
 
-// ─── CATEGORY TAGS ───────────────────────────────────────
-const CATEGORY_TAGS = [
-  "Fashion","Jewelry","Bags","Beauty","Skincare","Haircare",
-  "Lifestyle","Soft Luxe","Hotels","Travel","Restaurants","Fine Dining",
-  "Interior","Home Decor","Soft Tech","Apps","Productivity"
-];
-
-function TagInput({tags,onAdd,onRemove}: {tags:string[],onAdd:(t:string)=>void,onRemove:(t:string)=>void}) {
-  const [val,setVal]=useState("");
-  const suggestions=val.trim().length>0
-    ?CATEGORY_TAGS.filter(t=>t.toLowerCase().startsWith(val.toLowerCase())&&!tags.includes(t))
-    :CATEGORY_TAGS.filter(t=>!tags.includes(t));
-  const add=(t: string)=>{if(t.trim()&&!tags.includes(t.trim())){onAdd(t.trim());}setVal("");};
-  return(
-    <div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>
-        {tags.map((t: string)=><Tag key={t} onRemove={()=>onRemove(t)}>{t}</Tag>)}
-      </div>
-      <div style={{display:"flex",gap:5}}>
-        <input
-          value={val}
-          onChange={(e: any)=>setVal(e.target.value)}
-          onKeyDown={(e: any)=>{if(e.key==="Enter"&&val.trim()){e.preventDefault();add(val);}if(e.key==="Escape")setVal("");}}
-          placeholder="Type to filter or add…"
-          style={{flex:1,padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}
-        />
-        {val.trim()&&<button type="button" onClick={()=>add(val)} style={{padding:"7px 14px",border:"none",background:C.black,color:C.white,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:10.5,letterSpacing:"0.08em",textTransform:"uppercase" as const,whiteSpace:"nowrap" as const}}>Add</button>}
-      </div>
-      {suggestions.length>0&&(
-        <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:4}}>
-          {suggestions.map((t: string)=>(
-            <button key={t} type="button" onClick={()=>add(t)} style={{padding:"4px 11px",border:`1px solid ${C.rule}`,background:"transparent",color:C.muted,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.02em"}}>
-              + {t}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── ATOMS ────────────────────────────────────────────────
 const I = ({s,...p}: any) => <input style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box",...s}} {...p}/>;
 const S = ({s,...p}: any) => <select style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box",...s}} {...p}/>;
@@ -387,10 +348,12 @@ const scol = (s: string) => ({invoiced:C.amber,contracted:C.muted,quoted:C.light
 function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}) {
   if(!end) return null;
   const d=dLeft(end);
-  const exp=d!==null&&d<0, soon=d!==null&&d>=0&&d<=30;
-  const col=exp?C.red:soon?C.amber:C.muted;
-  const bg=exp?C.redBg:soon?C.amberBg:"transparent";
-  const bd=exp?C.redBorder:soon?C.amberBorder:C.rule;
+  const exp=d!==null&&d<0;
+  const urgent=d!==null&&d>=0&&d<=14;
+  const soon=d!==null&&d>14&&d<=30;
+  const col=exp||urgent?C.red:soon?C.amber:C.green;
+  const bg=exp||urgent?C.redBg:soon?C.amberBg:C.greenBg;
+  const bd=exp||urgent?C.redBorder:soon?C.amberBorder:C.greenBorder;
   return <span style={{fontSize:9.5,color:col,border:`1px solid ${bd}`,background:bg,padding:"2px 8px",borderRadius:2}}>
     {exp?`${label} expired`:`${label} ends ${fmtD(end)} · ${d}d left`}
   </span>;
@@ -426,11 +389,21 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
   const TRow=({ln,prevLn,idx}: any)=>{
     const showCat=!!(ln.cat&&catBadgeLabel[ln.cat]&&ln.cat!==(prevLn?.cat));
+    const subDetails=[
+      ln.usageLabel,
+      ln.exclLabel,
+      ...(ln.addons||[]),
+      ...(ln.platforms||[])
+    ].filter(Boolean);
     return(
       <div data-trow={idx} style={{paddingTop:tRowGuards?.[idx]||0,borderBottom:`1px solid ${C.rule}`}}>
         {showCat&&<div style={{paddingTop:10,paddingBottom:1}}><span style={{fontSize:5.5,letterSpacing:"0.14em",textTransform:"uppercase",color:C.light}}>{catBadgeLabel[ln.cat]}</span></div>}
         <div style={{padding:"4px 0",display:"grid",gridTemplateColumns:"1fr 28px 52px 46px",alignItems:"baseline"}}>
-          <div><span style={{fontSize:8.5}}>{ln.name}</span>{ln.note&&<span style={{fontSize:7,color:C.light,display:"block"}}>{ln.note}</span>}</div>
+          <div>
+            <span style={{fontSize:8.5}}>{ln.name}</span>
+            {ln.note&&<span style={{fontSize:7,color:C.light,display:"block"}}>{ln.note}</span>}
+            {subDetails.length>0&&<span style={{fontSize:7,color:C.muted,display:"block"}}>{subDetails.join(" · ")}</span>}
+          </div>
           <span style={{fontSize:8,textAlign:"right",color:C.muted}}>{ln.qty||""}</span>
           <span style={{fontSize:8,textAlign:"right",color:C.muted}}>{ln.up?`€ ${Number(ln.up).toLocaleString("de-DE")}`:""}</span>
           <span style={{fontSize:8,textAlign:"right"}}>€ {Number(ln.amt||0).toLocaleString("de-DE")}</span>
@@ -511,17 +484,17 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
         <p style={{fontSize:8.5,color:C.muted,margin:0,fontStyle:"italic"}}>{l?`Bezugnehmend auf Angebot ${d.qNo||""}${d.date?` vom ${fmtD(d.date,l)}`:""}.`:`As per the agreed quote ${d.qNo||""}${d.date?` dated ${fmtD(d.date,l)}`:""}.`}</p>
       </div>}
       {type==="contract"&&<div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
-        {[
-          [l?"§ 1 — Vertragsgegenstand":"§ 1 — Subject Matter",l?`${s.company||s.name||"Der/Die Auftragnehmer/in"} verpflichtet sich, folgende Leistungen gegen ein vereinbartes Honorar von ${fmt(total)} zu erbringen: ${deliverablesList||"den vereinbarten Content gemäß obiger Übersicht"}. Umfang, Format und Zeitplan werden vor Produktionsbeginn schriftlich von beiden Parteien bestätigt. Das kreative Konzept bedarf der schriftlichen Freigabe beider Parteien vor Beginn der Produktion.`:`${s.company||s.name||"The creator"} agrees to produce and deliver the following for a total agreed fee of ${fmt(total)}: ${deliverablesList||"the content specified above"}. The deliverable scope, format, and timeline shall be confirmed in writing by both parties prior to production. The creative concept is subject to mutual written approval before work begins.`],
-          [l?"§ 2 — Lieferung":"§ 2 — Delivery",l?"Die Lieferung erfolgt innerhalb des schriftlich vereinbarten Zeitrahmens. Stellt der Auftraggeber erforderliche Materialien, Freigaben, Produkte oder Zugänge nicht innerhalb von 5 Werktagen nach vereinbartem Termin zur Verfügung, verlängert sich die Lieferfrist entsprechend. Auftraggeber-seitige Verzögerungen berechtigen nicht zur Minderung des Honorars.":"Delivery follows the project timeline confirmed at commencement. If the client delays providing required materials, approvals, products, or access by more than 5 business days beyond any agreed handover date, the delivery deadline extends by the same period. Client-caused delays do not reduce the agreed fee."],
-          [l?"§ 3 — Korrekturen":"§ 3 — Revisions",l?"Eine (1) Korrektur je Leistung ist im Honorar enthalten. Korrekturwünsche sind innerhalb von 5 Werktagen nach Ablieferung schriftlich einzureichen; später eingereichte Anfragen können als neue Aufträge gewertet werden. Weitere Korrekturen werden nach dem jeweils gültigen Tagessatz berechnet. Kreativstil und redaktionelle Linie bleiben stets beim Auftragnehmer.":"One revision per deliverable is included in the agreed fee. Revision requests must be submitted in writing within 5 business days of each delivery; requests received after this period may be treated as new work. Additional revisions are charged at the creator's current rate. The creator's editorial voice and creative direction remain at the creator's sole discretion throughout."],
-          [l?"§ 4 — Nutzungsrechte":"§ 4 — Usage Rights",l?`${s.company||s.name||"Der/Die Auftragnehmer/in"} räumt dem Auftraggeber ein zeitlich begrenztes, nicht-exklusives, nicht übertragbares Nutzungsrecht an den vereinbarten Inhalten für ${platformsList||"die vereinbarten Plattformen"}, den vereinbarten Zweck, Zeitraum und Geltungsbereich ein. Urheberrecht und Persönlichkeitsrechte verbleiben ausschließlich bei ${s.company||s.name||"dem/der Auftragnehmer/in"}. Es werden weder dauerhafte noch exklusive Rechte gewährt; Unterlizenzierung ist ohne schriftliche Zustimmung unzulässig. Der Auftragnehmer behält das Recht zur Verwendung der Inhalte im eigenen Portfolio. Mit Ablauf des Nutzungszeitraums fallen alle eingeräumten Rechte vollständig zurück.`:`${s.company||s.name||"The creator"} grants the client a time-limited, non-exclusive, non-transferable licence to use the delivered content for ${platformsList||"the agreed platforms"}, purpose, duration, and territory only. All copyright, moral rights, and ownership vest exclusively in ${s.company||s.name||"the creator"}. No perpetual, exclusive, or sub-licensable rights are granted; sub-licensing requires prior written consent. The creator retains the right to display the content in their portfolio and press materials. Upon expiry of the licence period, all granted rights revert in full to the creator.`],
-          [l?"§ 5 — Zahlung":"§ 5 — Payment",l?`Das Honorar in Höhe von ${fmt(total)} ist innerhalb von 14 Tagen nach Rechnungsdatum fällig. Bei Zahlungsverzug ist ${s.company||s.name||"der/die Auftragnehmer/in"} berechtigt, Verzugszinsen gemäß § 288 BGB ab dem ersten Verzugstag geltend zu machen. ${s.taxNote||"Gemäß § 19 UStG wird keine Umsatzsteuer erhoben."}`:`The total fee of ${fmt(total)} is due within 14 days of the invoice date. In the event of late payment, statutory default interest pursuant to § 288 BGB is charged from the first day of delay. ${s.taxNote||"No VAT is charged pursuant to § 19 UStG."}`],
-          [l?"§ 6 — Stornierung":"§ 6 — Cancellation",l?`Stornierungen bedürfen der Schriftform. Bei Stornierung vor Produktionsbeginn sind 25 % des vereinbarten Honorars fällig. Bei Stornierung nach Produktionsbeginn sind 50 % fällig. Ist die Leistung im Wesentlichen erbracht, ist das vollständige Honorar zu entrichten. Als Produktionsbeginn gilt jede Vorarbeit, Recherche, Konzeptentwicklung, Anreise, Produktion oder Beauftragung Dritter durch ${s.company||s.name||"den/die Auftragnehmer/in"} im Zusammenhang mit diesem Vertrag.`:`Cancellation must be submitted in writing. If the client cancels before production begins, 25% of the agreed fee is due. If the client cancels after production has begun, 50% of the agreed fee is due. If the deliverable is substantially complete, the full fee is payable. Production is deemed to have commenced upon any preparatory work, research, concept development, travel, filming, or third-party commitments made by ${s.company||s.name||"the creator"} in connection with this contract.`]
-        ].map(([t,b],ci)=>(
-          <div data-clause={ci} key={t} style={{marginBottom:0,paddingTop:10+(clauseGuards?.[ci]||0),paddingBottom:11}}>
-            <p style={{fontFamily:SERIF,fontSize:7.5,fontWeight:"normal",color:"#5a5a5a",letterSpacing:"0.01em",margin:"0 0 5px"}}>{t}</p>
-            <p style={{fontSize:8.5,lineHeight:1.85,margin:0,color:"#404040"}}>{(d.clauses&&d.clauses[ci])||b}</p>
+        {(d.clauses&&d.clauses.length>0?d.clauses:[
+          {title:l?"§ 1 — Vertragsgegenstand":"§ 1 — Subject Matter",text:l?`${s.company||s.name||"Der/Die Auftragnehmer/in"} verpflichtet sich, folgende Leistungen gegen ein vereinbartes Honorar von ${fmt(total)} zu erbringen: ${deliverablesList||"den vereinbarten Content gemäß obiger Übersicht"}. Umfang, Format und Zeitplan werden vor Produktionsbeginn schriftlich von beiden Parteien bestätigt. Das kreative Konzept bedarf der schriftlichen Freigabe beider Parteien vor Beginn der Produktion.`:`${s.company||s.name||"The creator"} agrees to produce and deliver the following for a total agreed fee of ${fmt(total)}: ${deliverablesList||"the content specified above"}. The deliverable scope, format, and timeline shall be confirmed in writing by both parties prior to production. The creative concept is subject to mutual written approval before work begins.`},
+          {title:l?"§ 2 — Lieferung":"§ 2 — Delivery",text:l?"Die Lieferung erfolgt innerhalb des schriftlich vereinbarten Zeitrahmens. Stellt der Auftraggeber erforderliche Materialien, Freigaben, Produkte oder Zugänge nicht innerhalb von 5 Werktagen nach vereinbartem Termin zur Verfügung, verlängert sich die Lieferfrist entsprechend. Auftraggeber-seitige Verzögerungen berechtigen nicht zur Minderung des Honorars.":"Delivery follows the project timeline confirmed at commencement. If the client delays providing required materials, approvals, products, or access by more than 5 business days beyond any agreed handover date, the delivery deadline extends by the same period. Client-caused delays do not reduce the agreed fee."},
+          {title:l?"§ 3 — Korrekturen":"§ 3 — Revisions",text:l?"Eine (1) Korrektur je Leistung ist im Honorar enthalten. Korrekturwünsche sind innerhalb von 5 Werktagen nach Ablieferung schriftlich einzureichen; später eingereichte Anfragen können als neue Aufträge gewertet werden. Weitere Korrekturen werden nach dem jeweils gültigen Tagessatz berechnet. Kreativstil und redaktionelle Linie bleiben stets beim Auftragnehmer.":"One revision per deliverable is included in the agreed fee. Revision requests must be submitted in writing within 5 business days of each delivery; requests received after this period may be treated as new work. Additional revisions are charged at the creator's current rate. The creator's editorial voice and creative direction remain at the creator's sole discretion throughout."},
+          {title:l?"§ 4 — Nutzungsrechte":"§ 4 — Usage Rights",text:l?`${s.company||s.name||"Der/Die Auftragnehmer/in"} räumt dem Auftraggeber ein zeitlich begrenztes, nicht-exklusives, nicht übertragbares Nutzungsrecht an den vereinbarten Inhalten für ${platformsList||"die vereinbarten Plattformen"}, den vereinbarten Zweck, Zeitraum und Geltungsbereich ein. Urheberrecht und Persönlichkeitsrechte verbleiben ausschließlich bei ${s.company||s.name||"dem/der Auftragnehmer/in"}. Es werden weder dauerhafte noch exklusive Rechte gewährt; Unterlizenzierung ist ohne schriftliche Zustimmung unzulässig. Der Auftragnehmer behält das Recht zur Verwendung der Inhalte im eigenen Portfolio. Mit Ablauf des Nutzungszeitraums fallen alle eingeräumten Rechte vollständig zurück.`:`${s.company||s.name||"The creator"} grants the client a time-limited, non-exclusive, non-transferable licence to use the delivered content for ${platformsList||"the agreed platforms"}, purpose, duration, and territory only. All copyright, moral rights, and ownership vest exclusively in ${s.company||s.name||"the creator"}. No perpetual, exclusive, or sub-licensable rights are granted; sub-licensing requires prior written consent. The creator retains the right to display the content in their portfolio and press materials. Upon expiry of the licence period, all granted rights revert in full to the creator.`},
+          {title:l?"§ 5 — Zahlung":"§ 5 — Payment",text:l?`Das Honorar in Höhe von ${fmt(total)} ist innerhalb von 14 Tagen nach Rechnungsdatum fällig. Bei Zahlungsverzug ist ${s.company||s.name||"der/die Auftragnehmer/in"} berechtigt, Verzugszinsen gemäß § 288 BGB ab dem ersten Verzugstag geltend zu machen. ${s.taxNote||"Gemäß § 19 UStG wird keine Umsatzsteuer erhoben."}`:`The total fee of ${fmt(total)} is due within 14 days of the invoice date. In the event of late payment, statutory default interest pursuant to § 288 BGB is charged from the first day of delay. ${s.taxNote||"No VAT is charged pursuant to § 19 UStG."}`},
+          {title:l?"§ 6 — Stornierung":"§ 6 — Cancellation",text:l?`Stornierungen bedürfen der Schriftform. Bei Stornierung vor Produktionsbeginn sind 25 % des vereinbarten Honorars fällig. Bei Stornierung nach Produktionsbeginn sind 50 % fällig. Ist die Leistung im Wesentlichen erbracht, ist das vollständige Honorar zu entrichten. Als Produktionsbeginn gilt jede Vorarbeit, Recherche, Konzeptentwicklung, Anreise, Produktion oder Beauftragung Dritter durch ${s.company||s.name||"den/die Auftragnehmer/in"} im Zusammenhang mit diesem Vertrag.`:`Cancellation must be submitted in writing. If the client cancels before production begins, 25% of the agreed fee is due. If the client cancels after production has begun, 50% of the agreed fee is due. If the deliverable is substantially complete, the full fee is payable. Production is deemed to have commenced upon any preparatory work, research, concept development, travel, filming, or third-party commitments made by ${s.company||s.name||"the creator"} in connection with this contract.`}
+        ]).map((cl: any,ci: number)=>(
+          <div data-clause={ci} key={ci} style={{marginBottom:0,paddingTop:10+(clauseGuards?.[ci]||0),paddingBottom:11}}>
+            <p style={{fontFamily:SERIF,fontSize:7.5,fontWeight:"normal",color:"#5a5a5a",letterSpacing:"0.01em",margin:"0 0 5px"}}>{cl.title}</p>
+            <p style={{fontSize:8.5,lineHeight:1.85,margin:0,color:"#404040"}}>{cl.text}</p>
           </div>
         ))}
       </div>}
@@ -538,7 +511,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   );
 }
 
-function PDFModal({data,type,onClose,onSave,settings}: any) {
+function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
@@ -552,6 +525,7 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
   const [lang,setLang]=useState("en");
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
+  const [confirmClose,setConfirmClose]=useState(false);
   const [downloading,setDownloading]=useState(false);
   const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
   const docRef=useRef<HTMLDivElement>(null);
@@ -564,12 +538,12 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
   const _dd=(staged.lines||[]).length>0?(staged.lines||[]).map((ln: any)=>`${ln.qty?ln.qty+"× ":""}${ln.name}`).join(", "):null;
   const _total=fmt((staged.lines||[]).reduce((a:number,ln:any)=>a+(parseFloat(ln.amt)||0),0));
   const defClauses=type==="contract"?[
-    isDE?`${_dc} verpflichtet sich, folgende Leistungen gegen ein vereinbartes Honorar von ${_total} zu erbringen: ${_dd||"den vereinbarten Content gemäß Angebot"}. Umfang, Format und Zeitplan werden vor Produktionsbeginn schriftlich von beiden Parteien bestätigt. Das kreative Konzept bedarf der schriftlichen Freigabe beider Parteien vor Beginn der Produktion.`:`${_dc} agrees to produce and deliver the following for a total agreed fee of ${_total}: ${_dd||"the content as per the agreed quote"}. The deliverable scope, format, and timeline shall be confirmed in writing by both parties prior to production. The creative concept is subject to mutual written approval before work begins.`,
-    isDE?"Die Lieferung erfolgt innerhalb des schriftlich vereinbarten Zeitrahmens. Stellt der Auftraggeber erforderliche Materialien, Freigaben, Produkte oder Zugänge nicht innerhalb von 5 Werktagen nach vereinbartem Termin zur Verfügung, verlängert sich die Lieferfrist entsprechend. Auftraggeber-seitige Verzögerungen berechtigen nicht zur Minderung des Honorars.":"Delivery follows the project timeline confirmed at commencement. If the client delays providing required materials, approvals, products, or access by more than 5 business days beyond any agreed handover date, the delivery deadline extends by the same period. Client-caused delays do not reduce the agreed fee.",
-    isDE?"Eine (1) Korrektur je Leistung ist im Honorar enthalten. Korrekturwünsche sind innerhalb von 5 Werktagen nach Ablieferung schriftlich einzureichen; später eingereichte Anfragen können als neue Aufträge gewertet werden. Weitere Korrekturen werden nach dem jeweils gültigen Tagessatz berechnet. Kreativstil und redaktionelle Linie bleiben stets beim Auftragnehmer.":"One revision per deliverable is included in the agreed fee. Revision requests must be submitted in writing within 5 business days of each delivery; requests received after this period may be treated as new work. Additional revisions are charged at the creator's current rate. The creator's editorial voice and creative direction remain at the creator's sole discretion throughout.",
-    isDE?`${_dc} räumt dem Auftraggeber ein zeitlich begrenztes, nicht-exklusives, nicht übertragbares Nutzungsrecht an den vereinbarten Inhalten für die festgelegten Plattformen, den vereinbarten Zweck, Zeitraum und Geltungsbereich ein. Urheberrecht und Persönlichkeitsrechte verbleiben ausschließlich bei ${_dc}. Es werden weder dauerhafte noch exklusive Rechte gewährt; Unterlizenzierung ist ohne schriftliche Zustimmung unzulässig. ${_dc} behält das Recht zur Verwendung der Inhalte im eigenen Portfolio. Mit Ablauf des Nutzungszeitraums fallen alle eingeräumten Rechte vollständig zurück.`:`${_dc} grants the client a time-limited, non-exclusive, non-transferable licence to use the delivered content for the agreed platforms, purpose, duration, and territory only. All copyright, moral rights, and ownership vest exclusively in ${_dc}. No perpetual, exclusive, or sub-licensable rights are granted; sub-licensing requires prior written consent. ${_dc} retains the right to display the content in their portfolio and press materials. Upon expiry of the licence period, all granted rights revert in full to ${_dc}.`,
-    isDE?`Das Honorar in Höhe von ${_total} ist innerhalb von 14 Tagen nach Rechnungsdatum fällig. Bei Zahlungsverzug ist ${_dc} berechtigt, Verzugszinsen gemäß § 288 BGB ab dem ersten Verzugstag geltend zu machen. ${s.taxNote||"Gemäß § 19 UStG wird keine Umsatzsteuer erhoben."}`:`The total fee of ${_total} is due within 14 days of the invoice date. In the event of late payment, statutory default interest pursuant to § 288 BGB is charged from the first day of delay. ${s.taxNote||"No VAT is charged pursuant to § 19 UStG."}`,
-    isDE?`Stornierungen bedürfen der Schriftform. Bei Stornierung vor Produktionsbeginn sind 25 % des vereinbarten Honorars fällig. Bei Stornierung nach Produktionsbeginn sind 50 % fällig. Ist die Leistung im Wesentlichen erbracht, ist das vollständige Honorar zu entrichten. Als Produktionsbeginn gilt jede Vorarbeit, Recherche, Konzeptentwicklung, Anreise, Produktion oder Beauftragung Dritter durch ${_dc} im Zusammenhang mit diesem Vertrag.`:`Cancellation must be submitted in writing. If the client cancels before production begins, 25% of the agreed fee is due. If the client cancels after production has begun, 50% of the agreed fee is due. If the deliverable is substantially complete, the full fee is payable. Production is deemed to have commenced upon any preparatory work, research, concept development, travel, filming, or third-party commitments made by ${_dc} in connection with this contract.`
+    {title:isDE?"§ 1 — Vertragsgegenstand":"§ 1 — Subject Matter",text:isDE?`${_dc} verpflichtet sich, folgende Leistungen gegen ein vereinbartes Honorar von ${_total} zu erbringen: ${_dd||"den vereinbarten Content gemäß Angebot"}. Umfang, Format und Zeitplan werden vor Produktionsbeginn schriftlich von beiden Parteien bestätigt. Das kreative Konzept bedarf der schriftlichen Freigabe beider Parteien vor Beginn der Produktion.`:`${_dc} agrees to produce and deliver the following for a total agreed fee of ${_total}: ${_dd||"the content as per the agreed quote"}. The deliverable scope, format, and timeline shall be confirmed in writing by both parties prior to production. The creative concept is subject to mutual written approval before work begins.`},
+    {title:isDE?"§ 2 — Lieferung":"§ 2 — Delivery",text:isDE?"Die Lieferung erfolgt innerhalb des schriftlich vereinbarten Zeitrahmens. Stellt der Auftraggeber erforderliche Materialien, Freigaben, Produkte oder Zugänge nicht innerhalb von 5 Werktagen nach vereinbartem Termin zur Verfügung, verlängert sich die Lieferfrist entsprechend. Auftraggeber-seitige Verzögerungen berechtigen nicht zur Minderung des Honorars.":"Delivery follows the project timeline confirmed at commencement. If the client delays providing required materials, approvals, products, or access by more than 5 business days beyond any agreed handover date, the delivery deadline extends by the same period. Client-caused delays do not reduce the agreed fee."},
+    {title:isDE?"§ 3 — Korrekturen":"§ 3 — Revisions",text:isDE?"Eine (1) Korrektur je Leistung ist im Honorar enthalten. Korrekturwünsche sind innerhalb von 5 Werktagen nach Ablieferung schriftlich einzureichen; später eingereichte Anfragen können als neue Aufträge gewertet werden. Weitere Korrekturen werden nach dem jeweils gültigen Tagessatz berechnet. Kreativstil und redaktionelle Linie bleiben stets beim Auftragnehmer.":"One revision per deliverable is included in the agreed fee. Revision requests must be submitted in writing within 5 business days of each delivery; requests received after this period may be treated as new work. Additional revisions are charged at the creator's current rate. The creator's editorial voice and creative direction remain at the creator's sole discretion throughout."},
+    {title:isDE?"§ 4 — Nutzungsrechte":"§ 4 — Usage Rights",text:isDE?`${_dc} räumt dem Auftraggeber ein zeitlich begrenztes, nicht-exklusives, nicht übertragbares Nutzungsrecht an den vereinbarten Inhalten für die festgelegten Plattformen, den vereinbarten Zweck, Zeitraum und Geltungsbereich ein. Urheberrecht und Persönlichkeitsrechte verbleiben ausschließlich bei ${_dc}. Es werden weder dauerhafte noch exklusive Rechte gewährt; Unterlizenzierung ist ohne schriftliche Zustimmung unzulässig. ${_dc} behält das Recht zur Verwendung der Inhalte im eigenen Portfolio. Mit Ablauf des Nutzungszeitraums fallen alle eingeräumten Rechte vollständig zurück.`:`${_dc} grants the client a time-limited, non-exclusive, non-transferable licence to use the delivered content for the agreed platforms, purpose, duration, and territory only. All copyright, moral rights, and ownership vest exclusively in ${_dc}. No perpetual, exclusive, or sub-licensable rights are granted; sub-licensing requires prior written consent. ${_dc} retains the right to display the content in their portfolio and press materials. Upon expiry of the licence period, all granted rights revert in full to ${_dc}.`},
+    {title:isDE?"§ 5 — Zahlung":"§ 5 — Payment",text:isDE?`Das Honorar in Höhe von ${_total} ist innerhalb von 14 Tagen nach Rechnungsdatum fällig. Bei Zahlungsverzug ist ${_dc} berechtigt, Verzugszinsen gemäß § 288 BGB ab dem ersten Verzugstag geltend zu machen. ${s.taxNote||"Gemäß § 19 UStG wird keine Umsatzsteuer erhoben."}`:`The total fee of ${_total} is due within 14 days of the invoice date. In the event of late payment, statutory default interest pursuant to § 288 BGB is charged from the first day of delay. ${s.taxNote||"No VAT is charged pursuant to § 19 UStG."}`},
+    {title:isDE?"§ 6 — Stornierung":"§ 6 — Cancellation",text:isDE?`Stornierungen bedürfen der Schriftform. Bei Stornierung vor Produktionsbeginn sind 25 % des vereinbarten Honorars fällig. Bei Stornierung nach Produktionsbeginn sind 50 % fällig. Ist die Leistung im Wesentlichen erbracht, ist das vollständige Honorar zu entrichten. Als Produktionsbeginn gilt jede Vorarbeit, Recherche, Konzeptentwicklung, Anreise, Produktion oder Beauftragung Dritter durch ${_dc} im Zusammenhang mit diesem Vertrag.`:`Cancellation must be submitted in writing. If the client cancels before production begins, 25% of the agreed fee is due. If the client cancels after production has begun, 50% of the agreed fee is due. If the deliverable is substantially complete, the full fee is payable. Production is deemed to have commenced upon any preparatory work, research, concept development, travel, filming, or third-party commitments made by ${_dc} in connection with this contract.`}
   ]:[];
   const [winW,setWinW]=useState(()=>window.innerWidth);
   const [showEdit,setShowEdit]=useState(false);
@@ -656,7 +630,6 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
 
   const commit=(snap: any)=>{
     setPreview(snap);
-    if(onSave)onSave(snap);
     setFlash("saved");
     setTimeout(()=>setFlash(null),3000);
   };
@@ -739,8 +712,18 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
         <div style={{flex:1}}/>
         {isMobile&&<button onClick={()=>setShowEdit(e=>!e)} style={{padding:"5px 12px",background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase",color:C.black,marginRight:4}}>{showEdit?"View PDF":"Edit"}</button>}
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={onClose} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
+        <button onClick={()=>{const isDirty=JSON.stringify(staged)!==JSON.stringify(data);(onSave&&(isNew||isDirty))?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
+      {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
+        <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
+          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save this {type==="revised"?"revised quote":type==="amendment"?"amendment":type==="renewal"?"renewal":type==="invoice"?"invoice":"quote"}?</p>
+          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
+          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+            <B onClick={()=>{onSave(staged);setConfirmClose(false);onClose();}}>Yes</B>
+            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No</B>
+          </div>
+        </div>
+      </div>,document.body)}
       <div style={{flex:1,display:"flex",overflow:"hidden",flexDirection:isMobile?"column":"row"}}>
         {(!isMobile||showEdit)&&<div style={{width:isMobile?"100%":panelW,flexShrink:0,display:"flex",flexDirection:"column",borderRight:isMobile?"none":`1px solid ${C.rule}`,borderBottom:isMobile?`1px solid ${C.rule}`:"none",maxHeight:isMobile?"50%":undefined}}>
           <div style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
@@ -773,16 +756,27 @@ function PDFModal({data,type,onClose,onSave,settings}: any) {
             </>}
             {type==="contract"&&<div style={{marginTop:6}}>
               <Lbl>Contract Clauses</Lbl>
-              {["Subject Matter","Delivery","Revisions","Usage Rights","Payment","Cancellation"].map((lbl,ci)=>(
-                <div key={ci}>
-                  <Lbl>§{ci+1} — {lbl}</Lbl>
-                  <textarea
-                    value={(staged.clauses?.[ci])!==undefined?(staged.clauses[ci]):defClauses[ci]}
-                    onChange={(e:any)=>{const v=e.target.value;setStaged((p:any)=>{const arr=[...Array(6)].map((_,k)=>p.clauses?.[k]!==undefined?p.clauses[k]:defClauses[k]);arr[ci]=v;return{...p,clauses:arr};});}}
-                    style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:72,marginBottom:6}}
-                  />
-                </div>
-              ))}
+              {(staged.clauses&&staged.clauses.length>0?staged.clauses:defClauses).map((cl: any,ci: number)=>{
+                const clauses=staged.clauses&&staged.clauses.length>0?staged.clauses:defClauses;
+                const updClause=(field: string,val: string)=>setStaged((p: any)=>{const arr=p.clauses&&p.clauses.length>0?[...p.clauses]:[...defClauses];arr[ci]={...arr[ci],[field]:val};return{...p,clauses:arr};});
+                const moveClause=(dir: number)=>setStaged((p: any)=>{const arr=p.clauses&&p.clauses.length>0?[...p.clauses]:[...defClauses];const ni=ci+dir;if(ni<0||ni>=arr.length)return p;[arr[ci],arr[ni]]=[arr[ni],arr[ci]];return{...p,clauses:arr};});
+                const delClause=()=>setStaged((p: any)=>{const arr=p.clauses&&p.clauses.length>0?[...p.clauses]:[...defClauses];arr.splice(ci,1);return{...p,clauses:arr};});
+                return(
+                  <div key={ci} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"9px 10px",marginBottom:7,background:C.white}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                      <span style={{fontSize:9,color:C.muted,letterSpacing:"0.06em"}}>§{ci+1}</span>
+                      <div style={{display:"flex",gap:3}}>
+                        <button onClick={()=>moveClause(-1)} disabled={ci===0} style={{background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:ci===0?"default":"pointer",color:ci===0?C.light:C.muted,fontSize:10,padding:"1px 6px",lineHeight:1}}>↑</button>
+                        <button onClick={()=>moveClause(1)} disabled={ci===clauses.length-1} style={{background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:ci===clauses.length-1?"default":"pointer",color:ci===clauses.length-1?C.light:C.muted,fontSize:10,padding:"1px 6px",lineHeight:1}}>↓</button>
+                        <button onClick={delClause} style={{background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",color:C.red,fontSize:10,padding:"1px 6px",lineHeight:1}}>✕</button>
+                      </div>
+                    </div>
+                    <I value={cl.title||""} onChange={(e: any)=>updClause("title",e.target.value)} s={{marginBottom:5,fontFamily:SERIF,fontSize:10}} placeholder="Clause title"/>
+                    <textarea value={cl.text||""} onChange={(e: any)=>updClause("text",e.target.value)} style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:72}} placeholder="Clause text"/>
+                  </div>
+                );
+              })}
+              <button onClick={()=>setStaged((p: any)=>{const arr=p.clauses&&p.clauses.length>0?[...p.clauses]:[...defClauses];arr.push({title:`§${arr.length+1} — New Clause`,text:""});return{...p,clauses:arr};})} style={{fontSize:10,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:"0 0 10px",fontFamily:SANS,letterSpacing:"0.04em",textDecoration:"underline",textDecorationColor:C.rule}}>+ Add clause</button>
             </div>}
             <Lbl>Closing Note</Lbl>
             <textarea value={staged.footer||""} onChange={(e: any)=>setStaged((p: any)=>({...p,footer:e.target.value}))} style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:72}}/>
@@ -849,7 +843,7 @@ function AppLogo({size="nav"}: {size?: "nav"|"auth"|"web"}) {
   const web=size==="web";
   return(
     <div style={{textAlign:"center",lineHeight:1,display:"inline-block"}}>
-      <span style={{fontFamily:"'Playfair Display',Georgia,serif",fontSize:big?26:web?22:18,letterSpacing:"0.02em",color:C.black,display:"block"}}>Lynn Hoa</span>
+      <span style={{fontFamily:"'Playfair Display',Georgia,serif",fontSize:big?26:web?24:18,letterSpacing:"0.02em",color:C.black,display:"block"}}>Lynn Hoa</span>
       <span style={{fontFamily:SANS,fontSize:big?8:web?7:6.5,letterSpacing:"0.26em",textTransform:"uppercase" as const,color:C.muted,display:"block",marginTop:big?4:2}}>Studio</span>
     </div>
   );
@@ -1180,9 +1174,11 @@ function RateCards({rc,setRc,settings}: any) {
 }
 
 // ─── CALCULATOR ───────────────────────────────────────────
-function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
+function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSave}: any) {
   const isRev=prefill?.isRev||false;
+  const isAmend=prefill?.isAmend||false;
   const revN=prefill?.revN||1;
+  const amendN=prefill?.amendN||1;
 
   const [brand,setBrand]=useState(prefill?.brand||"");
   const [contact,setContact]=useState(prefill?.contact||"");
@@ -1191,10 +1187,10 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
   const [vDays,setVDays]=useState(14);
 
   const [bCat,setBCat]=useState("influencer");
-  const [bDel,setBDel]=useState(0);
+  const [bDel,setBDel]=useState(-1); // -1 = sentinel "— Select deliverable —"
   const [bQty,setBQty]=useState(1);
-  const [bUsage,setBUsage]=useState(0);
-  const [bExcl,setBExcl]=useState(0);
+  const [bUsage,setBUsage]=useState(0); // 0 = sentinel
+  const [bExcl,setBExcl]=useState(0);  // 0 = sentinel
   const [bNeg,setBNeg]=useState("");
   const [bVol,setBVol]=useState(false);
   const [bAddons,setBAddons]=useState<string[]>([]);
@@ -1218,43 +1214,49 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
   const addonList=AO[bCat]||[];
 
   const computePrice=()=>{
-    const item=deliverables[bDel];
+    const item=bDel>=0?deliverables[bDel]:null;
     const base=bNeg!==""?parseFloat(bNeg)||0:(item?.p||0);
     const lb=base*(bQty||1);
     let vp=0;if(bVol){if(bCat==="editorial")vp=10;else if(bQty>=10)vp=20;else if(bQty>=3)vp=15;}
     const av=lb*(1-vp/100);
-    const up=card.usage[bUsage]?.pct||0,ep=card.excl[bExcl]?.pct||0;
-    const am=av*(1+up/100+ep/100);
+    const usagePct=card.usage[bUsage]?.sentinel?0:(card.usage[bUsage]?.pct||0);
+    const exclPct=card.excl[bExcl]?.sentinel?0:(card.excl[bExcl]?.pct||0);
+    const am=av*(1+(usagePct+exclPct)/100);
     let at=0;bAddons.forEach(aid=>{const a=addonList.find((x: any)=>x.id===aid);if(!a)return;if(a.flat)at+=a.flat;else if(a.pct)at+=am*a.pct/100;});
     return Math.round(am+at+(parseFloat(bCAmt)||0));
   };
 
+  const canAdd=bDel>=0; // must have a deliverable selected
+
   const addItem=()=>{
+    if(!canAdd)return;
     const item=deliverables[bDel];
     const price=computePrice();
+    const usageSel=card.usage[bUsage];
+    const exclSel=card.excl[bExcl];
     setItems(prev=>[...prev,{
       id:uid(),cat:bCat,
       name:item?.n||"",note:item?.note||"",
       qty:bQty,up:item?.p||parseFloat(bNeg)||0,amt:price,
-      usageLabel:card.usage[bUsage]?.l,
-      exclLabel:card.excl[bExcl]?.l,
+      usageLabel:usageSel?.sentinel?undefined:usageSel?.l,
+      exclLabel:exclSel?.sentinel?undefined:exclSel?.l,
       addons:bAddons.map(aid=>addonList.find((x: any)=>x.id===aid)?.n).filter(Boolean),
       platforms:bPlatforms,
     }]);
-    setBDel(0);setBQty(1);setBUsage(0);setBExcl(0);setBNeg("");setBAddons([]);setBVol(false);setBCLabel("");setBCAmt("");setBPlatforms([]);
+    setBDel(-1);setBQty(1);setBUsage(0);setBExcl(0);setBNeg("");setBAddons([]);setBVol(false);setBCLabel("");setBCAmt("");setBPlatforms([]);
   };
 
   const subtotal=items.reduce((s,it)=>s+it.amt,0);
   const grand=Math.round(subtotal*(1-(retOn?20:0)/100));
   const vu=new Date(qDate);vu.setDate(vu.getDate()+(parseInt(String(vDays))||14));
   const validUntil=vu.toISOString().split("T")[0];
-  const qNo=isRev?(prefill?.qNo||`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`):(`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`);
+  const qNo=isAmend?`AMD-${(prefill?.qNo||"").replace(/QUO-?/i,"").trim()||new Date().getFullYear()}-${String(amendN).padStart(2,"0")}`:isRev?(prefill?.qNo||`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`):(`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`);
 
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
     const ctype=cats.includes("ugc")?"UGC Creator":cats.includes("editorial")?"Editorial Content Creator":"Content Creator";
     setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
-      lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[]})),
+      lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
 
@@ -1263,12 +1265,26 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
 
   return(
     <div>
-      {pdf&&<PDFModal data={pdf} type={isRev?"revised":"quote"} onClose={()=>{setPdf(null);}} settings={settings}
-        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);}}/>}
+      {pdf&&<PDFModal data={pdf} type={isRev?"revised":isAmend?"amendment":"quote"} onClose={()=>{setPdf(null);}} settings={settings} isNew={true}
+        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:isAmend?"production":"quoted"},doc.brand,doc.contact,isRev,revN,projName,isAmend,amendN,prefill?.origLines||[]);if(onAfterSave)onAfterSave(doc.brand||brand,isAmend?null:doc.qNo);}}/>}
       <div style={{marginBottom:18}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Calculator</h2>
-        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isAmend?`Amendment ${amendN} — ${prefill?.qNo||""}`:isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
       </div>
+
+      {isAmend&&prefill?.origLines?.length>0&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:16,background:C.white}}>
+        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 9px"}}>Original Quote — read only</p>
+        {prefill.origLines.map((ln: any,i: number)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
+            <span style={{fontSize:10,color:C.black}}>{ln.qty>1?`${ln.qty}× `:""}{ln.name}</span>
+            <span style={{fontSize:10,fontFamily:SERIF,color:C.muted,flexShrink:0,marginLeft:8}}>{fmt(ln.amt)}</span>
+          </div>
+        ))}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:7,marginTop:2}}>
+          <span style={{fontSize:9,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Original Total</span>
+          <span style={{fontSize:12,fontFamily:SERIF,color:C.black}}>{fmt(prefill.origLines.reduce((s: number,l: any)=>s+(l.amt||0),0))}</span>
+        </div>
+      </div>}
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:9}}>
         <div><Lbl>Brand / Company</Lbl><I value={brand} onChange={(e: any)=>setBrand(e.target.value)} placeholder="Sephora"/></div>
@@ -1286,21 +1302,28 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
       <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"16px 18px",marginBottom:16,background:C.white}}>
         <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 13px"}}>Add Item</p>
         <div style={{display:"flex",gap:6,marginBottom:13,flexWrap:"wrap"}}>
-          {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={bCat===k} onClick={()=>{setBCat(k);setBDel(0);setBAddons([]);}}>{catLabel[k]}</Pill>)}
+          {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={bCat===k} onClick={()=>{setBCat(k);setBDel(-1);setBAddons([]);}}>{catLabel[k]}</Pill>)}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 80px",gap:8,marginBottom:9}}>
-          <div><Lbl>Deliverable</Lbl><S value={bDel} onChange={(e: any)=>setBDel(parseInt(e.target.value))}>{deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}</S></div>
+          <div><Lbl>Deliverable</Lbl><S value={bDel} onChange={(e: any)=>setBDel(parseInt(e.target.value))}>
+            <option value={-1}>— Select deliverable —</option>
+            {deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}
+          </S></div>
           <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e: any)=>setBQty(parseInt(e.target.value)||1)}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:9}}>
           <div>
             <Lbl>Usage Rights</Lbl>
-            <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>{card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{u.pct>0?` (+${u.pct}%)`:""}</option>)}</S>
+            <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>
+              {card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
+            </S>
             <div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:5}}>
               {(["Instagram","TikTok","YouTube","Other"] as const).map(p=>{const on=bPlatforms.includes(p);return<button key={p} type="button" onClick={()=>setBPlatforms(pr=>on?pr.filter(x=>x!==p):[...pr,p])} style={{padding:"3px 8px",border:`1px solid ${on?C.black:C.rule}`,background:on?C.black:C.bg,color:on?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:8.5,letterSpacing:"0.05em",borderRadius:2}}>{p}</button>;})}
             </div>
           </div>
-          <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>{card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{e.pct>0?` (+${e.pct}%)`:""}</option>)}</S></div>
+          <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>
+            {card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{!e.sentinel&&e.pct>0?` (+${e.pct}%)`:""}</option>)}
+          </S></div>
         </div>
         <div style={{marginBottom:9}}>
           <Lbl>Add-ons</Lbl>
@@ -1317,8 +1340,8 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile}: any) {
           <label style={{display:"flex",alignItems:"center",gap:5,fontSize:9,cursor:"pointer",paddingBottom:8,whiteSpace:"nowrap"}}><input type="checkbox" checked={bVol} onChange={(e: any)=>setBVol(e.target.checked)}/>Vol. disc.</label>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
-          <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:C.black,fontFamily:SERIF,fontSize:17}}>{fmt(computePrice())}</strong></span>
-          <B onClick={addItem} s={{paddingLeft:20,paddingRight:20}}>+ Add to Quote</B>
+          <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:canAdd?C.black:C.light,fontFamily:SERIF,fontSize:17}}>{canAdd?fmt(computePrice()):"—"}</strong></span>
+          <B onClick={addItem} s={{paddingLeft:20,paddingRight:20,opacity:canAdd?1:0.4,cursor:canAdd?"pointer":"default"}}>+ Add to Quote</B>
         </div>
       </div>
 
@@ -1535,6 +1558,13 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
 }
 
 // ─── RENEWAL MODAL ────────────────────────────────────────
+const RENEWAL_ADDONS=[
+  {id:"ra1",n:"Whitelisting / boosting",note:"Ads through Lynn's account · per month",p:null,pct:30},
+  {id:"ra2",n:"Link in bio",note:"Per week",p:100},
+  {id:"ra3",n:"Pinned post",note:"Post kept pinned",p:100},
+  {id:"ra4",n:"Additional Story frame",note:"Per frame",p:50},
+  {id:"ra5",n:"Aspect ratio adaptation",note:"Per format",p:65},
+];
 function RenewalModal({p,onSave,onClose,settings}: any) {
   const q=p.qd;
   const [rtype,setRtype]=useState("usage");
@@ -1542,65 +1572,114 @@ function RenewalModal({p,onSave,onClose,settings}: any) {
   const [custFee,setCustFee]=useState("");
   const [startD,setStartD]=useState(today());
   const [pdf,setPdf]=useState<any>(null);
+  // add-ons
+  const [addons,setAddons]=useState<{id:string,amt:string}[]>([]);
+  const toggleAddon=(id: string)=>setAddons(prev=>prev.find(a=>a.id===id)?prev.filter(a=>a.id!==id):[...prev,{id,amt:""}]);
+  const setAddonAmt=(id: string,amt: string)=>setAddons(prev=>prev.map(a=>a.id===id?{...a,amt}:a));
   const opt=RENEWAL_OPTS[rtype][oi];
   const base=q?.total||0;
   const suggested=Math.round(base*(opt.pct/100));
-  const fee=custFee!==""?parseFloat(custFee)||0:suggested;
+  const licenseFee=custFee!==""?parseFloat(custFee)||0:suggested;
+  const addonTotal=addons.reduce((s,a)=>{
+    const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
+    if(!def)return s;
+    const v=parseFloat(a.amt)||0;
+    if(v>0)return s+v;
+    if(def.p)return s+def.p;
+    if(def.pct)return s+Math.round(licenseFee*def.pct/100);
+    return s;
+  },0);
+  const fee=licenseFee+addonTotal;
   const endD=addM(startD,opt.mo);
   const rNo=`INV-${new Date().getFullYear()}-RN${String((p.renewals||[]).length+1).padStart(2,"0")}`;
   const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;
-  const buildDoc=()=>({
-    brand:q?.brand,contact:q?.contact,date:today(),rNo,iNo,delivery:startD,
-    ctype:q?.ctype||"Content Creator",projName:p.name,rType:opt.l,
-    origContent:q?.lines||[],footer:"Thank you for the pleasure of working together.",
-    lines:[{name:`License Renewal — ${opt.l}`,note:`${fmtD(startD)} – ${fmtD(endD)}`,qty:1,up:fee,amt:fee}],
-    total:fee,endDate:endD,startDate:startD,optLabel:opt.l,mo:opt.mo
-  });
+  const buildDoc=()=>{
+    const lines=[
+      {name:`License Renewal — ${opt.l}`,note:`${fmtD(startD)} – ${fmtD(endD)}`,qty:1,up:licenseFee,amt:licenseFee},
+      ...addons.map(a=>{
+        const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
+        const v=parseFloat(a.amt)||def?.p||(def?.pct?Math.round(licenseFee*def.pct/100):0);
+        return{name:def?.n||"",note:def?.note||"",qty:1,up:v,amt:v};
+      }).filter(a=>a.amt>0)
+    ];
+    return{brand:q?.brand,contact:q?.contact,date:today(),rNo,iNo,delivery:startD,
+      ctype:q?.ctype||"Content Creator",projName:p.name,rType:opt.l,
+      origContent:q?.lines||[],footer:"Thank you for the pleasure of working together.",
+      lines,total:fee,endDate:endD,startDate:startD,optLabel:opt.l,mo:opt.mo};
+  };
   if(pdf)return<PDFModal data={pdf} type="renewal" onClose={()=>setPdf(null)} settings={settings}
-    onSave={(doc: any)=>{ onSave({id:uid(),type:rtype,optLabel:opt.l,mo:opt.mo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,paid:false,doc}); }}/>;
+    onSave={(doc: any)=>{onSave({id:uid(),type:rtype,optLabel:opt.l,mo:opt.mo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,signed:false,paid:false,doc});}}/>;
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:C.bg,width:450,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.15)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><h3 style={{fontFamily:SERIF,fontSize:16,fontWeight:"normal",margin:0}}>Renew License</h3><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button></div>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:C.bg,width:"100%",maxWidth:460,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.15)",maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+          <h3 style={{fontFamily:SERIF,fontSize:16,fontWeight:"normal",margin:0}}>Add Renewal</h3>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button>
+        </div>
         <p style={{fontSize:11,color:C.muted,margin:"0 0 12px",lineHeight:1.6}}>Project: <strong style={{color:C.black}}>{p.name}</strong><br/>Original total: <strong style={{color:C.black}}>{fmt(base)}</strong></p>
-        <Lbl>Renewal Type</Lbl>
-        <div style={{display:"flex",gap:6,marginBottom:9}}><Pill on={rtype==="usage"} onClick={()=>{setRtype("usage");setOi(2);}}>Usage Rights</Pill><Pill on={rtype==="excl"} onClick={()=>{setRtype("excl");setOi(0);}}>Exclusivity</Pill></div>
+
+        <Lbl>License Type</Lbl>
+        <div style={{display:"flex",gap:6,marginBottom:9}}>
+          <Pill on={rtype==="usage"} onClick={()=>{setRtype("usage");setOi(2);}}>Usage Rights</Pill>
+          <Pill on={rtype==="excl"} onClick={()=>{setRtype("excl");setOi(0);}}>Exclusivity</Pill>
+        </div>
         <Lbl>Scope & Duration</Lbl>
         <S value={oi} onChange={(e: any)=>setOi(parseInt(e.target.value))} s={{marginBottom:9}}>{RENEWAL_OPTS[rtype].map((o: any,i: number)=><option key={i} value={i}>{o.l}</option>)}</S>
-        <Lbl>Start Date</Lbl><I type="date" value={startD} onChange={(e: any)=>setStartD(e.target.value)} s={{marginBottom:4}}/>
+        <Lbl>Start Date</Lbl>
+        <I type="date" value={startD} onChange={(e: any)=>setStartD(e.target.value)} s={{marginBottom:4}}/>
         <p style={{fontSize:10.5,color:C.muted,margin:"0 0 10px"}}>End date: <strong style={{color:C.black}}>{fmtD(endD)}</strong></p>
-        <Lbl>Renewal Fee</Lbl>
+        <Lbl>License Fee</Lbl>
         <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:3}}>
           <I type="number" placeholder={`Suggested: € ${suggested}`} value={custFee} onChange={(e: any)=>setCustFee(e.target.value)}/>
           {custFee!==""&&<B v="sec" s={{fontSize:8}} onClick={()=>setCustFee("")}>Reset</B>}
         </div>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 12px"}}>{opt.pct>0?`Suggested: ${opt.pct}% of original total`:"Set your fee freely"}</p>
-        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Renewal Fee</span>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px"}}>{opt.pct>0?`Suggested: ${opt.pct}% of original total`:"Set your fee freely"}</p>
+
+        <Lbl>Add-ons <span style={{fontWeight:"normal",color:C.light,textTransform:"none",letterSpacing:0}}>(optional)</span></Lbl>
+        {RENEWAL_ADDONS.map(a=>{
+          const sel=addons.find(x=>x.id===a.id);
+          return(
+            <div key={a.id} style={{marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <input type="checkbox" checked={!!sel} onChange={()=>toggleAddon(a.id)} style={{accentColor:C.black,flexShrink:0}}/>
+                <span style={{fontSize:10.5,color:C.black}}>{a.n}</span>
+                <span style={{fontSize:9.5,color:C.muted,flex:1}}>{a.note}</span>
+                <span style={{fontSize:9.5,color:C.muted,flexShrink:0}}>{a.p?`€ ${a.p}`:a.pct?`+${a.pct}%`:""}</span>
+              </div>
+              {sel&&(a.p==null)&&<I type="number" placeholder={a.pct?`Suggested: € ${Math.round(licenseFee*a.pct/100)}`:"Amount"} value={sel.amt} onChange={(e: any)=>setAddonAmt(a.id,e.target.value)} s={{marginTop:4,fontSize:10}}/>}
+            </div>
+          );
+        })}
+
+        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,margin:"14px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Total</span>
           <span style={{fontFamily:SERIF,fontSize:18}}>{fmt(fee)}</span>
         </div>
-        <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}><B v="sec" onClick={onClose}>Cancel</B><B onClick={()=>setPdf(buildDoc())}>Preview & Generate Invoice</B></div>
+        <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}>
+          <B v="sec" onClick={onClose}>Cancel</B>
+          <B onClick={()=>setPdf(buildDoc())}>Preview & Save</B>
+        </div>
       </div>
     </div>
   );
 }
 
 // ─── CLIENT DETAIL PANEL ─────────────────────────────────
-function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,setPdf,onRevise,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel}: any) {
+function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
   return(
     <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
-      <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>&larr; Clients</button>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
         <div style={{minWidth:0}}>
           {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
         </div>
-        <div style={{display:"flex",gap:6,flexShrink:0}}>
+        <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
           {editMode
             ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
             :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
+          <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1612,7 +1691,8 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
             <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
             <Lbl>Tags</Lbl>
-            <TagInput tags={edt.tags||[]} onAdd={(t: string)=>setEd((p: any)=>({...p,tags:[...(p.tags||[]),t]}))} onRemove={(t: string)=>setEd((p: any)=>({...p,tags:(p.tags||[]).filter((x: string)=>x!==t)}))}/>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
+            <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
           </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
         </div>
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
@@ -1658,13 +1738,14 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
       </div>}
       {cl.projects.map((pr: any,i: number)=>{
         const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
+        const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
         return(
-          <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
+          <div key={pr.id} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
               <div style={{flex:1,minWidth:0}}>
                 {editPrName===pr.id
                   ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 6px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:3}}/>
-                  :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>\u270e</span></p>}
+                  :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>✎</span></p>}
                 <p style={{fontSize:10.5,color:C.muted,margin:"0 0 6px"}}>{fmtD(pr.date)}</p>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
                   <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
@@ -1687,37 +1768,76 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
             </div>}
             {(pr.renewals||[]).map((r: any,ri: number)=>(
-              <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><p style={{fontSize:11,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>Renewal {ri+1} \u2014 {r.optLabel}</p><p style={{fontSize:10,color:C.muted,margin:0}}>{fmtD(r.startDate)} \u2192 {fmtD(r.endDate)} \u00b7 {r.invoiceNo}</p></div>
-                <div style={{textAlign:"right"}}>
-                  <p style={{fontSize:11,fontFamily:SERIF,margin:"0 0 3px"}}>{fmt(r.fee)}</p>
-                  <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                    <span style={{fontSize:9.5,color:r.paid?C.green:C.amber,border:`1px solid ${r.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2}}>{r.paid?"Paid":"Unpaid"}</span>
-                    <button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:!rn.paid})})}))} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>{r.paid?"Undo":"Mark Paid"}</button>
-                    {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+              <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p>
+                    <p style={{fontSize:10,color:C.muted,margin:"0 0 5px"}}>{fmtD(r.startDate)} → {fmtD(r.endDate)}</p>
                   </div>
+                  <p style={{fontSize:11,fontFamily:SERIF,margin:0,flexShrink:0,marginLeft:8}}>{fmt(r.fee)}</p>
+                </div>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                  <span style={{fontSize:9,color:r.paid?C.green:r.signed?C.muted:C.amber,border:`1px solid ${r.paid?C.greenBorder:r.signed?C.rule:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase"}}>{r.paid?"Renewal Paid":r.signed?"Signed — awaiting payment":"Unsigned"}</span>
+                  {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+                  {!r.signed&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,signed:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Signed</button>}
+                  {r.signed&&!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Renewal Paid</button>}
+                  {r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:false})})}))} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.amber,fontFamily:SANS}}>Undo</button>}
                 </div>
               </div>
             ))}
             {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
+
+            {/* ── DOCUMENTS ── */}
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
               {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
-              {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>Quote</B>}
-              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
+              {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
+              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
               {(pr.amendments||[]).map((a: any,ai: number)=>(
-                <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
+                <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" ·  unsigned":""}</B>
               ))}
               {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
             </div>
-            <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-              {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
-              {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"Contracted":ns==="invoiced"?"Invoiced":ns.charAt(0).toUpperCase()+ns.slice(1)}</B>}
-              {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
-              {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT&&setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
-              {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
-              {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
-              {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
-              {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+
+            {/* ── ACTIONS ── */}
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
+
+              {/* lead: no actions — create quote is in docs row */}
+
+              {/* quoted / revised: revise or move to contract */}
+              {["quoted","revised"].includes(pr.status)&&<>
+                <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
+                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+              </>}
+
+              {/* contracted: revise contract text or mark signed */}
+              {pr.status==="contracted"&&<>
+                <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
+                <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
+              </>}
+
+              {/* production: amendments cycle + create invoice */}
+              {pr.status==="production"&&<>
+                <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
+                {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
+                  <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
+                ))}
+                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+              </>}
+
+              {/* invoiced: mark paid + undo — corrections via preview */}
+              {pr.status==="invoiced"&&!pr.paid&&<>
+                <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
+              </>}
+
+              {/* paid: undo paid — renewals cycle is in the renewal rows above */}
+              {pr.paid&&<>
+                <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
+              </>}
+
+              {/* undo step — contracted and production only */}
+              {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+
             </div>
           </div>
         );
@@ -1727,7 +1847,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
 }
 
 // ─── CLIENTS ──────────────────────────────────────────────
-function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange}: any) {
+function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear,pendingProjectQNo}: any) {
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
   const [typeFilter,setTypeFilter]=useState("all");
@@ -1735,6 +1855,14 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   const [sel,setSel_]=useState<string|null>(null);
   const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
+  const [highlightedProjectQNo,setHighlightedProjectQNo]=useState<string|null>(null);
+  useEffect(()=>{
+    if(!pendingClientName)return;
+    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
+    if(c)setSel(c.id);
+    if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
+    if(onPendingClear)onPendingClear();
+  },[pendingClientName]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
   const [tagI,setTagI]=useState("");
@@ -1792,15 +1920,30 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   const openPDF=(pr: any,type: string,lang: string,cid: string)=>{
     const q=pr.qd;
     const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;
-    setPdf({cid,pid:pr.id,data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),validUntil:q?.validUntil,qNo:q?.qNo,rev:q?.rev||0,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:type==="invoice"?"Thank you for the pleasure of working together.":"Looking forward to working together."},type,lang});
+    // contract opened directly = internal correction, carry saved clauses through
+    const data={brand:q?.brand,contact:q?.contact,date:pr.date||today(),validUntil:q?.validUntil,qNo:q?.qNo,rev:q?.rev||0,contractRev:q?.contractRev||0,clauses:q?.clauses||[],iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:type==="invoice"?"Thank you for the pleasure of working together.":"Looking forward to working together."};
+    setPdf({cid,pid:pr.id,data,type,lang});
+  };
+
+  const openReviseContract=(pr: any,cid: string)=>{
+    const q=pr.qd;
+    const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;
+    const nextRev=(q?.contractRev||0)+1;
+    // official revision — same preview, onSave bumps contractRev
+    const data={brand:q?.brand,contact:q?.contact,date:today(),validUntil:q?.validUntil,qNo:q?.qNo,rev:q?.rev||0,contractRev:nextRev,clauses:q?.clauses||[],iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Looking forward to working together."};
+    setPdf({cid,pid:pr.id,data,type:"contract",lang:"en",isRevision:true,nextContractRev:nextRev});
   };
 
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);setRevInvT(null);}} settings={settings}
     onSave={revInvT
       ?(doc: any)=>{const tot=(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(revInvT.cid,revInvT.pid,{qd:{...revInvT.p.qd,lines:doc.lines},amount:tot});}
-      :(pdf.cid&&pdf.pid)
-        ?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(pdf.cid,pdf.pid,{qd:doc,amount:tot});}
-        :undefined}/>;
+      :(pdf.cid&&pdf.pid&&pdf.isRevision)
+        // official contract revision — bump contractRev, save clauses
+        ?(doc: any)=>upP(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}})
+        :(pdf.cid&&pdf.pid)
+          // internal correction — save clauses silently, no version bump
+          ?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}
+          :undefined}/>;
   if(amendT)return<AmendModal p={amendT.p} onSave={(a: any)=>saveAmend(amendT.cid,amendT.pid,a)} onClose={()=>setAmendT(null)} settings={settings} rc={rc}/>;
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} settings={settings}/>;
 
@@ -1809,16 +1952,16 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
     const edt=editMode?ed:cl;
     return(
       <div>
-        <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Clients</button>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
           <div style={{minWidth:0}}>
             {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
           </div>
-          <div style={{display:"flex",gap:6,flexShrink:0}}>
+          <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
             {editMode
               ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
               :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
+            <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1830,7 +1973,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
               <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
               <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
               <Lbl>Tags</Lbl>
-              <TagInput tags={edt.tags||[]} onAdd={(t: string)=>setEd((p: any)=>({...p,tags:[...(p.tags||[]),t]}))} onRemove={(t: string)=>setEd((p: any)=>({...p,tags:(p.tags||[]).filter((x: string)=>x!==t)}))}/>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
+              <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
             </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
           </div>
           <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
@@ -1876,8 +2020,9 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         </div>}
         {cl.projects.map((pr: any,i: number)=>{
           const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
+          const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
           return(
-            <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
+            <div key={pr.id} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div style={{flex:1,minWidth:0}}>
                   {editPrName===pr.id
@@ -1905,37 +2050,74 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
                 <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
               </div>}
               {(pr.renewals||[]).map((r: any,ri: number)=>(
-                <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><p style={{fontSize:11,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p><p style={{fontSize:10,color:C.muted,margin:0}}>{fmtD(r.startDate)} → {fmtD(r.endDate)} · {r.invoiceNo}</p></div>
-                  <div style={{textAlign:"right"}}>
-                    <p style={{fontSize:11,fontFamily:SERIF,margin:"0 0 3px"}}>{fmt(r.fee)}</p>
-                    <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                      <span style={{fontSize:9.5,color:r.paid?C.green:C.amber,border:`1px solid ${r.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2}}>{r.paid?"Paid":"Unpaid"}</span>
-                      <button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:!rn.paid})})}))} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>{r.paid?"Undo":"Mark Paid"}</button>
-                      {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+                <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div>
+                      <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p>
+                      <p style={{fontSize:10,color:C.muted,margin:"0 0 5px"}}>{fmtD(r.startDate)} → {fmtD(r.endDate)}</p>
                     </div>
+                    <p style={{fontSize:11,fontFamily:SERIF,margin:0,flexShrink:0,marginLeft:8}}>{fmt(r.fee)}</p>
+                  </div>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                    <span style={{fontSize:9,color:r.paid?C.green:r.signed?C.muted:C.amber,border:`1px solid ${r.paid?C.greenBorder:r.signed?C.rule:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase"}}>{r.paid?"Renewal Paid":r.signed?"Signed — awaiting payment":"Unsigned"}</span>
+                    {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+                    {!r.signed&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,signed:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Signed</button>}
+                    {r.signed&&!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Renewal Paid</button>}
+                    {r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:false})})}))} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.amber,fontFamily:SANS}}>Undo</button>}
                   </div>
                 </div>
               ))}
               {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
+
+              {/* ── DOCUMENTS ── */}
               <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
                 {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
-                {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>Quote</B>}
-                {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
+                {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
+                {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
                 {(pr.amendments||[]).map((a: any,ai: number)=>(
-                  <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
+                  <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" · unsigned":""}</B>
                 ))}
                 {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
               </div>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-                {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
-                {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"→ Contracted":ns==="invoiced"?"→ Invoiced":`→ ${ns.charAt(0).toUpperCase()+ns.slice(1)}`}</B>}
-                {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
-                {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
-                {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
-                {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
-                {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
-                {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>← Undo</B>}
+
+              {/* ── ACTIONS ── */}
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
+
+                {/* quoted / revised: revise or move to contract */}
+                {["quoted","revised"].includes(pr.status)&&<>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
+                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+                </>}
+
+                {/* contracted: revise contract text or mark signed */}
+                {pr.status==="contracted"&&<>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
+                  <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
+                </>}
+
+                {/* production: amendments cycle + create invoice */}
+                {pr.status==="production"&&<>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
+                  {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
+                    <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
+                  ))}
+                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+                </>}
+
+                {/* invoiced: mark paid + undo — corrections via preview */}
+                {pr.status==="invoiced"&&!pr.paid&&<>
+                  <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                  <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
+                </>}
+
+                {/* paid: undo paid */}
+                {pr.paid&&<>
+                  <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
+                </>}
+
+                {/* undo step — contracted and production only */}
+                {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+
               </div>
             </div>
           );
@@ -1952,30 +2134,6 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         <B onClick={()=>setShowAdd((s: boolean)=>!s)}>+ New Client</B>
       </div>
       {flagged.length>0&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,padding:"9px 13px",marginBottom:10}}><p style={{fontSize:10.5,color:C.amber,margin:0}}>⚠ {flagged.length} client{flagged.length>1?"s":""} — no activity 3+ months</p></div>}
-      {(()=>{
-        const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
-          const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
-          const ue=uEnd(pr);
-          if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
-          (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
-          return items;
-        })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
-        if(!allLicenses.length)return null;
-        return(
-          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:11}}>
-            <p style={{fontSize:9.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0,padding:"9px 13px 8px",borderBottom:`1px solid ${C.rule}`}}>License Tracker</p>
-            {allLicenses.map((r: any,i: number)=>(
-              <div key={i} onClick={()=>setSel(r.cId)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 13px",borderBottom:i<allLicenses.length-1?`1px solid ${C.rule}`:"none",cursor:"pointer",gap:8}}>
-                <div style={{minWidth:0,overflow:"hidden"}}>
-                  <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.cName}</span>
-                  <span style={{fontSize:10.5,color:C.muted}}> · {r.prName}</span>
-                </div>
-                <UBadge end={r.end} label={r.label}/>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
       <I placeholder="Search clients, tags…" value={search} onChange={(e: any)=>setSearch(e.target.value)} s={{marginBottom:8}}/>
       <div style={{display:"flex",justifyContent:"flex-end",gap:7,marginBottom:11}}>
         <select
@@ -2015,7 +2173,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
             <div><Lbl>Agency / Direct</Lbl><S value={nb.agency} onChange={(e: any)=>setNb(p=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S></div>
             <div><Lbl>Country</Lbl><I value={nb.country} onChange={(e: any)=>setNb(p=>({...p,country:e.target.value}))} placeholder="Germany"/></div>
             <div><Lbl>Tags</Lbl>
-              <TagInput tags={nb.tags} onAdd={(t: string)=>setNb(p=>({...p,tags:[...p.tags,t]}))} onRemove={(t: string)=>setNb(p=>({...p,tags:p.tags.filter(x=>x!==t)}))}/>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>{nb.tags.map(t=><Tag key={t} onRemove={()=>setNb(p=>({...p,tags:p.tags.filter(x=>x!==t)}))}>{t}</Tag>)}</div>
+              <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Beauty, Fashion…" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setNb(p=>({...p,tags:[...p.tags,tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setNb(p=>({...p,tags:[...p.tags,tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
             </div>
           </div>
           <div style={{marginTop:9}}><Lbl>Relationship Notes</Lbl><I value={nb.notes} onChange={(e: any)=>setNb(p=>({...p,notes:e.target.value}))} placeholder="Fast payer, luxury aesthetic…"/></div>
@@ -2034,7 +2193,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         });
         const multiProj=new Set(allRights.map((r: any)=>r.prName)).size>1;
         return(
-          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${sel===c.id?"#c8c4be":C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?"#f5f3f0":"transparent",transition:"background 0.15s,border-color 0.15s"}}>
+          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${sel===c.id?C.light:C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?"rgba(26,26,26,0.03)":undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
                 <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{c.name}</p>
@@ -2059,15 +2218,15 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         );
       })}
       </div>{/* end left col */}
-      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} setPdf={setPdf} onRevise={onRevise} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel}/>}
+      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)}/>}
     </div>
   );
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
 function Dashboard({clients,goTo,isMobile}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month">(null);
-  const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name})));
+  const [drill,setDrill]=useState<null|"year"|"month"|"license">(null);
+  const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
@@ -2076,6 +2235,13 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
+  const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
+    const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
+    const ue=uEnd(pr);
+    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
+    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
+    return items;
+  })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
   const nowM=new Date().getMonth();
   const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -2090,8 +2256,8 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const Card=({label,count,items,warm,sub,onClick}: any)=>(
     <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
-        <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>
-        <span style={{fontFamily:SERIF,fontSize:22,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
+        <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>{label}</span>
+        <span style={{fontFamily:SERIF,fontSize:16,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
       </div>
       {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 8px"}}>{sub}</p>}
       {items?.slice(0,3).map((pr: any,i: number)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}><span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span><span style={{fontSize:10.5}}>{pr.amount?fmt(pr.amount):""}</span></div>)}
@@ -2155,6 +2321,36 @@ function Dashboard({clients,goTo,isMobile}: any) {
       </div>
     );
   }
+  if(drill==="license"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>License Tracker</h2>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allLicenses.length} active license{allLicenses.length!==1?"s":""} · sorted by expiry</p>
+        {allLicenses.length===0&&<p style={{fontSize:11,color:C.muted}}>No active licenses tracked.</p>}
+        {allLicenses.map((r: any,i: number)=>{
+          const d=dLeft(r.end);
+          const urgent=d!==null&&d<=14;
+          const soon=d!==null&&d>14&&d<=30;
+          return(
+            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{minWidth:0}}>
+                  <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
+                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{r.prName}</p>
+                </div>
+                <UBadge end={r.end} label={r.label}/>
+              </div>
+              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{r.label} expires</span>
+                <span style={{fontSize:11,color:urgent?C.red:soon?C.amber:C.muted}}>{fmtD(r.end)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
@@ -2170,9 +2366,9 @@ function Dashboard({clients,goTo,isMobile}: any) {
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
         <Card label="Active Contracts" count={unsigned.length} items={unsigned}/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
-        <Card label="Expiring Usage Rights" count={expiring.length} items={expiring.map((pr: any)=>({...pr,amount:0}))} warm/>
+        <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
       </div>
     </div>
   );
@@ -2397,6 +2593,8 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
   const [clientSel,setClientSel]=useState<string|null>(null);
+  const [pendingClientName,setPendingClientName]=useState<string|null>(null);
+  const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
@@ -2420,9 +2618,13 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   if(!authed)return<Auth onAuth={(r)=>{setRole(r);setAuthed(true);}} currentPass={settings.password||PASS}/>;
   if(role==="creator")return<CreatorPage settings={settings} logout={()=>{setAuthed(false);setNav(0);}}/>;
 
-  const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string)=>{
+  const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string,isAmend?: boolean,amendN?: number,origLines?: any[])=>{
     const ex=clients.find((c: any)=>c.name.toLowerCase()===brand.toLowerCase());
-    if(isRev&&ex){
+    if(isAmend&&ex){
+      const aNo=`Amend ${amendN||1}`;
+      const amendTotal=(q.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
+      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===prefill?.qNo?{...pr,amendments:[...(pr.amendments||[]),{id:uid(),aNo,lines:q.lines||[],amendTotal,origTotal:pr.amount,signed:false,doc:q}],amount:pr.amount+amendTotal}:pr)}));
+    } else if(isRev&&ex){
       setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===q.qNo?{...pr,qd:q,status:"revised",amount:q.total}:pr)}));
     } else {
       const existPr=ex?.projects?.find((pr: any)=>pr.qd?.qNo===q.qNo);
@@ -2437,6 +2639,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     }
     setPrefill(null);
   };
+  const handleAfterSave=(brand: string,qNo?: string)=>{setPendingClientName(brand);setPendingProjectQNo(qNo||null);setNav(1);};
 
   const handleGoToCalc=(clientName: string)=>{
     setPrefill({brand:clientName,contact:""});
@@ -2453,6 +2656,13 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       qty:ln.qty||1,neg:ln.up?String(ln.up):"",vol:false,ui:1,ei:0,ao:[],cLabel:"",cAmt:""
     }));
     setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isRev:true,revN:(q?.rev||0)+1,ctab:q?.ctab||"influencer",lines:prefillLines,origLines:q?.lines||[]});
+    setNav(2);
+  };
+
+  const handleAmend=(pr: any)=>{
+    const q=pr.qd;
+    const amendN=(pr.amendments||[]).length+1;
+    setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isAmend:true,amendN,origLines:q?.lines||[]});
     setNav(2);
   };
 
@@ -2514,8 +2724,8 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
-        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel}/>}
-        {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile}/>}
+        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
+        {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
