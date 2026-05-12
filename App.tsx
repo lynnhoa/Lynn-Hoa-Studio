@@ -1950,7 +1950,6 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
-  const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
 
   const STATUS_ORDER: Record<string,number>={production:0,contracted:1,invoiced:2,quoted:3,revised:4};
@@ -1998,7 +1997,16 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
         <span style={{fontFamily:SERIF,fontSize:16,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
       </div>
       {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 8px"}}>{sub}</p>}
-      {items?.slice(0,3).map((pr: any,i: number)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}><span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span><span style={{fontSize:10.5}}>{pr.amount?fmt(pr.amount):""}</span></div>)}
+      {items?.slice(0,3).map((pr: any,i: number)=>(
+        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+          <div style={{minWidth:0,flex:1}}>
+            <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
+            {pr.name&&<span style={{fontSize:9.5,color:C.light,display:"block"}}>{pr.name}</span>}
+          </div>
+          <span style={{fontSize:10.5,flexShrink:0,marginLeft:8}}>{pr.amount?fmt(pr.amount):""}</span>
+        </div>
+      ))}
+      {items?.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{items.length-3} more</p>}
       {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
     </div>
   );
@@ -2162,10 +2170,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
-        <Card label="Active Contracts" count={unsigned.length} items={unsigned}/>
-      </div>
-      <div style={{marginBottom:9}}>
-        <Card label="Active Projects" count={activeProjects.length} sub={`${activeProjects.length} project${activeProjects.length!==1?"s":""} in progress — click for full overview`} onClick={()=>setDrill("projects")}/>
+        <Card label="Active Projects" count={activeProjects.length} sub={`${fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress`} items={activeProjects} onClick={()=>setDrill("projects")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
