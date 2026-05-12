@@ -1881,7 +1881,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
 
               {/* production: amendments cycle + create invoice */}
               {pr.status==="production"&&<>
-                <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
+                <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
                 {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
                   <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
                 ))}
@@ -2163,7 +2163,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 
                 {/* production: amendments cycle + create invoice */}
                 {pr.status==="production"&&<>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
                   {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
                     <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
                   ))}
