@@ -386,7 +386,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     renewal:l?"Lizenzerneuerung":"License Renewal"
   };
   const MRow=({lb,v}: any) => <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{lb}</span><span>{v}</span></div>;
-  const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
+  const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration (Influencer)",ugc:"UGC Creator",editorial:"Editorial"};
   const TRow=({ln,prevLn,idx}: any)=>{
     const showCat=!!(ln.cat&&catBadgeLabel[ln.cat]&&ln.cat!==(prevLn?.cat));
     const subDetails=[
@@ -439,7 +439,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
       </div>}
       {type==="renewal"&&d.origContent?.length>0&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"9px 11px",marginBottom:12,background:"#f5f3f0"}}>
         <p style={{fontSize:6.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 5px"}}>{l?"Lizenz für folgende Inhalte":"License applies to the following content"}</p>
-        {d.origContent.map((c: any,i: number)=><p key={i} style={{fontSize:8.5,margin:"0 0 2px"}}>{c.qty?`${c.qty}× `:""}{c.name}{c.note?` — ${c.note}`:""}</p>)}
+        {d.origContent.map((c: any,i: number)=><p key={i} style={{fontSize:8.5,margin:"0 0 2px"}}>{c.qty?`${c.qty}× `:""}{c.name}{c.cat?` [${({influencer:"Influencer",ugc:"UGC",editorial:"Editorial"})[c.cat]||c.cat}]`:""}{c.note?` — ${c.note}`:""}</p>)}
         <p style={{fontSize:7.5,color:C.muted,margin:"5px 0 0"}}>{l?"Projekt":"Project"}: {d.projName} · {l?"Typ":"Type"}: {d.rType}</p>
       </div>}
       {(type!=="contract"||(d.quoteRef||"none")==="table")&&<>
@@ -1254,14 +1254,14 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
-    const ctype=cats.includes("ugc")?"UGC Creator":cats.includes("editorial")?"Editorial Content Creator":"Content Creator";
+    const ctype=cats.length>1?"Content Creator":cats[0]==="ugc"?"UGC Creator":cats[0]==="editorial"?"Editorial Content Creator":"Content Creator (Influencer)";
     setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
       lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
 
   const reset=()=>{setItems([]);setBrand("");setContact("");setProjName("");setRetOn(false);if(clearPrefill)clearPrefill();};
-  const catLabel: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
+  const catLabel: Record<string,string>={influencer:"Influencer (Brand Collab)",ugc:"UGC Creator",editorial:"Editorial"};
 
   return(
     <div>
@@ -1276,7 +1276,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
         <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 9px"}}>Original Quote — read only</p>
         {prefill.origLines.map((ln: any,i: number)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
-            <span style={{fontSize:10,color:C.black}}>{ln.qty>1?`${ln.qty}× `:""}{ln.name}</span>
+            <span style={{fontSize:10,color:C.black,display:"flex",alignItems:"center",gap:6}}>{ln.qty>1?`${ln.qty}× `:""}{ln.name}{ln.cat&&<span style={{fontSize:8,color:C.white,background:ln.cat==="ugc"?C.amber:ln.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em"}}>{({influencer:"Influencer",ugc:"UGC",editorial:"Editorial"})[ln.cat]||ln.cat}</span>}</span>
             <span style={{fontSize:10,fontFamily:SERIF,color:C.muted,flexShrink:0,marginLeft:8}}>{fmt(ln.amt)}</span>
           </div>
         ))}
@@ -1474,11 +1474,12 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
     <Pill on={val==="total"} onClick={()=>set("total")}>Whole quote ({fmt(origTotal)})</Pill>
     <Pill on={val==="selected"} onClick={()=>set("selected")}>Selected items</Pill>
   </div>;
+  const catShort: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
   const ItemCheckboxes=({sel,setSel}: any)=><>{origLines.map((l: any,i: number)=>{
     const on=sel.includes(l.name);
     return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
       <input type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.name):[...p,l.name])} style={{accentColor:C.black}}/>
-      <span>{l.name}</span><span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
+      <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
     </label>;
   })}</>;
 
@@ -1495,7 +1496,7 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
           <SectionHead n="01" title="Extra Deliverables"/>
           <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
-            {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={aCat===k} onClick={()=>{setACat(k);setADel(-1);setAoId("");}}>{({influencer:"Influencer",ugc:"UGC",editorial:"Editorial"})[k]}</Pill>)}
+            {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={aCat===k} onClick={()=>{setACat(k);setADel(-1);setAoId("");}}>{({influencer:"Influencer (Brand Collab)",ugc:"UGC Creator",editorial:"Editorial"})[k]}</Pill>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 60px",gap:7,marginBottom:7}}>
             <div><Lbl>Deliverable</Lbl>
@@ -1677,9 +1678,10 @@ function RenewalModal({p,onSave,onClose,settings,rc}: any) {
           {rBase==="selected"&&<div style={{padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}>
             {origLines.map((l: any,i: number)=>{
               const on=rSel.includes(l.name);
+              const catShort: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
               return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
                 <input type="checkbox" checked={on} onChange={()=>setRSel(p=>on?p.filter(x=>x!==l.name):[...p,l.name])} style={{accentColor:C.black}}/>
-                <span>{l.name}</span><span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
+                <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
               </label>;
             })}
             {rSel.length>0&&<p style={{fontSize:9.5,color:C.muted,margin:"6px 0 0"}}>Selected base: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(base$)}</strong></p>}
