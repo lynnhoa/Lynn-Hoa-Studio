@@ -997,246 +997,6 @@ function ChangePassword({settings,setSettings}: any) {
   );
 }
 
-// ─── RATE CARD BUILDER ────────────────────────────────────
-function RateCardBuilder({rc,setRc,settings}: any) {
-  const BASE_CATS=["influencer","ugc","editorial","hotels"];
-  const CAT_LABEL: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial",hotels:"Hotels"};
-
-  // builder state
-  const [srcCat,setSrcCat]=useState("influencer"); // which service catalog card to pull from
-  const [cardName,setCardName]=useState("");        // name of the new card being built
-  const [cardSub,setCardSub]=useState("");          // subtitle / descriptor
-  const [sections,setSections]=useState<any[]>([]); // built sections
-  const [fine,setFine]=useState("");
-  const [showPreview,setShowPreview]=useState(false);
-  const [pdfLang,setPdfLang]=useState("en");
-  const [downloading,setDownloading]=useState(false);
-  const [docHeight,setDocHeight]=useState(841);
-  const [rcSecGuards,setRcSecGuards]=useState<number[]>([]);
-  const [winW,setWinW]=useState(()=>window.innerWidth);
-  const measureRef=useRef<HTMLDivElement>(null);
-  const PAGE_H=841;
-  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
-  const pageScale=winW<700?Math.min(1,(winW-32)/595):1;
-  const sett={...SETTINGS_DEFAULT,...(settings||{})};
-
-  useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
-  useEffect(()=>{
-    setRcSecGuards([]);
-    const el=measureRef.current;if(!el)return;
-    const calc=()=>{
-      const h=el.offsetHeight;if(h>100)setDocHeight(h);
-      const secEls=Array.from(el.querySelectorAll("[data-rcsec]")) as HTMLElement[];
-      if(secEls.length>0){
-        const newGuards:number[]=Array(secEls.length).fill(0);
-        const guardedPages=new Set<number>();
-        secEls.forEach((secEl)=>{
-          const idx=parseInt(secEl.getAttribute("data-rcsec")||"0",10);
-          const bottom=secEl.offsetTop+secEl.offsetHeight;
-          const pageNum=Math.floor(secEl.offsetTop/PAGE_H);
-          const bottomInPage=bottom-pageNum*PAGE_H;
-          if(bottomInPage>(PAGE_H-80)&&!guardedPages.has(pageNum)){
-            newGuards[idx]=Math.max(0,PAGE_H+52-secEl.offsetTop);
-            guardedPages.add(pageNum);
-          }
-        });
-        setRcSecGuards(prev=>{
-          const next=newGuards.map((v,i)=>Math.max(v,prev[i]||0));
-          return next.some((v,i)=>v!==prev[i])?next:prev;
-        });
-      }
-    };
-    calc();const ro=new ResizeObserver(calc);ro.observe(el);return()=>ro.disconnect();
-  },[showPreview,sections,pdfLang]);
-
-  const srcCard=rc[srcCat];
-  const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
-
-  // Add a whole section from source card
-  const addSection=(sec: any)=>{
-    setSections((prev: any[])=>[...prev,{id:uid(),t:sec.t,items:sec.items.map((it: any)=>({...it,id:uid()}))}]);
-  };
-  // Add single item to existing section or as new section
-  const addItem=(secT: string,it: any)=>{
-    setSections((prev: any[])=>{
-      const idx=prev.findIndex((s: any)=>s.t===secT);
-      if(idx>=0){const arr=[...prev];arr[idx]={...arr[idx],items:[...arr[idx].items,{...it,id:uid()}]};return arr;}
-      return [...prev,{id:uid(),t:secT,items:[{...it,id:uid()}]}];
-    });
-  };
-  // Add blank custom section
-  const addCustomSection=()=>setSections((prev: any[])=>[...prev,{id:uid(),t:"Custom Section",items:[]}]);
-  // Add blank item to a built section
-  const addBlankItem=(si: number)=>setSections((prev: any[])=>prev.map((s: any,i: number)=>i!==si?s:{...s,items:[...s.items,{id:uid(),n:"New item",note:"",p:0}]}));
-  // Update item field
-  const upItem=(si: number,id: string,f: string,v: string)=>setSections((prev: any[])=>prev.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})}));
-  // Update section title
-  const upSecT=(si: number,v: string)=>setSections((prev: any[])=>prev.map((s: any,i: number)=>i!==si?s:{...s,t:v}));
-  // Remove item
-  const remItem=(si: number,id: string)=>setSections((prev: any[])=>prev.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.filter((it: any)=>it.id!==id)}));
-  // Remove section
-  const remSec=(si: number)=>setSections((prev: any[])=>prev.filter((_: any,i: number)=>i!==si));
-
-  // Save as new card in rc
-  const saveCard=()=>{
-    if(!cardName.trim()||!sections.length)return;
-    const key=`custom_${Date.now()}`;
-    const newCard={label:cardName.trim(),sub:cardSub.trim()||cardName.trim(),sections,fine,usage:srcCard?.usage||[],excl:srcCard?.excl||[]};
-    setRc((prev: any)=>({...prev,[key]:newCard}));
-    alert(`"${cardName}" saved to Rate Card tab.`);
-  };
-
-  const builtCard={label:cardName||"Preview",sub:cardSub,sections,fine};
-
-  const isMobileDevice=()=>/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
-  const download=async()=>{
-    if(downloading)return;
-    const mobile=isMobileDevice();
-    const mw=mobile?window.open("","_blank"):null;
-    const pages=Array.from(document.querySelectorAll("[data-pdf-page]")) as HTMLElement[];
-    if(!pages.length){mw?.close();return;}
-    const savedT=pages.map(p=>p.style.transform);
-    pages.forEach(p=>{p.style.transform="none";});
-    setDownloading(true);
-    try{
-      const [{default:html2canvas},{default:jsPDF}]=await Promise.all([import("html2canvas"),import("jspdf")]);
-      const pdf=new (jsPDF as any)({orientation:"portrait",unit:"mm",format:"a4"});
-      const pdfW=pdf.internal.pageSize.getWidth(),pdfH=pdf.internal.pageSize.getHeight();
-      for(let i=0;i<pages.length;i++){
-        if(i>0)pdf.addPage();
-        const canvas=await (html2canvas as any)(pages[i],{scale:2,useCORS:true,backgroundColor:"#faf9f7"});
-        pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pdfW,pdfH);
-      }
-      const fname=`rate-card-${(cardName||"custom").toLowerCase().replace(/\s+/g,"-")}`;
-      if(mw){mw.location.href=pdf.output("bloburl") as string;}
-      else{pdf.save(`${fname}.pdf`);}
-    }finally{pages.forEach((p,i)=>{p.style.transform=savedT[i];});setDownloading(false);}
-  };
-
-  const previewPortal=showPreview?createPortal(
-    <div style={{position:"fixed",inset:0,background:C.bg,zIndex:9999,display:"flex",flexDirection:"column",fontFamily:SANS}}>
-      <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:8,flexShrink:0}}>
-        <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flex:1,textAlign:"center",paddingLeft:40}}>{cardName||"Rate Card Preview"}</span>
-        <div style={{display:"flex",gap:4}}><Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill><Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill></div>
-        <B onClick={download} s={{minWidth:80,textAlign:"center"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={()=>setShowPreview(false)} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22}}>✕</button>
-      </div>
-      <div style={{flex:1,background:"#888",overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:winW<700?"16px 0":"32px 28px",gap:winW<700?16:28}}>
-        {Array.from({length:numPages},(_,i)=>(
-          <div key={i} style={{width:595*pageScale,height:PAGE_H*pageScale,overflow:"hidden",flexShrink:0,boxShadow:"0 4px 24px rgba(0,0,0,0.32)"}}>
-            <div data-pdf-page="true" style={{width:595,height:PAGE_H,overflow:"hidden",background:C.bg,position:"relative",transform:pageScale<1?`scale(${pageScale})`:"none",transformOrigin:"top left"}}>
-              <div style={{position:"absolute",top:-i*PAGE_H,left:0,width:595}}>
-                <RCContent card={builtCard} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
-              </div>
-              <div style={{position:"absolute",bottom:59,left:0,right:0,height:28,background:C.bg,zIndex:2,pointerEvents:"none"}}/>
-              <div style={{position:"absolute",top:0,left:0,right:0,background:C.bg,zIndex:3,borderBottom:`1px solid ${C.rule}`}}>
-                <div style={{padding:"13px 62px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{sett.company||sett.name||"Lynn Hoa"}</span>
-                  <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{cardName||"Rate Card"}</span>
-                </div>
-              </div>
-              <div style={{position:"absolute",bottom:0,left:0,right:0,background:C.bg,zIndex:3,borderTop:`1px solid ${C.rule}`}}>
-                <div style={{padding:"26px 62px 22px",fontSize:7,color:C.muted,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span>{[sett.email,sett.website].filter(Boolean).join(" · ")||"your@email.com · yourwebsite.com"}</span>
-                  {numPages>1&&<span style={{letterSpacing:"0.04em",color:C.light}}>{i+1}</span>}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>,
-    document.body
-  ):null;
-
-  return(
-    <div>
-      {previewPortal}
-      <div ref={measureRef} style={{position:"fixed",top:0,left:-9999,width:595,visibility:"hidden",pointerEvents:"none",zIndex:-1}}>
-        <RCContent card={builtCard} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
-      </div>
-
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18}}>
-        <div>
-          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Rate Card Builder</h2>
-          <p style={{fontSize:8,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0}}>Build a client-facing rate card from your Service Catalog</p>
-        </div>
-        <div style={{display:"flex",gap:6}}>
-          <B v="sec" onClick={()=>setShowPreview(true)} s={{opacity:sections.length?1:0.4}}>Preview</B>
-          <B onClick={saveCard} s={{opacity:(cardName.trim()&&sections.length)?1:0.4}}>Save to Rate Card</B>
-        </div>
-      </div>
-
-      {/* Card name + subtitle */}
-      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:14,background:C.white}}>
-        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Card Details</p>
-        <Lbl>Card Name <span style={{fontWeight:"normal",color:C.light}}>(e.g. Hotel Collaboration, Campaign Package)</span></Lbl>
-        <I value={cardName} onChange={(e: any)=>setCardName(e.target.value)} placeholder="e.g. Hotel Collaboration" s={{marginBottom:8}}/>
-        <Lbl>Subtitle / Descriptor</Lbl>
-        <I value={cardSub} onChange={(e: any)=>setCardSub(e.target.value)} placeholder="e.g. Content Creator · Based in Germany" s={{marginBottom:8}}/>
-        <Lbl>Fine Print</Lbl>
-        <textarea value={fine} onChange={(e: any)=>setFine(e.target.value)} placeholder="Fine print / terms shown at bottom of rate card…" style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:52}}/>
-      </div>
-
-      {/* Source catalog picker */}
-      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:14,background:C.white}}>
-        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Pick from Service Catalog</p>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:12}}>
-          {Object.keys(rc).map((k: string)=>(
-            <Pill key={k} on={srcCat===k} onClick={()=>setSrcCat(k)}>{rc[k].label||CAT_LABEL[k]||k}</Pill>
-          ))}
-        </div>
-        {srcCard?.sections.map((sec: any,si: number)=>(
-          <div key={si} style={{marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:4}}>
-              <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{cleanSecT(sec.t)}</span>
-              <B v="sec" s={{fontSize:8}} onClick={()=>addSection(sec)}>+ Add Section</B>
-            </div>
-            {sec.items.map((it: any)=>(
-              <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
-                <div style={{minWidth:0}}>
-                  <span style={{fontSize:10.5}}>{it.n}</span>
-                  {it.note&&<span style={{fontSize:9,color:C.muted,display:"block"}}>{it.note}</span>}
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0,marginLeft:8}}>
-                  <span style={{fontSize:10,fontFamily:SERIF,color:C.muted}}>{it.p!=null?`€ ${it.p}`:it.m||""}</span>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>addItem(sec.t,it)}>+ Add</B>
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {/* Built sections */}
-      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:14,background:C.white}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:6,borderBottom:`1px solid ${C.rule}`,marginBottom:12}}>
-          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:0}}>Your Rate Card</p>
-          <B v="sec" s={{fontSize:8}} onClick={addCustomSection}>+ Custom Section</B>
-        </div>
-        {sections.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>Add items from the Service Catalog above, or add a custom section.</p>}
-        {sections.map((sec: any,si: number)=>(
-          <div key={sec.id} style={{marginBottom:12}}>
-            <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:6}}>
-              <I value={sec.t} onChange={(e: any)=>upSecT(si,e.target.value)} s={{flex:1,fontSize:9}}/>
-              <button onClick={()=>remSec(si)} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:13,padding:0,flexShrink:0}}>✕</button>
-            </div>
-            {sec.items.map((it: any)=>(
-              <div key={it.id} style={{display:"flex",gap:6,alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
-                <I value={it.n} onChange={(e: any)=>upItem(si,it.id,"n",e.target.value)} s={{flex:2}}/>
-                <I value={it.note||""} onChange={(e: any)=>upItem(si,it.id,"note",e.target.value)} s={{flex:2}} placeholder="Note"/>
-                <I type="number" value={it.p??""} onChange={(e: any)=>upItem(si,it.id,"p",e.target.value)} s={{width:64}} placeholder="€"/>
-                <button onClick={()=>remItem(si,it.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:13,padding:0,flexShrink:0}}>✕</button>
-              </div>
-            ))}
-            <button onClick={()=>addBlankItem(si)} style={{fontSize:9.5,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:"6px 0 0",fontFamily:SANS,textDecoration:"underline",textDecorationColor:C.rule}}>+ Add item</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── RATE CARDS TAB ───────────────────────────────────────
 function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
   const l=lang==="de";
@@ -1261,22 +1021,22 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
     </div>
   );
 }
-function RateCards({rc,setRc,settings}: any) {
+// ─── RATE CARD (nav tab · client-facing · preview + PDF) ──
+function RateCard({rc,settings}: any) {
   const [tab,setTab]=useState("influencer");
-  const [edit,setEdit]=useState(false);
   const [pdfLang,setPdfLang]=useState("en");
   const [showPreview,setShowPreview]=useState(false);
   const [downloading,setDownloading]=useState(false);
   const [docHeight,setDocHeight]=useState(841);
   const [winW,setWinW]=useState(()=>window.innerWidth);
   const [rcSecGuards,setRcSecGuards]=useState<number[]>([]);
-  const docRef=useRef<HTMLDivElement>(null);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
   const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
   const pageScale=winW<700?Math.min(1,(winW-32)/595):1;
   const sett={...SETTINGS_DEFAULT,...(settings||{})};
-  const card=rc[tab];
+  const card=rc[tab]||rc.influencer;
+  const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
   useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   useEffect(()=>{
     setRcSecGuards([]);
@@ -1287,29 +1047,18 @@ function RateCards({rc,setRc,settings}: any) {
       if(secEls.length>0){
         const newGuards:number[]=Array(secEls.length).fill(0);
         const guardedPages=new Set<number>();
-        secEls.forEach((secEl)=>{
+        secEls.forEach(secEl=>{
           const idx=parseInt(secEl.getAttribute("data-rcsec")||"0",10);
           const bottom=secEl.offsetTop+secEl.offsetHeight;
           const pageNum=Math.floor(secEl.offsetTop/PAGE_H);
           const bottomInPage=bottom-pageNum*PAGE_H;
-          if(bottomInPage>(PAGE_H-80)&&!guardedPages.has(pageNum)){
-            newGuards[idx]=Math.max(0,PAGE_H+52-secEl.offsetTop);
-            guardedPages.add(pageNum);
-          }
+          if(bottomInPage>(PAGE_H-80)&&!guardedPages.has(pageNum)){newGuards[idx]=Math.max(0,PAGE_H+52-secEl.offsetTop);guardedPages.add(pageNum);}
         });
-        setRcSecGuards(prev=>{
-          if(newGuards.length!==prev.length)return newGuards;
-          const next=newGuards.map((v,i)=>Math.max(v,prev[i]));
-          return next.some((v,i)=>v!==prev[i])?next:prev;
-        });
+        setRcSecGuards(prev=>{if(newGuards.length!==prev.length)return newGuards;const next=newGuards.map((v,i)=>Math.max(v,prev[i]));return next.some((v,i)=>v!==prev[i])?next:prev;});
       }
     };
     calc();const ro=new ResizeObserver(calc);ro.observe(el);return()=>ro.disconnect();
   },[showPreview,tab,pdfLang]);
-  const upI=(si: number,id: string,f: string,v: string)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})})}}));
-  const remI=(si: number,id: string)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.filter((it: any)=>it.id!==id)})}}));
-  const addI=(si: number)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:[...sc.items,{id:uid(),n:"New item",note:"",p:0}]})}}));
-  const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
   const isMobileDevice=()=>/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
   const download=async()=>{
     if(downloading)return;
@@ -1330,8 +1079,7 @@ function RateCards({rc,setRc,settings}: any) {
         pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pdfW,pdfH);
       }
       const fname=`rate-card-${(card.label||tab).toLowerCase().replace(/\s+/g,"-")}`;
-      if(mw){mw.location.href=pdf.output("bloburl") as string;}
-      else{pdf.save(`${fname}.pdf`);}
+      if(mw){mw.location.href=pdf.output("bloburl") as string;}else{pdf.save(`${fname}.pdf`);}
     }finally{pages.forEach((p,i)=>{p.style.transform=savedT[i];});setDownloading(false);}
   };
   const previewPortal=showPreview?createPortal(
@@ -1345,12 +1093,10 @@ function RateCards({rc,setRc,settings}: any) {
         {Array.from({length:numPages},(_,i)=>(
           <div key={i} style={{width:595*pageScale,height:PAGE_H*pageScale,overflow:"hidden",flexShrink:0,boxShadow:"0 4px 24px rgba(0,0,0,0.32)"}}>
             <div data-pdf-page="true" style={{width:595,height:PAGE_H,overflow:"hidden",background:C.bg,position:"relative",transform:pageScale<1?`scale(${pageScale})`:"none",transformOrigin:"top left"}}>
-              <div style={{position:"absolute",top:-i*PAGE_H,left:0,width:595}}>
-                <RCContent card={card} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
-              </div>
+              <div style={{position:"absolute",top:-i*PAGE_H,left:0,width:595}}><RCContent card={card} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/></div>
               <div style={{position:"absolute",bottom:59,left:0,right:0,height:28,background:C.bg,zIndex:2,pointerEvents:"none"}}/>
               <div style={{position:"absolute",top:0,left:0,right:0,background:C.bg,zIndex:3,borderBottom:`1px solid ${C.rule}`}}>
-                <div style={{padding:"13px 62px 13px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{padding:"13px 62px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{sett.company||sett.name||"Lynn Hoa"}</span>
                   <span style={{fontSize:6,letterSpacing:"0.2em",color:C.light,textTransform:"uppercase"}}>{card.label||"Content Creator"}</span>
                 </div>
@@ -1365,21 +1111,17 @@ function RateCards({rc,setRc,settings}: any) {
           </div>
         ))}
       </div>
-    </div>,
-    document.body
-  ):null;
+    </div>,document.body):null;
   return(
     <div>
       {previewPortal}
-      {/* hidden off-screen element to measure full content height */}
       <div ref={measureRef} style={{position:"fixed",top:0,left:-9999,width:595,visibility:"hidden",pointerEvents:"none",zIndex:-1}}>
         <RCContent card={card} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18}}>
-        <div><h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Service Catalog</h2><p style={{fontSize:8,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0}}>Fashion · Beauty · Lifestyle</p></div>
+        <div><h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Rate Card</h2><p style={{fontSize:8,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0}}>Fashion · Beauty · Lifestyle</p></div>
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
           <div style={{display:"flex",gap:4}}><Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill><Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill></div>
-          <B v="sec" onClick={()=>setEdit((e: boolean)=>!e)}>{edit?"Done":"Edit"}</B>
           <B onClick={()=>setShowPreview(true)}>Preview</B>
         </div>
       </div>
@@ -1388,9 +1130,56 @@ function RateCards({rc,setRc,settings}: any) {
       </div>
       {card.sections.map((sec: any,si: number)=>(
         <div key={si} style={{marginBottom:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
+          <div style={{padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
             <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.09em",textTransform:"uppercase",border:`1px solid ${C.rule}`,padding:"3px 9px",borderRadius:2}}>{sec.t}</span>
-            {edit&&<B v="sec" onClick={()=>addI(si)} s={{fontSize:8}}>+ Add</B>}
+          </div>
+          {sec.items.map((it: any)=>(
+            <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${C.rule}`}}>
+              <div><p style={{fontSize:12,color:C.black,margin:"0 0 3px"}}>{it.n}</p>{it.note&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>{it.note}</p>}</div>
+              <span style={{fontSize:11,fontFamily:SERIF,color:C.black,whiteSpace:"nowrap",marginLeft:12}}>{it.m&&<span style={{fontSize:9,color:C.muted,marginRight:5}}>{it.m}</span>}{it.p!=null?`€ ${it.p.toLocaleString("de-DE")}`:""}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+      <p style={{fontSize:10.5,color:C.muted,lineHeight:1.75,marginTop:10}}>{card.fine}</p>
+    </div>
+  );
+}
+
+// ─── SERVICE CATALOG (profile menu · internal editor) ──────
+function ServiceCatalog({rc,setRc}: any) {
+  const [tab,setTab]=useState("influencer");
+  const [edit,setEdit]=useState(false);
+  const card=rc[tab]||rc.influencer;
+  const upI=(si: number,id: string,f: string,v: string)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})})}}));
+  const remI=(si: number,id: string)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.filter((it: any)=>it.id!==id)})}}));
+  const addI=(si: number)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:[...sc.items,{id:uid(),n:"New item",note:"",p:0}]})}}));
+  const upFine=(v: string)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],fine:v}}));
+  const upSecT=(si: number,v: string)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.map((sc: any,i: number)=>i!==si?sc:{...sc,t:v})}}));
+  const addSec=()=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:[...(prev[tab]?.sections||[]),{id:uid(),t:"New Section",items:[]}]}}));
+  const remSec=(si: number)=>setRc((prev: any)=>({...prev,[tab]:{...prev[tab],sections:prev[tab].sections.filter((_: any,i: number)=>i!==si)}}));
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18}}>
+        <div><h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Service Catalog</h2><p style={{fontSize:8,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0}}>Single source of truth · Fashion · Beauty · Lifestyle</p></div>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {edit&&<B v="sec" s={{fontSize:8}} onClick={addSec}>+ Section</B>}
+          <B v="sec" onClick={()=>setEdit(e=>!e)}>{edit?"Done":"Edit"}</B>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap"}}>
+        {["influencer","ugc","editorial"].map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{{influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"}[k as keyof object]}</Pill>)}
+      </div>
+      {card.sections.map((sec: any,si: number)=>(
+        <div key={si} style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
+            {edit
+              ?<div style={{display:"flex",gap:6,flex:1,alignItems:"center"}}>
+                  <I value={sec.t} onChange={(e: any)=>upSecT(si,e.target.value)} s={{flex:1,fontSize:9}}/>
+                  <button onClick={()=>remSec(si)} style={{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:13,padding:0}}>✕</button>
+                </div>
+              :<span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.09em",textTransform:"uppercase",border:`1px solid ${C.rule}`,padding:"3px 9px",borderRadius:2}}>{sec.t}</span>}
+            {edit&&<B v="sec" onClick={()=>addI(si)} s={{fontSize:8,marginLeft:6}}>+ Add</B>}
           </div>
           {sec.items.map((it: any)=>(
             <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${C.rule}`}}>
@@ -1408,7 +1197,9 @@ function RateCards({rc,setRc,settings}: any) {
           ))}
         </div>
       ))}
-      <p style={{fontSize:10.5,color:C.muted,lineHeight:1.75,marginTop:10}}>{card.fine}</p>
+      {edit
+        ?<div style={{marginTop:10}}><Lbl>Fine Print</Lbl><textarea value={card.fine||""} onChange={(e: any)=>upFine(e.target.value)} style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:64}}/></div>
+        :<p style={{fontSize:10.5,color:C.muted,lineHeight:1.75,marginTop:10}}>{card.fine}</p>}
     </div>
   );
 }
@@ -2715,7 +2506,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   };
 
   const logout=()=>doLogout();
-  const NAV=["Dashboard","Clients","Calculator","Rate Card","Rate Card Builder"];
+  const NAV=["Dashboard","Clients","Calculator","Rate Card"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
@@ -2727,7 +2518,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
               <div style={{display:"flex"}}>
-                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
               </div>
               <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
                 {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
@@ -2765,7 +2556,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{textAlign:"center",cursor:"pointer"}} onClick={()=>setNav(0)}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
           </div>
         )}
@@ -2774,11 +2565,11 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
-        {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
+        {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
+        {nav===7&&<RateCard rc={rc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
-        {nav===7&&<RateCardBuilder rc={rc} setRc={setRc} settings={settings}/>}
       </div>
     </div>
   );
