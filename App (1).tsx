@@ -515,17 +515,21 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
-  const setStaged=(fn: any)=>setHs(prev=>{
-    const curr=prev.hist[prev.idx];
-    const newD=typeof fn==="function"?fn(curr):fn;
-    const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
-    return{hist:next,idx:next.length-1};
-  });
   const [preview,setPreview]=useState<any>(init);
   const [lang,setLang]=useState("en");
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
   const [confirmClose,setConfirmClose]=useState(false);
+  const [savedClean,setSavedClean]=useState(false);
+  const setStaged=(fn: any)=>{
+    setSavedClean(false);
+    setHs(prev=>{
+      const curr=prev.hist[prev.idx];
+      const newD=typeof fn==="function"?fn(curr):fn;
+      const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
+      return{hist:next,idx:next.length-1};
+    });
+  };
   const [downloading,setDownloading]=useState(false);
   const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
   const docRef=useRef<HTMLDivElement>(null);
@@ -630,22 +634,30 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
 
   const commit=(snap: any)=>{
     setPreview(snap);
-    setFlash("saved");
-    setTimeout(()=>setFlash(null),3000);
   };
   const undo=()=>{
     const ni=Math.max(0,hs.idx-1);
     if(ni===hs.idx)return;
     setHs(p=>({...p,idx:ni}));
     commit(JSON.parse(JSON.stringify(hs.hist[ni])));
+    setSavedClean(false);
   };
   const redo=()=>{
     const ni=Math.min(hs.hist.length-1,hs.idx+1);
     if(ni===hs.idx)return;
     setHs(p=>({...p,idx:ni}));
     commit(JSON.parse(JSON.stringify(hs.hist[ni])));
+    setSavedClean(false);
   };
   const handleUpdate=()=>commit(JSON.parse(JSON.stringify(staged)));
+  const handleSave=()=>{
+    const snap=JSON.parse(JSON.stringify(staged));
+    commit(snap);
+    if(onSave)onSave(snap);
+    setSavedClean(true);
+    setFlash("saved");
+    setTimeout(()=>setFlash(null),2500);
+  };
   const updStagedLine=(i: number,k: string,v: string)=>setStaged((prev: any)=>{
     const lines=[...(prev.lines||[])];
     lines[i]={...lines[i],[k]:v,
@@ -712,15 +724,20 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
         <div style={{flex:1}}/>
         {isMobile&&<button onClick={()=>setShowEdit(e=>!e)} style={{padding:"5px 12px",background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase",color:C.black,marginRight:4}}>{showEdit?"View PDF":"Edit"}</button>}
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={()=>{const isDirty=JSON.stringify(staged)!==JSON.stringify(data);(onSave&&(isNew||isDirty))?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
+        <button onClick={()=>{
+          if(isNew){setConfirmClose(true);return;}
+          if(savedClean){onClose();return;}
+          const isDirty=JSON.stringify(staged)!==JSON.stringify(data);
+          isDirty?setConfirmClose(true):onClose();
+        }} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
       {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
         <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
-          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save this {type==="revised"?"revised quote":type==="amendment"?"amendment":type==="renewal"?"renewal":type==="invoice"?"invoice":"quote"}?</p>
-          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
+          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>{isNew?"Save this document?":"Save before closing?"}</p>
+          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>{isNew?"It will be added to the client's project.":"Changes will be lost if you don't save."}</p>
           <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-            <B onClick={()=>{onSave(staged);setConfirmClose(false);onClose();}}>Yes</B>
-            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No</B>
+            <B onClick={()=>{handleSave();setConfirmClose(false);onClose();}}>Yes, save</B>
+            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
           </div>
         </div>
       </div>,document.body)}
@@ -783,7 +800,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
           </div>
           <div style={{padding:"12px 18px",borderTop:`1px solid ${C.rule}`,flexShrink:0}}>
             {flash==="saved"&&<p style={{fontSize:9,color:C.green,margin:"0 0 7px",letterSpacing:"0.06em"}}>Saved ✓</p>}
-            <B onClick={handleUpdate} s={{width:"100%",textAlign:"center"}}>Update Preview</B>
+            <B onClick={handleSave} s={{width:"100%",textAlign:"center"}}>Save</B>
           </div>
         </div>}
         {!isMobile&&<div onMouseDown={startDrag} style={{width:6,flexShrink:0,cursor:"col-resize",background:C.rule,opacity:0.5,transition:"opacity 0.15s"}} onMouseEnter={(e: any)=>{e.currentTarget.style.opacity="1";}} onMouseLeave={(e: any)=>{e.currentTarget.style.opacity="0.5";}}/>}
@@ -1023,12 +1040,29 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
 }
 // ─── RATE CARD BUILDER PREVIEW ────────────────────────────
 function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
-  const [staged,setStaged]=useState<any>(JSON.parse(JSON.stringify(card)));
+  const init=()=>JSON.parse(JSON.stringify(card));
+  const [hs,setHs]=useState({hist:[init()],idx:0});
+  const staged=hs.hist[hs.idx];
   const [pdfLang,setPdfLang]=useState("en");
   const [downloading,setDownloading]=useState(false);
   const [docHeight,setDocHeight]=useState(841);
   const [winW,setWinW]=useState(()=>window.innerWidth);
   const [rcSecGuards,setRcSecGuards]=useState<number[]>([]);
+  const [savedClean,setSavedClean]=useState(false);
+  const setStaged=(fn: any)=>{
+    setSavedClean(false);
+    setHs(prev=>{
+      const curr=prev.hist[prev.idx];
+      const newD=typeof fn==="function"?fn(curr):fn;
+      const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
+      return{hist:next,idx:next.length-1};
+    });
+  };
+  const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
+  const undo=()=>{const ni=Math.max(0,hs.idx-1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
+  const redo=()=>{const ni=Math.min(hs.hist.length-1,hs.idx+1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
+  const [flash,setFlash]=useState(false);
+  const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
   const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
@@ -1080,45 +1114,65 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
       if(mw){mw.location.href=pdf.output("bloburl") as string;}else{pdf.save(`${fname}.pdf`);}
     }finally{pages.forEach((p,i)=>{p.style.transform=savedT[i];});setDownloading(false);}
   };
-  const upI=(si: number,id: string,f: string,v: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})})}));
-  const remI=(si: number,id: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.filter((it: any)=>it.id!==id)})}));
-  const upSecT=(si: number,v: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,t:v})}));
-  return createPortal(
+  const doSave=()=>{onSave(staged);setSavedClean(true);setFlash(true);setTimeout(()=>setFlash(false),2500);};
+  const confirmPopup=confirmClose?createPortal(
+    <div style={{position:"fixed",inset:0,zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
+      <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
+        <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save before closing?</p>
+        <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
+        <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+          <B onClick={()=>{doSave();setConfirmClose(false);onClose();}}>Yes, save</B>
+          <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
+        </div>
+      </div>
+    </div>,document.body):null;
+  return(<>{confirmPopup}{createPortal(
     <div style={{position:"fixed",inset:0,background:C.bg,zIndex:9999,display:"flex",flexDirection:"column",fontFamily:SANS}}>
       <div ref={measureRef} style={{position:"fixed",top:0,left:-9999,width:595,visibility:"hidden",pointerEvents:"none",zIndex:-1}}>
         <RCContent card={staged} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
       </div>
-      {/* toolbar */}
-      <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:8,flexShrink:0}}>
-        <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flex:1,textAlign:"center"}}>{staged.label||"Rate Card"} — Preview</span>
-        <div style={{display:"flex",gap:4}}><Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill><Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill></div>
-        <B onClick={download} s={{minWidth:80,textAlign:"center"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <B onClick={()=>onSave(staged)} s={{minWidth:80,textAlign:"center"}}>Save & Close</B>
-        <button onClick={onClose} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22}}>✕</button>
+      {/* toolbar — identical layout to PDFModal */}
+      <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:6,flexShrink:0}}>
+        <button onClick={undo} disabled={!canUndo} title="Undo" style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${canUndo?C.rule:"transparent"}`,borderRadius:2,cursor:canUndo?"pointer":"default",color:canUndo?C.black:C.light,fontSize:15}}>←</button>
+        <button onClick={redo} disabled={!canRedo} title="Redo" style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${canRedo?C.rule:"transparent"}`,borderRadius:2,cursor:canRedo?"pointer":"default",color:canRedo?C.black:C.light,fontSize:15}}>→</button>
+        <div style={{width:1,height:20,background:C.rule,margin:"0 4px"}}/>
+        <Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill>
+        <Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill>
+        <div style={{flex:1}}/>
+        <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
+        <button onClick={()=>{
+          if(savedClean){onClose();return;}
+          const isDirty=JSON.stringify(staged)!==JSON.stringify(card);
+          isDirty?setConfirmClose(true):onClose();
+        }} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-        {/* edit panel */}
-        <div style={{width:260,flexShrink:0,borderRight:`1px solid ${C.rule}`,overflowY:"auto",padding:"14px 14px"}}>
-          <Lbl>Card Label</Lbl>
-          <I value={staged.label||""} onChange={(e: any)=>setStaged((p: any)=>({...p,label:e.target.value}))} s={{marginBottom:10}}/>
-          <Lbl>Subtitle</Lbl>
-          <I value={staged.sub||""} onChange={(e: any)=>setStaged((p: any)=>({...p,sub:e.target.value}))} s={{marginBottom:10}}/>
-          {staged.sections?.map((sec: any,si: number)=>(
-            <div key={si} style={{marginBottom:12,border:`1px solid ${C.rule}`,borderRadius:2,padding:"8px 10px",background:C.white}}>
-              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:7}}>
-                <I value={sec.t} onChange={(e: any)=>upSecT(si,e.target.value)} s={{flex:1,fontSize:9}}/>
+        {/* left edit panel — identical structure to PDFModal */}
+        <div style={{width:320,flexShrink:0,display:"flex",flexDirection:"column",borderRight:`1px solid ${C.rule}`}}>
+          <div style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
+            <Lbl>Card Label</Lbl>
+            <I value={staged.label||""} onChange={(e: any)=>setStaged((p: any)=>({...p,label:e.target.value}))} s={{marginBottom:8}}/>
+            <Lbl>Subtitle</Lbl>
+            <I value={staged.sub||""} onChange={(e: any)=>setStaged((p: any)=>({...p,sub:e.target.value}))} s={{marginBottom:10}}/>
+            {staged.sections?.map((sec: any,si: number)=>(
+              <div key={si} style={{marginBottom:10,border:`1px solid ${C.rule}`,borderRadius:2,padding:"8px 10px",background:C.white}}>
+                <I value={sec.t} onChange={(e: any)=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,t:e.target.value})}))} s={{marginBottom:6,fontSize:9,fontWeight:"500"}}/>
+                {sec.items.map((it: any)=>(
+                  <div key={it.id} style={{display:"flex",gap:5,alignItems:"center",marginBottom:4}}>
+                    <I value={it.n} onChange={(e: any)=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.map((x: any)=>x.id!==it.id?x:{...x,n:e.target.value})})}))} s={{flex:2,fontSize:9}}/>
+                    <I type="number" value={it.p??""} onChange={(e: any)=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.map((x: any)=>x.id!==it.id?x:{...x,p:e.target.value===""?null:parseFloat(e.target.value)||0})})}))} s={{width:52,fontSize:9}} placeholder="€"/>
+                    <button onClick={()=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.filter((x: any)=>x.id!==it.id)})}))} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:12,padding:0,flexShrink:0}}>✕</button>
+                  </div>
+                ))}
               </div>
-              {sec.items.map((it: any)=>(
-                <div key={it.id} style={{display:"flex",gap:5,alignItems:"center",marginBottom:4}}>
-                  <I value={it.n} onChange={(e: any)=>upI(si,it.id,"n",e.target.value)} s={{flex:2,fontSize:9}}/>
-                  <I type="number" value={it.p??""} onChange={(e: any)=>upI(si,it.id,"p",e.target.value)} s={{width:52,fontSize:9}} placeholder="€"/>
-                  <button onClick={()=>remI(si,it.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:12,padding:0,flexShrink:0}}>✕</button>
-                </div>
-              ))}
-            </div>
-          ))}
-          <Lbl>Fine Print</Lbl>
-          <textarea value={staged.fine||""} onChange={(e: any)=>setStaged((p: any)=>({...p,fine:e.target.value}))} style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:52}}/>
+            ))}
+            <Lbl>Fine Print</Lbl>
+            <textarea value={staged.fine||""} onChange={(e: any)=>setStaged((p: any)=>({...p,fine:e.target.value}))} style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:64}}/>
+          </div>
+          <div style={{padding:"12px 18px",borderTop:`1px solid ${C.rule}`,flexShrink:0}}>
+            {flash&&<p style={{fontSize:9,color:C.green,margin:"0 0 7px",letterSpacing:"0.06em"}}>Saved ✓</p>}
+            <B onClick={doSave} s={{width:"100%",textAlign:"center"}}>Save</B>
+          </div>
         </div>
         {/* A4 preview */}
         <div style={{flex:1,background:"#888",overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:winW<700?"16px 0":"32px 28px",gap:winW<700?16:28}}>
@@ -1144,7 +1198,7 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
           ))}
         </div>
       </div>
-    </div>,document.body);
+    </div>,document.body)}</>);
 }
 
 // ─── RATE CARD BUILDER MODAL ──────────────────────────────
@@ -1186,7 +1240,7 @@ function RateCardBuilderModal({rc,onSave,onClose}: any) {
   const builtCard={label,sub:rc[baseCat||""]?.sub||label,sections,fine,usage:rc[baseCat||""]?.usage||rc.influencer?.usage||[],excl:rc[baseCat||""]?.excl||rc.influencer?.excl||[]};
   const catKey=baseCat==="other"?(customName.toLowerCase().replace(/\s+/g,"_")||"custom"):(baseCat||"custom");
 
-  if(showPreview)return<RateCardBuilderPreview card={builtCard} settings={null} onSave={(saved: any)=>{onSave(catKey,saved);setShowPreview(false);}} onClose={()=>setShowPreview(false)}/>;
+  if(showPreview)return<RateCardBuilderPreview card={builtCard} settings={null} onSave={(saved: any)=>{onSave(catKey,saved);}} onClose={()=>setShowPreview(false)}/>;
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -1284,7 +1338,7 @@ function RateCard({rc,setRc,settings}: any) {
   return(
     <div>
       {showBuilder&&<RateCardBuilderModal rc={rc} onSave={saveBuilt} onClose={()=>setShowBuilder(false)}/>}
-      {showPreview&&<RateCardBuilderPreview card={card} settings={settings} onSave={(saved: any)=>{setRc((prev: any)=>({...prev,[tab]:saved}));setShowPreview(false);}} onClose={()=>setShowPreview(false)}/>}
+      {showPreview&&<RateCardBuilderPreview card={card} settings={settings} onSave={(saved: any)=>{setRc((prev: any)=>({...prev,[tab]:saved}));}} onClose={()=>setShowPreview(false)}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18}}>
         <div><h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Rate Card</h2><p style={{fontSize:8,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0}}>Fashion · Beauty · Lifestyle</p></div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -1785,13 +1839,6 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
   const [highlightedProjectQNo,setHighlightedProjectQNo]=useState<string|null>(null);
-  useEffect(()=>{
-    if(!pendingClientName)return;
-    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
-    if(c)setSel(c.id);
-    if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
-    if(onPendingClear)onPendingClear();
-  },[pendingClientName]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
   const [tagI,setTagI]=useState("");
@@ -1799,6 +1846,14 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const [ed,setEd]=useState<any>(null);
   const [amendT,setAmendT]=useState<any>(null);
   const [renewT,setRenewT]=useState<any>(null);
+  useEffect(()=>{setSel(null);},[selReset]);
+  useEffect(()=>{
+    if(!pendingClientName)return;
+    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
+    if(c){setSel(c.id);if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);}
+    if(onPendingClear)setTimeout(()=>onPendingClear(),100);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   const [revInvT,setRevInvT]=useState<any>(null);
   const [pdf,setPdf]=useState<any>(null);
   const [showAddP,setShowAddP]=useState(false);
@@ -2146,10 +2201,13 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects">(null);
+function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProjectQNo,settings,resetKey}: any) {
+  const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
+  const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
+  useEffect(()=>{setDrill(null);},[resetKey]);
+  const goToProject=(cName: string,qNo?: string)=>{setPendingClientName(cName);if(qNo&&setPendingProjectQNo)setPendingProjectQNo(qNo);goTo(1);};
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
@@ -2444,11 +2502,12 @@ function exportExcel(rows: any[]) {
   URL.revokeObjectURL(url);
 }
 
-function Invoices({clients,settings,isMobile}: any) {
+function Invoices({clients,settings,isMobile,filterTab}: any) {
   const [pdfData,setPdfData]=useState<any>(null);
   const [dropOpen,setDropOpen]=useState(false);
   const [bulkStatus,setBulkStatus]=useState<string|null>(null);
   const allRows = buildInvoiceRows(clients);
+  const rows = filterTab==="unpaid"?allRows.filter((r: any)=>!r.pr.paid):filterTab==="paid"?allRows.filter((r: any)=>r.pr.paid):allRows;
 
   const openPreview = (r: any) => {
     const pr=r.pr; const q=pr.qd;
@@ -2498,9 +2557,8 @@ function Invoices({clients,settings,isMobile}: any) {
     setBulkStatus(null);
   };
 
-  // group by year then month
   const grouped: {year:number,months:{month:number,rows:any[]}[]}[] = [];
-  allRows.forEach(r=>{
+  rows.forEach((r: any)=>{
     let yg=grouped.find(g=>g.year===r.year);
     if(!yg){yg={year:r.year,months:[]};grouped.push(yg);}
     let mg=yg.months.find(m=>m.month===r.month);
@@ -2519,7 +2577,8 @@ function Invoices({clients,settings,isMobile}: any) {
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:8}}>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
+        {!filterTab&&<h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>}
+        {filterTab&&<div/>}
         <div style={{display:"flex",gap:5,alignItems:"center"}}>
           {/* Bulk download dropdown — months only */}
           <div style={{position:"relative"}}>
@@ -2535,12 +2594,12 @@ function Invoices({clients,settings,isMobile}: any) {
             </div>}
           </div>
           {/* Excel icon */}
-          <button onClick={()=>exportExcel(allRows)} title="Export all as Excel" style={{...btnStyle,padding:"0 8px"}}>
+          <button onClick={()=>exportExcel(rows)} title="Export all as Excel" style={{...btnStyle,padding:"0 8px"}}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 1v8M7 9l-3-3M7 9l3-3M2 11h10" stroke={C.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
       </div>
-      {allRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects move here once invoiced or paid.</p>}
+      {rows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects move here once invoiced or paid.</p>}
       {grouped.map(yg=>(
         <div key={yg.year}>
           <div style={{marginBottom:8,marginTop:18}}>
@@ -2601,6 +2660,8 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const doLogout=()=>{sessionStorage.removeItem("lh_authed");setAuthed(false);setNav(0);setMenuOpen(false);};
   const [role,setRole]=useState<"manager"|"creator">("manager");
   const [nav,setNav]=useState(0);
+  const [dashReset,setDashReset]=useState(0);
+  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);};
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
   const [clientSel,setClientSel]=useState<string|null>(null);
@@ -2650,7 +2711,11 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     }
     setPrefill(null);
   };
-  const handleAfterSave=(brand: string,qNo?: string)=>{setPendingClientName(brand);setPendingProjectQNo(qNo||null);setNav(1);};
+  const handleAfterSave=(brand: string,qNo?: string)=>{
+    setPendingClientName(brand);
+    setPendingProjectQNo(qNo||null);
+    setTimeout(()=>setNav(1),100);
+  };
 
   const handleGoToCalc=(clientName: string)=>{
     setPrefill({brand:clientName,contact:""});
@@ -2685,7 +2750,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       <div style={{borderBottom:`1px solid ${C.rule}`,position:"sticky",top:0,background:C.bg,zIndex:100}}>
         {appMobile?(
           <>
-            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={()=>setNav(0)}>
+            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={goToDash}>
               <AppLogo/>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
@@ -2700,7 +2765,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Service Catalog",3]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2719,14 +2784,14 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                   <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                   <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                 </div>
-                {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                {([["Creator Profile",4],["Change Password",5],["Service Catalog",3]] as [string,number][]).map(([label,idx])=>(
                   <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                 ))}
                 <div style={{borderTop:`1px solid ${C.rule}`}}/>
                 <button onClick={logout} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
               </div>}
             </div>
-            <div style={{textAlign:"center",cursor:"pointer"}} onClick={()=>setNav(0)}><AppLogo size="web"/></div>
+            <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
               {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
@@ -2734,7 +2799,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} settings={settings} resetKey={dashReset}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
