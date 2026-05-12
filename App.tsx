@@ -1824,14 +1824,16 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
               </>}
 
-              {/* invoiced: mark paid + undo — corrections via preview */}
+              {/* invoiced: mark paid + undo + add renewal */}
               {pr.status==="invoiced"&&!pr.paid&&<>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                 <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
               </>}
 
-              {/* paid: undo paid — renewals cycle is in the renewal rows above */}
+              {/* paid: undo paid + add renewal */}
               {pr.paid&&<>
+                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                 <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
               </>}
 
@@ -2104,14 +2106,16 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
                   {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
                 </>}
 
-                {/* invoiced: mark paid + undo — corrections via preview */}
+                {/* invoiced: mark paid + undo + add renewal */}
                 {pr.status==="invoiced"&&!pr.paid&&<>
                   <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                  <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                   <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
                 </>}
 
-                {/* paid: undo paid */}
+                {/* paid: undo paid + add renewal */}
                 {pr.paid&&<>
+                  <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                   <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
                 </>}
 
