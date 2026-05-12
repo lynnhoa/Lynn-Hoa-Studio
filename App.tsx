@@ -2199,8 +2199,9 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects">(null);
+function Dashboard({clients,goTo,isMobile,setPendingClientName,settings}: any) {
+  const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects"|"invoices">(null);
+  const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
@@ -2413,12 +2414,27 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
       </div>
     );
   }
+  if(drill==="invoices"){
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
+          <div style={{display:"flex",gap:5}}>
+            <Pill on={invoiceTab==="unpaid"} onClick={()=>setInvoiceTab("unpaid")}>Unpaid</Pill>
+            <Pill on={invoiceTab==="paid"} onClick={()=>setInvoiceTab("paid")}>Paid</Pill>
+          </div>
+        </div>
+        <Invoices clients={clients} settings={settings} isMobile={isMobile} filterTab={invoiceTab}/>
+      </div>
+    );
+  }
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`} onClick={()=>goTo(6)}/>
-        <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
+        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
+        <Card label="Invoices" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`} onClick={()=>setDrill("invoices")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
@@ -2429,7 +2445,6 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
         <Card label="Active Projects" count={activeProjects.length} sub={`${fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress`} items={activeProjects} onClick={()=>setDrill("projects")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
         <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
       </div>
     </div>
@@ -2497,11 +2512,12 @@ function exportExcel(rows: any[]) {
   URL.revokeObjectURL(url);
 }
 
-function Invoices({clients,settings,isMobile}: any) {
+function Invoices({clients,settings,isMobile,filterTab}: any) {
   const [pdfData,setPdfData]=useState<any>(null);
   const [dropOpen,setDropOpen]=useState(false);
   const [bulkStatus,setBulkStatus]=useState<string|null>(null);
   const allRows = buildInvoiceRows(clients);
+  const rows = filterTab==="unpaid" ? allRows.filter((r: any)=>!r.pr.paid) : filterTab==="paid" ? allRows.filter((r: any)=>r.pr.paid) : allRows;
 
   const openPreview = (r: any) => {
     const pr=r.pr; const q=pr.qd;
@@ -2553,7 +2569,7 @@ function Invoices({clients,settings,isMobile}: any) {
 
   // group by year then month
   const grouped: {year:number,months:{month:number,rows:any[]}[]}[] = [];
-  allRows.forEach(r=>{
+  rows.forEach((r: any)=>{
     let yg=grouped.find(g=>g.year===r.year);
     if(!yg){yg={year:r.year,months:[]};grouped.push(yg);}
     let mg=yg.months.find(m=>m.month===r.month);
@@ -2572,7 +2588,8 @@ function Invoices({clients,settings,isMobile}: any) {
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:8}}>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
+        {!filterTab&&<h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>}
+        {filterTab&&<div/>}
         <div style={{display:"flex",gap:5,alignItems:"center"}}>
           {/* Bulk download dropdown — months only */}
           <div style={{position:"relative"}}>
@@ -2588,12 +2605,12 @@ function Invoices({clients,settings,isMobile}: any) {
             </div>}
           </div>
           {/* Excel icon */}
-          <button onClick={()=>exportExcel(allRows)} title="Export all as Excel" style={{...btnStyle,padding:"0 8px"}}>
+          <button onClick={()=>exportExcel(rows)} title="Export all as Excel" style={{...btnStyle,padding:"0 8px"}}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 1v8M7 9l-3-3M7 9l3-3M2 11h10" stroke={C.muted} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
       </div>
-      {allRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects move here once invoiced or paid.</p>}
+      {rows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices yet. Projects move here once invoiced or paid.</p>}
       {grouped.map(yg=>(
         <div key={yg.year}>
           <div style={{marginBottom:8,marginTop:18}}>
@@ -2787,7 +2804,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} settings={settings}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
