@@ -358,6 +358,15 @@ function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}
     {exp?`${label} expired`:`${label} ends ${fmtD(end)} · ${d}d left`}
   </span>;
 }
+function licenseColors(end: string|null|undefined): {border:string,bg:string}|null {
+  if(!end) return null;
+  const d=dLeft(end);
+  if(d===null) return null;
+  if(d<0) return {border:"#f5c6c2",bg:"#fdf5f4"};
+  if(d<=14) return {border:"#f5c6c2",bg:"#fdf5f4"};
+  if(d<=30) return {border:"#f0dfc8",bg:"#fdf8f2"};
+  return {border:"#c2ddc2",bg:"#f4fbf4"};
+}
 
 // ─── PDF ENGINE ────────────────────────────────────────────
 function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) {
@@ -1735,8 +1744,9 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
       {cl.projects.map((pr: any,i: number)=>{
         const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
         const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
+        const lc=!isHighlighted?licenseColors(end):null;
         return(
-          <div key={pr.id} ref={isHighlighted?highlightRef:null} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
+          <div key={pr.id} ref={isHighlighted?highlightRef:null} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:lc?lc.border:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":lc?lc.bg:undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
               <div style={{flex:1,minWidth:0}}>
                 {editPrName===pr.id
@@ -2017,8 +2027,9 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
         {cl.projects.map((pr: any,i: number)=>{
           const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
           const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
+          const lc=!isHighlighted?licenseColors(end):null;
           return(
-            <div key={pr.id} ref={isHighlighted?mobileHighlightRef:null} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
+            <div key={pr.id} ref={isHighlighted?mobileHighlightRef:null} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:lc?lc.border:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":lc?lc.bg:undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div style={{flex:1,minWidth:0}}>
                   {editPrName===pr.id
