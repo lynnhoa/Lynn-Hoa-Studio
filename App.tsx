@@ -507,6 +507,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
           <p style={{fontSize:7.5,color:C.muted,margin:0}}>{l?"Datum, Ort":"Date and Place"}</p>
         </div>)}
       </div>}
+      <div data-content-end="true" style={{height:0}}/>
     </div>
   );
 }
@@ -535,8 +536,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const docRef=useRef<HTMLDivElement>(null);
   const [docHeight,setDocHeight]=useState(841);
   const PAGE_H=841;
-  const MIN_PAGE_CONTENT=60;
-  const numPages=Math.max(1,Math.floor((docHeight-MIN_PAGE_CONTENT)/PAGE_H)+1);
+  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
   const s={...SETTINGS_DEFAULT,...(settings||{})};
   const isDE=lang==="de";
   const _dc=s.company||s.name||(isDE?"Der/Die Auftragnehmer/in":"The creator");
@@ -564,7 +564,8 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
     const el=docRef.current;
     if(!el)return;
     const calc=()=>{
-      setDocHeight(el.scrollHeight);
+      const endEl=el.querySelector("[data-content-end]") as HTMLElement|null;
+      setDocHeight(endEl?endEl.offsetTop:el.scrollHeight);
       // Signature guard
       const sigEl=el.querySelector("[data-sig-anchor]") as HTMLElement|null;
       if(!sigEl){setExtraSigMargin(0);}
@@ -1066,8 +1067,7 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
   const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
-  const MIN_PAGE_CONTENT=60;
-  const numPages=Math.max(1,Math.floor((docHeight-MIN_PAGE_CONTENT)/PAGE_H)+1);
+  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
   const pageScale=winW<700?Math.min(1,(winW-32)/595):1;
   const sett={...SETTINGS_DEFAULT,...(settings||{})};
   const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
