@@ -1466,7 +1466,7 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
   const aTotal=lines.reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
   const aNo=`AMD-${(q?.qNo||"").replace("QUO","").trim()||"001"}-${String((p.amendments?.length||0)+1).padStart(2,"0")}`;
 
-  if(pdf)return<PDFModal data={pdf} type="amendment" onClose={()=>setPdf(null)} settings={settings}
+  if(pdf)return<PDFModal data={pdf} type="amendment" onClose={()=>setPdf(null)} settings={settings} isNew={true}
     onSave={(doc: any)=>{onSave({id:uid(),aNo:doc.aNo||aNo,lines:doc.lines||lines,amendTotal:doc.lines?.reduce((s: number,l: any)=>s+(l.amt||0),0)||Math.round(aTotal),signed:false});}}/>;
 
   const SectionHead=({n,title}: any)=><p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>{n} — {title}</p>;
@@ -1475,10 +1475,11 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
     <Pill on={val==="selected"} onClick={()=>set("selected")}>Selected items</Pill>
   </div>;
   const catShort: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
-  const ItemCheckboxes=({sel,setSel}: any)=><>{origLines.map((l: any,i: number)=>{
+  const ItemCheckboxes=({sel,setSel,pfx}: any)=><>{origLines.map((l: any,i: number)=>{
     const on=sel.includes(l.id);
-    return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
-      <input type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
+    const cbId=`${pfx||"cb"}-${i}`;
+    return<label key={cbId} htmlFor={cbId} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
+      <input id={cbId} type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
       <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
     </label>;
   })}</>;
@@ -1535,7 +1536,7 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
           <SectionHead n="02" title="Usage Rights"/>
           <Lbl>Apply % to</Lbl>
           <BaseToggle val={uBase} set={setUBase}/>
-          {uBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={uSel} setSel={setUSel}/></div>}
+          {uBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={uSel} setSel={setUSel} pfx="u"/></div>}
           <Lbl>Usage Rights</Lbl>
           <S value={uIdx} onChange={(e: any)=>setUIdx(parseInt(e.target.value))} s={{marginBottom:8}}>
             {usageOpts.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
@@ -1551,7 +1552,7 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
           <SectionHead n="03" title="Add-ons"/>
           <Lbl>Apply % to</Lbl>
           <BaseToggle val={aoBase} set={setAoBase}/>
-          {aoBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={aoSel} setSel={setAoSel}/></div>}
+          {aoBase==="selected"&&<div style={{marginBottom:10,padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}><ItemCheckboxes sel={aoSel} setSel={setAoSel} pfx="ao"/></div>}
           <Lbl>Add-on</Lbl>
           <S value={aoId} onChange={(e: any)=>{setAoId(e.target.value);setAoCustom("");}} s={{marginBottom:7}}>
             <option value="">— Select add-on —</option>
@@ -1656,7 +1657,7 @@ function RenewalModal({p,onSave,onClose,settings,rc}: any) {
 
   const canPreview=(uOpt&&!uOpt.sentinel)||(eOpt&&!eOpt.sentinel)||custFee!=="";
 
-  if(pdf)return<PDFModal data={pdf} type="renewal" onClose={()=>setPdf(null)} settings={settings}
+  if(pdf)return<PDFModal data={pdf} type="renewal" onClose={()=>setPdf(null)} settings={settings} isNew={true}
     onSave={(doc: any)=>{onSave({id:uid(),optLabel:termParts||"Custom",mo:maxMo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,signed:false,paid:false,doc});}}/>;
 
   return(
@@ -1679,8 +1680,8 @@ function RenewalModal({p,onSave,onClose,settings,rc}: any) {
             {origLines.map((l: any,i: number)=>{
               const on=rSel.includes(l.id);
               const catShort: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
-              return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
-                <input type="checkbox" checked={on} onChange={()=>setRSel(p=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
+              return<label key={`r-${i}`} htmlFor={`r-${i}`} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
+                <input id={`r-${i}`} type="checkbox" checked={on} onChange={()=>setRSel(p=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
                 <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
               </label>;
             })}
