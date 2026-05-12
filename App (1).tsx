@@ -386,7 +386,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     renewal:l?"Lizenzerneuerung":"License Renewal"
   };
   const MRow=({lb,v}: any) => <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{lb}</span><span>{v}</span></div>;
-  const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
+  const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC Creator",editorial:"Editorial"};
   const TRow=({ln,prevLn,idx}: any)=>{
     const showCat=!!(ln.cat&&catBadgeLabel[ln.cat]&&ln.cat!==(prevLn?.cat));
     const subDetails=[
@@ -439,7 +439,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
       </div>}
       {type==="renewal"&&d.origContent?.length>0&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"9px 11px",marginBottom:12,background:"#f5f3f0"}}>
         <p style={{fontSize:6.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 5px"}}>{l?"Lizenz für folgende Inhalte":"License applies to the following content"}</p>
-        {d.origContent.map((c: any,i: number)=><p key={i} style={{fontSize:8.5,margin:"0 0 2px"}}>{c.qty?`${c.qty}× `:""}{c.name}{c.note?` — ${c.note}`:""}</p>)}
+        {d.origContent.map((c: any,i: number)=><p key={i} style={{fontSize:8.5,margin:"0 0 2px"}}>{c.qty?`${c.qty}× `:""}{c.name}{c.cat?` [${({influencer:"Influencer",ugc:"UGC",editorial:"Editorial"})[c.cat]||c.cat}]`:""}{c.note?` — ${c.note}`:""}</p>)}
         <p style={{fontSize:7.5,color:C.muted,margin:"5px 0 0"}}>{l?"Projekt":"Project"}: {d.projName} · {l?"Typ":"Type"}: {d.rType}</p>
       </div>}
       {(type!=="contract"||(d.quoteRef||"none")==="table")&&<>
@@ -1144,7 +1144,7 @@ function RateCards({rc,setRc,settings}: any) {
         </div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap"}}>
-        {["influencer","ugc","editorial","hotels"].map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{{influencer:"Influencer",ugc:"UGC",editorial:"Editorial",hotels:"Hotels"}[k as keyof object]}</Pill>)}
+        {["influencer","ugc","editorial","hotels"].map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{{influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial",hotels:"Hotels"}[k as keyof object]}</Pill>)}
       </div>
       {card.sections.map((sec: any,si: number)=>(
         <div key={si} style={{marginBottom:14}}>
@@ -1254,14 +1254,14 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
-    const ctype=cats.includes("ugc")?"UGC Creator":cats.includes("editorial")?"Editorial Content Creator":"Content Creator";
+    const ctype=cats.length>1?"Content Creator":cats[0]==="ugc"?"UGC Creator":cats[0]==="editorial"?"Editorial Content Creator":"Content Creator (Influencer)";
     setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
       lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
 
   const reset=()=>{setItems([]);setBrand("");setContact("");setProjName("");setRetOn(false);if(clearPrefill)clearPrefill();};
-  const catLabel: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
+  const catLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC Creator",editorial:"Editorial"};
 
   return(
     <div>
@@ -1276,7 +1276,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
         <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 9px"}}>Original Quote — read only</p>
         {prefill.origLines.map((ln: any,i: number)=>(
           <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
-            <span style={{fontSize:10,color:C.black}}>{ln.qty>1?`${ln.qty}× `:""}{ln.name}</span>
+            <span style={{fontSize:10,color:C.black,display:"flex",alignItems:"center",gap:6}}>{ln.qty>1?`${ln.qty}× `:""}{ln.name}{ln.cat&&<span style={{fontSize:8,color:C.white,background:ln.cat==="ugc"?C.amber:ln.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em"}}>{({influencer:"Influencer",ugc:"UGC",editorial:"Editorial"})[ln.cat]||ln.cat}</span>}</span>
             <span style={{fontSize:10,fontFamily:SERIF,color:C.muted,flexShrink:0,marginLeft:8}}>{fmt(ln.amt)}</span>
           </div>
         ))}
@@ -1393,273 +1393,6 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
           <p style={{fontSize:9,color:C.light,margin:0}}>Configure an item above and click "+ Add to Quote"</p>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── AMENDMENT MODAL ──────────────────────────────────────
-function AmendModal({p,onSave,onClose,settings,rc}: any) {
-  const q=p.qd;
-  const defCat=(q?.ctab&&["influencer","ugc","editorial"].includes(q.ctab)?q.ctab:"influencer") as "influencer"|"ugc"|"editorial";
-  const [lines,setLines]=useState<any[]>([]);
-  const [pdf,setPdf]=useState<any>(null);
-  // Rate card picker
-  const [aCat,setACat]=useState(defCat);
-  const [aMode,setAMode]=useState<"del"|"ao">("del");
-  const [aDel,setADel]=useState(0);
-  const [aAddon,setAAddon]=useState("");
-  const [aQty,setAQty]=useState(1);
-  const [aNeg,setANeg]=useState("");
-  // Manual entry
-  const [showMan,setShowMan]=useState(false);
-  const [manName,setManName]=useState("");
-  const [manQty,setManQty]=useState(1);
-  const [manUp,setManUp]=useState("");
-
-  const card=rc?.[aCat]||rc?.influencer;
-  const deliverables=card?card.sections.filter((s: any)=>isSingle(s.t)).flatMap((s: any)=>s.items):[];
-  const addonList=AO[aCat]||[];
-  const selDel=deliverables[aDel];
-  const selAddon=addonList.find((x: any)=>x.id===aAddon);
-  const isPct=aMode==="ao"&&selAddon?.pct&&!selAddon?.flat;
-
-  const rcPrice=()=>{
-    if(aMode==="del"){return Math.round((aNeg!==""?parseFloat(aNeg)||0:(selDel?.p||0))*(aQty||1));}
-    if(!selAddon)return 0;
-    return Math.round((aNeg!==""?parseFloat(aNeg)||0:(selAddon.flat||0))*(aQty||1));
-  };
-  const addRC=()=>{
-    let name="",note="",up=0;
-    if(aMode==="del"){if(!selDel)return;name=selDel.n;note=selDel.note||"";up=aNeg!==""?parseFloat(aNeg)||0:(selDel.p||0);}
-    else{if(!selAddon)return;name=selAddon.n;up=aNeg!==""?parseFloat(aNeg)||0:(selAddon.flat||0);}
-    setLines(prev=>[...prev,{id:uid(),name,note,qty:aQty,up,amt:Math.round(up*(aQty||1))}]);
-    setANeg("");setAQty(1);
-  };
-  const addManual=()=>{
-    if(!manName.trim())return;
-    const up=parseFloat(manUp)||0;
-    setLines(prev=>[...prev,{id:uid(),name:manName,note:"",qty:manQty,up,amt:Math.round(up*(manQty||1))}]);
-    setManName("");setManQty(1);setManUp("");
-  };
-
-  const aTotal=lines.reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
-  const aNo=`AMD-${(q?.qNo||"").replace("QUO","").trim()||"001"}-${String((p.amendments?.length||0)+1).padStart(2,"0")}`;
-
-  if(pdf)return<PDFModal data={pdf} type="amendment" onClose={()=>setPdf(null)} settings={settings}
-    onSave={(doc: any)=>{onSave({id:uid(),aNo:doc.aNo||aNo,lines:doc.lines||lines,amendTotal:doc.lines?.reduce((s: number,l: any)=>s+(l.amt||0),0)||Math.round(aTotal)});}}/>;
-
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}>
-      <div style={{background:C.bg,width:"100%",maxWidth:520,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",maxHeight:"90vh",overflowY:"auto"}}>
-
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-          <h3 style={{fontFamily:SERIF,fontSize:17,fontWeight:"normal",margin:0}}>Add Amendment</h3>
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button>
-        </div>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px"}}>Project: <strong style={{color:C.black,fontWeight:500}}>{p.name}</strong> · Original: <strong style={{color:C.black,fontWeight:500,fontFamily:SERIF}}>{fmt(p.amount)}</strong></p>
-
-        {rc&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>From Rate Card</p>
-          <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
-            {(["influencer","ugc","editorial"] as const).map(k=>(
-              <Pill key={k} on={aCat===k} onClick={()=>{setACat(k);setADel(0);setAAddon("");setANeg("");}}>
-                {{influencer:"Influencer",ugc:"UGC",editorial:"Editorial"}[k]}
-              </Pill>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:5,marginBottom:10}}>
-            <button onClick={()=>{setAMode("del");setANeg("");}} style={{padding:"4px 12px",border:`1px solid ${aMode==="del"?C.black:C.rule}`,background:aMode==="del"?C.black:"transparent",color:aMode==="del"?"#fff":C.muted,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.07em",textTransform:"uppercase"}}>Deliverable</button>
-            <button onClick={()=>{setAMode("ao");setANeg("");}} style={{padding:"4px 12px",border:`1px solid ${aMode==="ao"?C.black:C.rule}`,background:aMode==="ao"?C.black:"transparent",color:aMode==="ao"?"#fff":C.muted,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.07em",textTransform:"uppercase"}}>Add-on</button>
-          </div>
-
-          {aMode==="del"&&<>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 70px",gap:8,marginBottom:8}}>
-              <div><Lbl>Deliverable</Lbl><S value={aDel} onChange={(e: any)=>{setADel(parseInt(e.target.value));setANeg("");}}>{deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}</S></div>
-              <div><Lbl>Qty</Lbl><I type="number" min={1} value={aQty} onChange={(e: any)=>setAQty(parseInt(e.target.value)||1)}/></div>
-            </div>
-            <div style={{marginBottom:10}}>
-              <Lbl>Negotiated Rate <span style={{fontWeight:"normal",color:C.light}}>(leave blank to use card price)</span></Lbl>
-              <I type="number" placeholder={`Card rate: € ${selDel?.p||0}`} value={aNeg} onChange={(e: any)=>setANeg(e.target.value)}/>
-            </div>
-          </>}
-
-          {aMode==="ao"&&<>
-            <div style={{marginBottom:8}}>
-              <Lbl>Add-on</Lbl>
-              <S value={aAddon} onChange={(e: any)=>{setAAddon(e.target.value);setANeg("");}}>
-                <option value="">— Select add-on —</option>
-                {addonList.map((a: any)=><option key={a.id} value={a.id}>{a.n}{a.flat?` — € ${a.flat}`:a.pct?` — ${a.pct}% of base`:""}</option>)}
-              </S>
-              {isPct&&<p style={{fontSize:10,color:C.amber,margin:"4px 0 0"}}>Percentage-based — enter the amount manually below</p>}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 70px",gap:8,marginBottom:10}}>
-              <div>
-                <Lbl>Price (€) {selAddon?.flat&&<span style={{fontWeight:"normal",color:C.light}}>card: € {selAddon.flat}</span>}</Lbl>
-                <I type="number" placeholder={selAddon?.flat?`€ ${selAddon.flat}`:isPct?"Enter amount":"—"} value={aNeg} onChange={(e: any)=>setANeg(e.target.value)}/>
-              </div>
-              <div><Lbl>Qty</Lbl><I type="number" min={1} value={aQty} onChange={(e: any)=>setAQty(parseInt(e.target.value)||1)}/></div>
-            </div>
-          </>}
-
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,borderTop:`1px solid ${C.rule}`}}>
-            <span style={{fontSize:10.5,color:C.muted}}>Line total: <strong style={{color:C.black,fontFamily:SERIF,fontSize:16}}>{fmt(rcPrice())}</strong></span>
-            <B onClick={addRC} s={{paddingLeft:16,paddingRight:16}}>+ Add Line</B>
-          </div>
-        </div>}
-
-        {!showMan
-          ?<button onClick={()=>setShowMan(true)} style={{fontSize:10,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:"0 0 12px",fontFamily:SANS,letterSpacing:"0.04em",textDecoration:"underline",textDecorationColor:C.rule}}>+ Add manual line</button>
-          :<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 12px",marginBottom:12,background:C.white}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Manual Entry</p>
-              <button onClick={()=>setShowMan(false)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:13,padding:0}}>✕</button>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 50px 80px",gap:7,marginBottom:8}}>
-              <div><Lbl>Description</Lbl><I placeholder="Custom item" value={manName} onChange={(e: any)=>setManName(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addManual()}/></div>
-              <div><Lbl>Qty</Lbl><I type="number" min={1} value={manQty} onChange={(e: any)=>setManQty(parseInt(e.target.value)||1)}/></div>
-              <div><Lbl>Unit Price (€)</Lbl><I type="number" placeholder="0" value={manUp} onChange={(e: any)=>setManUp(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addManual()}/></div>
-            </div>
-            <div style={{display:"flex",justifyContent:"flex-end"}}>
-              <B onClick={addManual} s={{paddingLeft:16,paddingRight:16}}>+ Add</B>
-            </div>
-          </div>
-        }
-
-        {lines.length>0&&<>
-          <div style={{marginBottom:10}}>
-            {lines.map((l: any)=>(
-              <div key={l.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"8px 0",borderBottom:`1px solid ${C.rule}`}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontSize:11.5,color:C.black,margin:"0 0 1px"}}>{l.qty>1?`${l.qty}× `:""}{l.name||"—"}</p>
-                  {l.note&&<p style={{fontSize:10,color:C.muted,margin:0}}>{l.note}</p>}
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,marginLeft:12}}>
-                  <span style={{fontSize:13,fontFamily:SERIF,color:C.black}}>{fmt(l.amt)}</span>
-                  <button onClick={()=>setLines(prev=>prev.filter((x: any)=>x.id!==l.id))} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:14,padding:0}}>✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{padding:"10px 14px",background:C.white,border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-            <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Amendment Total</span>
-            <span style={{fontFamily:SERIF,fontSize:19}}>{fmt(Math.round(aTotal))}</span>
-          </div>
-        </>}
-
-        {lines.length===0&&<div style={{borderTop:`1px solid ${C.rule}`,marginBottom:14}}/>}
-
-        <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}>
-          <B v="sec" onClick={onClose}>Cancel</B>
-          <B s={{opacity:lines.length===0?0.45:1}} onClick={()=>{if(!lines.length)return;setPdf({brand:q?.brand,contact:q?.contact,date:today(),ctype:q?.ctype||"Content Creator",qNo:q?.qNo,aNo,lines,amendTotal:Math.round(aTotal),origTotal:p.amount});}}>Preview & Generate PDF</B>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── RENEWAL MODAL ────────────────────────────────────────
-const RENEWAL_ADDONS=[
-  {id:"ra1",n:"Whitelisting / boosting",note:"Ads through Lynn's account · per month",p:null,pct:30},
-  {id:"ra2",n:"Link in bio",note:"Per week",p:100},
-  {id:"ra3",n:"Pinned post",note:"Post kept pinned",p:100},
-  {id:"ra4",n:"Additional Story frame",note:"Per frame",p:50},
-  {id:"ra5",n:"Aspect ratio adaptation",note:"Per format",p:65},
-];
-function RenewalModal({p,onSave,onClose,settings}: any) {
-  const q=p.qd;
-  const [rtype,setRtype]=useState("usage");
-  const [oi,setOi]=useState(2);
-  const [custFee,setCustFee]=useState("");
-  const [startD,setStartD]=useState(today());
-  const [pdf,setPdf]=useState<any>(null);
-  // add-ons
-  const [addons,setAddons]=useState<{id:string,amt:string}[]>([]);
-  const toggleAddon=(id: string)=>setAddons(prev=>prev.find(a=>a.id===id)?prev.filter(a=>a.id!==id):[...prev,{id,amt:""}]);
-  const setAddonAmt=(id: string,amt: string)=>setAddons(prev=>prev.map(a=>a.id===id?{...a,amt}:a));
-  const opt=RENEWAL_OPTS[rtype][oi];
-  const base=q?.total||0;
-  const suggested=Math.round(base*(opt.pct/100));
-  const licenseFee=custFee!==""?parseFloat(custFee)||0:suggested;
-  const addonTotal=addons.reduce((s,a)=>{
-    const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
-    if(!def)return s;
-    const v=parseFloat(a.amt)||0;
-    if(v>0)return s+v;
-    if(def.p)return s+def.p;
-    if(def.pct)return s+Math.round(licenseFee*def.pct/100);
-    return s;
-  },0);
-  const fee=licenseFee+addonTotal;
-  const endD=addM(startD,opt.mo);
-  const rNo=`INV-${new Date().getFullYear()}-RN${String((p.renewals||[]).length+1).padStart(2,"0")}`;
-  const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;
-  const buildDoc=()=>{
-    const lines=[
-      {name:`License Renewal — ${opt.l}`,note:`${fmtD(startD)} – ${fmtD(endD)}`,qty:1,up:licenseFee,amt:licenseFee},
-      ...addons.map(a=>{
-        const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
-        const v=parseFloat(a.amt)||def?.p||(def?.pct?Math.round(licenseFee*def.pct/100):0);
-        return{name:def?.n||"",note:def?.note||"",qty:1,up:v,amt:v};
-      }).filter(a=>a.amt>0)
-    ];
-    return{brand:q?.brand,contact:q?.contact,date:today(),rNo,iNo,delivery:startD,
-      ctype:q?.ctype||"Content Creator",projName:p.name,rType:opt.l,
-      origContent:q?.lines||[],footer:"Thank you for the pleasure of working together.",
-      lines,total:fee,endDate:endD,startDate:startD,optLabel:opt.l,mo:opt.mo};
-  };
-  if(pdf)return<PDFModal data={pdf} type="renewal" onClose={()=>setPdf(null)} settings={settings}
-    onSave={(doc: any)=>{onSave({id:uid(),type:rtype,optLabel:opt.l,mo:opt.mo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,signed:false,paid:false,doc});}}/>;
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:C.bg,width:"100%",maxWidth:460,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.15)",maxHeight:"90vh",overflowY:"auto"}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-          <h3 style={{fontFamily:SERIF,fontSize:16,fontWeight:"normal",margin:0}}>Add Renewal</h3>
-          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button>
-        </div>
-        <p style={{fontSize:11,color:C.muted,margin:"0 0 12px",lineHeight:1.6}}>Project: <strong style={{color:C.black}}>{p.name}</strong><br/>Original total: <strong style={{color:C.black}}>{fmt(base)}</strong></p>
-
-        <Lbl>License Type</Lbl>
-        <div style={{display:"flex",gap:6,marginBottom:9}}>
-          <Pill on={rtype==="usage"} onClick={()=>{setRtype("usage");setOi(2);}}>Usage Rights</Pill>
-          <Pill on={rtype==="excl"} onClick={()=>{setRtype("excl");setOi(0);}}>Exclusivity</Pill>
-        </div>
-        <Lbl>Scope & Duration</Lbl>
-        <S value={oi} onChange={(e: any)=>setOi(parseInt(e.target.value))} s={{marginBottom:9}}>{RENEWAL_OPTS[rtype].map((o: any,i: number)=><option key={i} value={i}>{o.l}</option>)}</S>
-        <Lbl>Start Date</Lbl>
-        <I type="date" value={startD} onChange={(e: any)=>setStartD(e.target.value)} s={{marginBottom:4}}/>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 10px"}}>End date: <strong style={{color:C.black}}>{fmtD(endD)}</strong></p>
-        <Lbl>License Fee</Lbl>
-        <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:3}}>
-          <I type="number" placeholder={`Suggested: € ${suggested}`} value={custFee} onChange={(e: any)=>setCustFee(e.target.value)}/>
-          {custFee!==""&&<B v="sec" s={{fontSize:8}} onClick={()=>setCustFee("")}>Reset</B>}
-        </div>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px"}}>{opt.pct>0?`Suggested: ${opt.pct}% of original total`:"Set your fee freely"}</p>
-
-        <Lbl>Add-ons <span style={{fontWeight:"normal",color:C.light,textTransform:"none",letterSpacing:0}}>(optional)</span></Lbl>
-        {RENEWAL_ADDONS.map(a=>{
-          const sel=addons.find(x=>x.id===a.id);
-          return(
-            <div key={a.id} style={{marginBottom:6}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <input type="checkbox" checked={!!sel} onChange={()=>toggleAddon(a.id)} style={{accentColor:C.black,flexShrink:0}}/>
-                <span style={{fontSize:10.5,color:C.black}}>{a.n}</span>
-                <span style={{fontSize:9.5,color:C.muted,flex:1}}>{a.note}</span>
-                <span style={{fontSize:9.5,color:C.muted,flexShrink:0}}>{a.p?`€ ${a.p}`:a.pct?`+${a.pct}%`:""}</span>
-              </div>
-              {sel&&(a.p==null)&&<I type="number" placeholder={a.pct?`Suggested: € ${Math.round(licenseFee*a.pct/100)}`:"Amount"} value={sel.amt} onChange={(e: any)=>setAddonAmt(a.id,e.target.value)} s={{marginTop:4,fontSize:10}}/>}
-            </div>
-          );
-        })}
-
-        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,margin:"14px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Total</span>
-          <span style={{fontFamily:SERIF,fontSize:18}}>{fmt(fee)}</span>
-        </div>
-        <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}>
-          <B v="sec" onClick={onClose}>Cancel</B>
-          <B onClick={()=>setPdf(buildDoc())}>Preview & Save</B>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1801,42 +1534,35 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             {/* ── ACTIONS ── */}
             <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
 
-              {/* lead: no actions — create quote is in docs row */}
-
-              {/* quoted / revised: revise or move to contract */}
+              {/* quoted / revised: revise quote OR accept → open contract PDF */}
               {["quoted","revised"].includes(pr.status)&&<>
                 <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
-                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+                <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
               </>}
 
-              {/* contracted: revise contract text or mark signed */}
+              {/* contracted: revise contract (stays contracted, bumps rev) OR mark signed → production */}
               {pr.status==="contracted"&&<>
                 <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
               </>}
 
-              {/* production: amendments cycle + create invoice */}
+              {/* production: creator working → create invoice opens PDF immediately */}
               {pr.status==="production"&&<>
-                <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
-                {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
-                  <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
-                ))}
-                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+                <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>
               </>}
 
-              {/* invoiced: mark paid + undo — corrections via preview */}
+              {/* invoiced: mark paid */}
               {pr.status==="invoiced"&&!pr.paid&&<>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
-                <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
               </>}
 
-              {/* paid: undo paid — renewals cycle is in the renewal rows above */}
+              {/* paid: undo paid */}
               {pr.paid&&<>
                 <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
               </>}
 
-              {/* undo step — contracted and production only */}
-              {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+              {/* undo — one step back at every non-paid stage */}
+              {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
 
             </div>
           </div>
@@ -1907,7 +1633,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const upP=(cid: string,pid: string,data: any)=>setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,...data})}));
   const delCl=(id: string)=>{setClients((p: any[])=>p.filter(c=>c.id!==id));setSel(null);};
   const addCl=()=>{if(!nb.name.trim())return;setClients((p: any[])=>[...p,{id:uid(),...nb,projects:[]}]);setNb({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[],notes:""});setShowAdd(false);};
-  const addP=(cid: string)=>{if(!newPN.trim())return;const pr={id:uid(),name:newPN,status:"lead",amount:0,paid:false,date:today(),deliveryDate:"",notes:"",qd:null,amendments:[],renewals:[]};setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:[pr,...c.projects]}));setNewPN("");setShowAddP(false);};
+  const addP=(cid: string)=>{if(!newPN.trim())return;const pr={id:uid(),name:newPN,status:"quoted",amount:0,paid:false,date:today(),deliveryDate:"",notes:"",qd:null,amendments:[],renewals:[]};setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:[pr,...c.projects]}));setNewPN("");setShowAddP(false);};
   const saveAmend=(cid: string,pid: string,amend: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,amendments:[...(pr.amendments||[]),amend],amount:pr.amount+amend.amendTotal})}));setAmendT(null);};
   const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),renewal],usageEndOverride:renewal.endDate})}));setRenewT(null);};
   const setStatus=(cid: string,pid: string,st: string)=>upP(cid,pid,{status:st,paid:st==="paid"});
@@ -1944,8 +1670,6 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           // internal correction — save clauses silently, no version bump
           ?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}
           :undefined}/>;
-  if(amendT)return<AmendModal p={amendT.p} onSave={(a: any)=>saveAmend(amendT.cid,amendT.pid,a)} onClose={()=>setAmendT(null)} settings={settings} rc={rc}/>;
-  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} settings={settings}/>;
 
   if(cl&&isMobile){
     const f=fin(cl);
@@ -2083,31 +1807,26 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
               {/* ── ACTIONS ── */}
               <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
 
-                {/* quoted / revised: revise or move to contract */}
+                {/* quoted / revised: revise quote OR accept → open contract PDF */}
                 {["quoted","revised"].includes(pr.status)&&<>
                   <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
-                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+                  <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
                 </>}
 
-                {/* contracted: revise contract text or mark signed */}
+                {/* contracted: revise contract (stays contracted, bumps rev) OR mark signed → production */}
                 {pr.status==="contracted"&&<>
                   <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
                   <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
                 </>}
 
-                {/* production: amendments cycle + create invoice */}
+                {/* production: creator working → create invoice opens PDF immediately */}
                 {pr.status==="production"&&<>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
-                  {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
-                    <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
-                  ))}
-                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+                  <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>
                 </>}
 
-                {/* invoiced: mark paid + undo — corrections via preview */}
+                {/* invoiced: mark paid */}
                 {pr.status==="invoiced"&&!pr.paid&&<>
                   <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
-                  <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
                 </>}
 
                 {/* paid: undo paid */}
@@ -2115,8 +1834,8 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
                   <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
                 </>}
 
-                {/* undo step — contracted and production only */}
-                {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+                {/* undo — one step back at every non-paid stage */}
+                {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
 
               </div>
             </div>
@@ -2224,17 +1943,35 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile}: any) {
-  const [drill,setDrill]=useState<null|"year"|"month"|"license">(null);
+function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
+  const [drill,setDrill]=useState<null|"year"|"month"|"license"|"projects">(null);
+  const [pFilter,setPFilter]=useState<string>("all");
+  const [pSort,setPSort]=useState<string>("status");
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
   const unsigned=all.filter((pr: any)=>pr.status==="contracted"&&!pr.paid);
   const unpaid=all.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid);
+
+  const STATUS_ORDER: Record<string,number>={production:0,contracted:1,invoiced:2,quoted:3,revised:4};
+  const NEXT_ACTION: Record<string,string>={quoted:"Awaiting client feedback",revised:"Awaiting client feedback",contracted:"Awaiting signature",production:"In production",invoiced:"Awaiting payment"};
+  const STATUS_COLOR: Record<string,string>={quoted:C.amber,revised:C.amber,contracted:C.amber,production:C.black,invoiced:C.green};
+
+  const activeProjects=all.filter((pr: any)=>!pr.paid&&pr.status&&pr.status!=="lead"&&pr.status!=="paid");
+
+  const filteredProjects=(()=>{
+    let list=activeProjects;
+    if(pFilter!=="all")list=list.filter((pr: any)=>pr.status===pFilter);
+    if(pSort==="status")list=[...list].sort((a: any,b: any)=>(STATUS_ORDER[a.status]??9)-(STATUS_ORDER[b.status]??9));
+    else if(pSort==="amount_hi")list=[...list].sort((a: any,b: any)=>b.amount-a.amount);
+    else if(pSort==="amount_lo")list=[...list].sort((a: any,b: any)=>a.amount-b.amount);
+    else if(pSort==="delivery")list=[...list].sort((a: any,b: any)=>(a.deliveryDate||"9999").localeCompare(b.deliveryDate||"9999"));
+    return list;
+  })();
+
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
-  const expiring=all.filter((pr: any)=>{const e=uEnd(pr);if(!e)return false;const d=dLeft(e);return d!==null&&d>=0&&d<=30;});
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
     const ue=uEnd(pr);
@@ -2253,6 +1990,7 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const thisMonthRev=thisMonthPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
   const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
+
   const Card=({label,count,items,warm,sub,onClick}: any)=>(
     <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
@@ -2260,10 +1998,79 @@ function Dashboard({clients,goTo,isMobile}: any) {
         <span style={{fontFamily:SERIF,fontSize:16,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
       </div>
       {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 8px"}}>{sub}</p>}
-      {items?.slice(0,3).map((pr: any,i: number)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}><span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span><span style={{fontSize:10.5}}>{pr.amount?fmt(pr.amount):""}</span></div>)}
+      {items?.slice(0,3).map((pr: any,i: number)=>(
+        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+          <div style={{minWidth:0,flex:1}}>
+            <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
+            {pr.name&&<span style={{fontSize:9.5,color:C.light,display:"block"}}>{pr.name}</span>}
+          </div>
+          <span style={{fontSize:10.5,flexShrink:0,marginLeft:8}}>{pr.amount?fmt(pr.amount):""}</span>
+        </div>
+      ))}
+      {items?.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{items.length-3} more</p>}
       {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
     </div>
   );
+
+  // ── Active Projects drill ──
+  if(drill==="projects"){
+    const FILTERS=[["all","All"],["production","Production"],["contracted","Contracted"],["invoiced","Invoiced"],["quoted","Quoted"]];
+    const SORTS=[["status","By Stage"],["amount_hi","Amount ↓"],["amount_lo","Amount ↑"],["delivery","Delivery"]];
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+          <div>
+            <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 3px"}}>Active Projects</h2>
+            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{filteredProjects.length} of {activeProjects.length} project{activeProjects.length!==1?"s":""}</p>
+          </div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+              {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            </S>
+            <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+              {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            </S>
+          </div>
+        </div>
+
+        {filteredProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No projects match this filter.</p>}
+        {filteredProjects.map((pr: any,i: number)=>{
+          const col=STATUS_COLOR[pr.status]||C.muted;
+          const next=NEXT_ACTION[pr.status]||"";
+          const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
+          return(
+            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
+
+              {/* header row */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
+                <div style={{minWidth:0}}>
+                  <p style={{fontSize:12,color:C.muted,margin:"0 0 2px",letterSpacing:"0.04em"}}>{pr.cName}</p>
+                  <p style={{fontSize:15,color:C.black,margin:0,fontFamily:SERIF,fontWeight:"normal"}}>{pr.name}</p>
+                </div>
+                <span style={{fontFamily:SERIF,fontSize:15,flexShrink:0}}>{fmt(pr.amount)}</span>
+              </div>
+
+              {/* meta row */}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
+                <span style={{fontSize:9,letterSpacing:"0.08em",textTransform:"uppercase",color:col,border:`1px solid ${col}`,padding:"2px 7px",borderRadius:2}}>{pr.status}</span>
+                {pr.deliveryDate&&<span style={{fontSize:10,color:C.muted}}>Due {fmtD(pr.deliveryDate)}</span>}
+                {(pr.amendments||[]).length>0&&<span style={{fontSize:10,color:unsignedAmends>0?C.amber:C.muted}}>{pr.amendments.length} amend{unsignedAmends>0?` · ${unsignedAmends} unsigned`:""}</span>}
+                {(pr.renewals||[]).length>0&&<span style={{fontSize:10,color:C.green}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
+              </div>
+
+              {/* next action */}
+              <div style={{paddingTop:7,borderTop:`1px solid ${C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:10,color:C.muted}}>Next: <strong style={{color:C.black}}>{next}</strong></span>
+                <span style={{fontSize:9,color:C.light,letterSpacing:"0.06em"}}>→ Open in Clients</span>
+              </div>
+
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   if(drill==="year"){
     return(
       <div>
@@ -2364,7 +2171,7 @@ function Dashboard({clients,goTo,isMobile}: any) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
-        <Card label="Active Contracts" count={unsigned.length} items={unsigned}/>
+        <Card label="Active Projects" count={activeProjects.length} sub={`${fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress`} items={activeProjects} onClick={()=>setDrill("projects")}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
@@ -2667,7 +2474,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   };
 
   const logout=()=>{setAuthed(false);setNav(0);setMenuOpen(false);};
-  const NAV=["Dashboard","Clients","Calculator"];
+  const NAV=["Dashboard","Clients","Calculator","Rate Card"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
@@ -2723,7 +2530,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
