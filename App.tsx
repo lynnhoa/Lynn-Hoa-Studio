@@ -1534,44 +1534,35 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             {/* ── ACTIONS ── */}
             <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
 
-              {/* lead: no actions — create quote is in docs row */}
-
-              {/* quoted / revised: revise or move to contract */}
+              {/* quoted / revised: revise quote OR accept → open contract PDF */}
               {["quoted","revised"].includes(pr.status)&&<>
                 <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
-                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+                <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
               </>}
 
-              {/* contracted: revise contract text or mark signed */}
+              {/* contracted: revise contract (stays contracted, bumps rev) OR mark signed → production */}
               {pr.status==="contracted"&&<>
                 <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
               </>}
 
-              {/* production: amendments cycle + create invoice */}
+              {/* production: creator working → create invoice opens PDF immediately */}
               {pr.status==="production"&&<>
-                <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
-                {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
-                  <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
-                ))}
-                {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+                <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>
               </>}
 
-              {/* invoiced: mark paid + undo + add renewal */}
+              {/* invoiced: mark paid */}
               {pr.status==="invoiced"&&!pr.paid&&<>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
-                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
-                <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
               </>}
 
-              {/* paid: undo paid + add renewal */}
+              {/* paid: undo paid */}
               {pr.paid&&<>
-                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                 <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
               </>}
 
-              {/* undo step — contracted and production only */}
-              {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+              {/* undo — one step back at every non-paid stage */}
+              {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
 
             </div>
           </div>
@@ -1642,7 +1633,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const upP=(cid: string,pid: string,data: any)=>setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,...data})}));
   const delCl=(id: string)=>{setClients((p: any[])=>p.filter(c=>c.id!==id));setSel(null);};
   const addCl=()=>{if(!nb.name.trim())return;setClients((p: any[])=>[...p,{id:uid(),...nb,projects:[]}]);setNb({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[],notes:""});setShowAdd(false);};
-  const addP=(cid: string)=>{if(!newPN.trim())return;const pr={id:uid(),name:newPN,status:"lead",amount:0,paid:false,date:today(),deliveryDate:"",notes:"",qd:null,amendments:[],renewals:[]};setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:[pr,...c.projects]}));setNewPN("");setShowAddP(false);};
+  const addP=(cid: string)=>{if(!newPN.trim())return;const pr={id:uid(),name:newPN,status:"quoted",amount:0,paid:false,date:today(),deliveryDate:"",notes:"",qd:null,amendments:[],renewals:[]};setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:[pr,...c.projects]}));setNewPN("");setShowAddP(false);};
   const saveAmend=(cid: string,pid: string,amend: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,amendments:[...(pr.amendments||[]),amend],amount:pr.amount+amend.amendTotal})}));setAmendT(null);};
   const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),renewal],usageEndOverride:renewal.endDate})}));setRenewT(null);};
   const setStatus=(cid: string,pid: string,st: string)=>upP(cid,pid,{status:st,paid:st==="paid"});
@@ -1679,7 +1670,6 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           // internal correction — save clauses silently, no version bump
           ?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}
           :undefined}/>;
-
 
   if(cl&&isMobile){
     const f=fin(cl);
@@ -1817,42 +1807,35 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
               {/* ── ACTIONS ── */}
               <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
 
-                {/* quoted / revised: revise or move to contract */}
+                {/* quoted / revised: revise quote OR accept → open contract PDF */}
                 {["quoted","revised"].includes(pr.status)&&<>
                   <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
-                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+                  <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
                 </>}
 
-                {/* contracted: revise contract text or mark signed */}
+                {/* contracted: revise contract (stays contracted, bumps rev) OR mark signed → production */}
                 {pr.status==="contracted"&&<>
                   <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
                   <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
                 </>}
 
-                {/* production: amendments cycle + create invoice */}
+                {/* production: creator working → create invoice opens PDF immediately */}
                 {pr.status==="production"&&<>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
-                  {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
-                    <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
-                  ))}
-                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+                  <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>
                 </>}
 
-                {/* invoiced: mark paid + undo + add renewal */}
+                {/* invoiced: mark paid */}
                 {pr.status==="invoiced"&&!pr.paid&&<>
                   <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
-                  <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
-                  <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
                 </>}
 
-                {/* paid: undo paid + add renewal */}
+                {/* paid: undo paid */}
                 {pr.paid&&<>
-                  <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                   <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
                 </>}
 
-                {/* undo step — contracted and production only */}
-                {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+                {/* undo — one step back at every non-paid stage */}
+                {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
 
               </div>
             </div>
