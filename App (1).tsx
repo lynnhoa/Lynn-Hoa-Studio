@@ -1702,9 +1702,20 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
           <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Usage Rights Tracker</p>
           {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
-            <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:11}}>{pr.name}</span>
-              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+            <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"7px 0",borderBottom:`1px solid ${C.rule}`,gap:8,flexWrap:"wrap"}}>
+              <div style={{minWidth:0}}>
+                <span style={{fontSize:11,display:"block",marginBottom:3}}>{pr.name}</span>
+                {(()=>{
+                  const lines=pr.qd?.lines||[];
+                  const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
+                  const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
+                  return(usage.length>0||excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 6px",borderRadius:2}}>📋 {l}</span>)}
+                    {excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 6px",borderRadius:2}}>🔒 {l}</span>)}
+                  </div>;
+                })()}
+              </div>
+              <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
                 <UBadge end={uEnd(pr)}/>
                 {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
               </div>
@@ -1729,6 +1740,12 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
       {cl.projects.map((pr: any,i: number)=>{
         const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
         const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
+        const licenseLabels=(()=>{
+          const lines=pr.qd?.lines||[];
+          const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
+          const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
+          return{usage,excl};
+        })();
         return(
           <div key={pr.id} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -1741,6 +1758,10 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                   <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
                   {end&&<UBadge end={end}/>}
                 </div>
+                {(licenseLabels.usage.length>0||licenseLabels.excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:6}}>
+                  {licenseLabels.usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8.5,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>📋 {l}</span>)}
+                  {licenseLabels.excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8.5,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>🔒 {l}</span>)}
+                </div>}
               </div>
               <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
                 <p style={{fontFamily:SERIF,fontSize:14,color:C.black,margin:"0 0 3px"}}>{fmt(pr.amount)}</p>
@@ -1976,9 +1997,20 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
             <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Usage Rights Tracker</p>
             {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
-              <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.rule}`}}>
-                <span style={{fontSize:11}}>{pr.name}</span>
-                <div style={{display:"flex",gap:5,alignItems:"center"}}>
+              <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"7px 0",borderBottom:`1px solid ${C.rule}`,gap:8,flexWrap:"wrap"}}>
+                <div style={{minWidth:0}}>
+                  <span style={{fontSize:11,display:"block",marginBottom:3}}>{pr.name}</span>
+                  {(()=>{
+                    const lines=pr.qd?.lines||[];
+                    const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
+                    const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
+                    return(usage.length>0||excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                      {usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 6px",borderRadius:2}}>📋 {l}</span>)}
+                      {excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 6px",borderRadius:2}}>🔒 {l}</span>)}
+                    </div>;
+                  })()}
+                </div>
+                <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
                   <UBadge end={uEnd(pr)}/>
                   {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
                 </div>
@@ -2003,6 +2035,12 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
         {cl.projects.map((pr: any,i: number)=>{
           const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
           const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
+          const licenseLabels=(()=>{
+            const lines=pr.qd?.lines||[];
+            const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
+            const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
+            return{usage,excl};
+          })();
           return(
             <div key={pr.id} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -2015,6 +2053,10 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
                     <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
                     {end&&<UBadge end={end}/>}
                   </div>
+                  {(licenseLabels.usage.length>0||licenseLabels.excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:6}}>
+                    {licenseLabels.usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8.5,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>📋 {l}</span>)}
+                    {licenseLabels.excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8.5,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>🔒 {l}</span>)}
+                  </div>}
                 </div>
                 <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
                   <p style={{fontFamily:SERIF,fontSize:14,color:C.black,margin:"0 0 3px"}}>{fmt(pr.amount)}</p>
@@ -2233,10 +2275,13 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
-    const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
+    const items: {cName:string,cId:string,prName:string,end:string,label:string,usageLabel?:string,exclLabel?:string,qNo?:string}[]=[];
     const ue=uEnd(pr);
-    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
-    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
+    const lines=pr.qd?.lines||[];
+    const usageLabels=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
+    const exclLabels=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
+    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage",usageLabel:usageLabels[0],qNo:pr.qd?.qNo});
+    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl.",exclLabel:exclLabels[0],qNo:pr.qd?.qNo});});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
@@ -2400,11 +2445,15 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           const urgent=d!==null&&d<=14;
           const soon=d!==null&&d>14&&d<=30;
           return(
-            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
+            <div key={i} onClick={()=>goToProject(r.cName,r.qNo)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                 <div style={{minWidth:0}}>
                   <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
-                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{r.prName}</p>
+                  <p style={{fontSize:10.5,color:C.muted,margin:"0 0 5px"}}>{r.prName}</p>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {r.label==="Usage"&&r.usageLabel&&<span style={{fontSize:8.5,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 7px",borderRadius:2}}>📋 {r.usageLabel}</span>}
+                    {r.label==="Excl."&&r.exclLabel&&<span style={{fontSize:8.5,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 7px",borderRadius:2}}>🔒 {r.exclLabel}</span>}
+                  </div>
                 </div>
                 <UBadge end={r.end} label={r.label}/>
               </div>
