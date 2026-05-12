@@ -346,25 +346,29 @@ const CATEGORY_SUGGESTIONS = ["Beauty","Fashion","Lifestyle","Food","Travel","Fi
 function TagInput({tags,onChange,placeholder="Add tag"}: {tags:string[],onChange:(t:string[])=>void,placeholder?:string}) {
   const [val,setVal]=useState("");
   const [open,setOpen]=useState(false);
+  const [rect,setRect]=useState<DOMRect|null>(null);
+  const inputRef=useRef<HTMLInputElement>(null);
   const picking=useRef(false);
   const hasTag=(v:string)=>tags.some(t=>t.toLowerCase()===v.toLowerCase());
   const suggestions=CATEGORY_SUGGESTIONS.filter(s=>val.trim().length>=2&&s.toLowerCase().startsWith(val.trim().toLowerCase())&&!hasTag(s));
   const add=(t:string)=>{const v=t.trim();if(!v||hasTag(v))return;onChange([...tags,v]);setVal("");setOpen(false);};
+  const openDropdown=()=>{if(inputRef.current)setRect(inputRef.current.getBoundingClientRect());setOpen(true);};
   return(
     <div>
       <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{tags.map((t:string)=><Tag key={t} onRemove={()=>onChange(tags.filter(x=>x!==t))}>{t}</Tag>)}</div>
       <div style={{position:"relative"}}>
         <div style={{display:"flex",gap:5}}>
-          <I value={val}
-            onChange={(e:any)=>{setVal(e.target.value);setOpen(true);}}
+          <input ref={inputRef} value={val}
+            onChange={(e:any)=>{setVal(e.target.value);openDropdown();}}
             placeholder={placeholder}
             onKeyDown={(e:any)=>{if(e.key==="Enter"){e.preventDefault();if(suggestions.length>0)add(suggestions[0]);else add(val);}if(e.key==="Escape")setOpen(false);}}
-            onFocus={()=>setOpen(true)}
-            onBlur={()=>{if(!picking.current)setOpen(false);picking.current=false;}}/>
+            onFocus={openDropdown}
+            onBlur={()=>{if(!picking.current)setOpen(false);picking.current=false;}}
+            style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box"}}/>
           <B v="sec" onClick={()=>add(val)} s={{fontSize:9}}>+</B>
         </div>
-        {open&&suggestions.length>0&&(
-          <div style={{position:"absolute",top:"calc(100% + 2px)",left:0,right:0,background:C.white,border:`1px solid ${C.rule}`,borderRadius:2,zIndex:300,boxShadow:"0 4px 12px rgba(0,0,0,0.10)",marginTop:0}}>
+        {open&&suggestions.length>0&&rect&&createPortal(
+          <div style={{position:"fixed",top:rect.bottom+2,left:rect.left,width:rect.width,background:C.white,border:`1px solid ${C.rule}`,borderRadius:2,zIndex:9999,boxShadow:"0 4px 12px rgba(0,0,0,0.10)"}}>
             {suggestions.map((s:string)=>(
               <div key={s}
                 onMouseDown={()=>{picking.current=true;add(s);}}
@@ -372,7 +376,8 @@ function TagInput({tags,onChange,placeholder="Add tag"}: {tags:string[],onChange
                 onMouseEnter={(e:any)=>e.currentTarget.style.background="rgba(0,0,0,0.03)"}
                 onMouseLeave={(e:any)=>e.currentTarget.style.background="transparent"}>{s}</div>
             ))}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
