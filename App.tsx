@@ -346,10 +346,12 @@ const scol = (s: string) => ({invoiced:C.amber,contracted:C.muted,quoted:C.light
 function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}) {
   if(!end) return null;
   const d=dLeft(end);
-  const exp=d!==null&&d<0, soon=d!==null&&d>=0&&d<=30;
-  const col=exp?C.red:soon?C.amber:C.muted;
-  const bg=exp?C.redBg:soon?C.amberBg:"transparent";
-  const bd=exp?C.redBorder:soon?C.amberBorder:C.rule;
+  const exp=d!==null&&d<0;
+  const urgent=d!==null&&d>=0&&d<=14;
+  const soon=d!==null&&d>14&&d<=30;
+  const col=exp||urgent?C.red:soon?C.amber:C.green;
+  const bg=exp||urgent?C.redBg:soon?C.amberBg:C.greenBg;
+  const bd=exp||urgent?C.redBorder:soon?C.amberBorder:C.greenBorder;
   return <span style={{fontSize:9.5,color:col,border:`1px solid ${bd}`,background:bg,padding:"2px 8px",borderRadius:2}}>
     {exp?`${label} expired`:`${label} ends ${fmtD(end)} · ${d}d left`}
   </span>;
@@ -2147,9 +2149,8 @@ function Dashboard({clients,goTo,isMobile}: any) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
         <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
-        <Card label="Expiring Usage Rights" count={expiring.length} items={expiring.map((pr: any)=>({...pr,amount:0}))} warm/>
+        <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
       </div>
-      <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
     </div>
   );
 }
