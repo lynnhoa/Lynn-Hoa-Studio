@@ -386,7 +386,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     renewal:l?"Lizenzerneuerung":"License Renewal"
   };
   const MRow=({lb,v}: any) => <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{lb}</span><span>{v}</span></div>;
-  const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration (Influencer)",ugc:"UGC Creator",editorial:"Editorial"};
+  const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC Creator",editorial:"Editorial"};
   const TRow=({ln,prevLn,idx}: any)=>{
     const showCat=!!(ln.cat&&catBadgeLabel[ln.cat]&&ln.cat!==(prevLn?.cat));
     const subDetails=[
@@ -1144,7 +1144,7 @@ function RateCards({rc,setRc,settings}: any) {
         </div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap"}}>
-        {["influencer","ugc","editorial","hotels"].map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{{influencer:"Influencer",ugc:"UGC",editorial:"Editorial",hotels:"Hotels"}[k as keyof object]}</Pill>)}
+        {["influencer","ugc","editorial","hotels"].map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{{influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial",hotels:"Hotels"}[k as keyof object]}</Pill>)}
       </div>
       {card.sections.map((sec: any,si: number)=>(
         <div key={si} style={{marginBottom:14}}>
@@ -1261,7 +1261,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   };
 
   const reset=()=>{setItems([]);setBrand("");setContact("");setProjName("");setRetOn(false);if(clearPrefill)clearPrefill();};
-  const catLabel: Record<string,string>={influencer:"Influencer (Brand Collab)",ugc:"UGC Creator",editorial:"Editorial"};
+  const catLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC Creator",editorial:"Editorial"};
 
   return(
     <div>
@@ -1438,11 +1438,11 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
   const [uIdx,setUIdx]=useState(0);
   const usageOpts=card?.usage||[];
   const uOpt=usageOpts[uIdx];
-  const uBase$=uBase==="total"?origTotal:uSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.id===id||x.name===id);return s+(parseFloat(l?.amt)||0);},0);
+  const uBase$=uBase==="total"?origTotal:uSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.id===id);return s+(parseFloat(l?.amt)||0);},0);
   const uAmt=uOpt&&!uOpt.sentinel?Math.round(uBase$*(uOpt.pct/100)):0;
   const addUsage=()=>{
     if(!uOpt||uOpt.sentinel||uAmt===0)return;
-    const ref=uBase==="total"?"Whole quote":uSel.map(id=>origLines.find((x: any)=>x.name===id)?.name||id).join(", ");
+    const ref=uBase==="total"?"Whole quote":uSel.map(id=>origLines.find((x: any)=>x.id===id)?.name||id).join(", ");
     setLines(prev=>[...prev,{id:uid(),name:`Usage Rights — ${uOpt.l}`,note:`Applies to: ${ref}`,qty:1,up:uAmt,amt:uAmt,kind:"usage"}]);
     setUIdx(0);setUSel([]);
   };
@@ -1454,11 +1454,11 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
   const [aoId,setAoId]=useState("");
   const [aoCustom,setAoCustom]=useState("");
   const selAo=addonList.find((x: any)=>x.id===aoId);
-  const aoBase$=aoBase==="total"?origTotal:aoSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.name===id);return s+(parseFloat(l?.amt)||0);},0);
+  const aoBase$=aoBase==="total"?origTotal:aoSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.id===id);return s+(parseFloat(l?.amt)||0);},0);
   const aoAmt=aoCustom!==""?parseFloat(aoCustom)||0:selAo?.flat||Math.round(aoBase$*(selAo?.pct||0)/100);
   const addAddon=()=>{
     if(!selAo||!aoAmt)return;
-    const ref=aoBase==="total"?"Whole quote":aoSel.map(id=>origLines.find((x: any)=>x.name===id)?.name||id).join(", ");
+    const ref=aoBase==="total"?"Whole quote":aoSel.map(id=>origLines.find((x: any)=>x.id===id)?.name||id).join(", ");
     setLines(prev=>[...prev,{id:uid(),name:selAo.n,note:`Applies to: ${ref}`,qty:1,up:aoAmt,amt:aoAmt,kind:"addon"}]);
     setAoId("");setAoCustom("");setAoSel([]);
   };
@@ -1474,11 +1474,11 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
     <Pill on={val==="total"} onClick={()=>set("total")}>Whole quote ({fmt(origTotal)})</Pill>
     <Pill on={val==="selected"} onClick={()=>set("selected")}>Selected items</Pill>
   </div>;
-  const catShort: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
+  const catShort: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
   const ItemCheckboxes=({sel,setSel}: any)=><>{origLines.map((l: any,i: number)=>{
-    const on=sel.includes(l.name);
+    const on=sel.includes(l.id);
     return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
-      <input type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.name):[...p,l.name])} style={{accentColor:C.black}}/>
+      <input type="checkbox" checked={on} onChange={()=>setSel((p: string[])=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
       <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
     </label>;
   })}</>;
@@ -1496,7 +1496,7 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
           <SectionHead n="01" title="Extra Deliverables"/>
           <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
-            {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={aCat===k} onClick={()=>{setACat(k);setADel(-1);setAoId("");}}>{({influencer:"Influencer (Brand Collab)",ugc:"UGC Creator",editorial:"Editorial"})[k]}</Pill>)}
+            {(["influencer","ugc","editorial"] as const).map(k=><Pill key={k} on={aCat===k} onClick={()=>{setACat(k);setADel(-1);setAoId("");}}>{({influencer:"Brand Collaboration",ugc:"UGC Creator",editorial:"Editorial"})[k]}</Pill>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 60px",gap:7,marginBottom:7}}>
             <div><Lbl>Deliverable</Lbl>
@@ -1610,7 +1610,7 @@ function RenewalModal({p,onSave,onClose,settings,rc}: any) {
   // Content scope
   const [rBase,setRBase]=useState<"total"|"selected">("total");
   const [rSel,setRSel]=useState<string[]>([]);
-  const base$=rBase==="total"?origTotal:rSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.name===id);return s+(parseFloat(l?.amt)||0);},0);
+  const base$=rBase==="total"?origTotal:rSel.reduce((s,id)=>{const l=origLines.find((x: any)=>x.id===id);return s+(parseFloat(l?.amt)||0);},0);
 
   // Usage rights
   const [uIdx,setUIdx]=useState(0);
@@ -1636,7 +1636,7 @@ function RenewalModal({p,onSave,onClose,settings,rc}: any) {
 
   const rNo=`INV-${new Date().getFullYear()}-RN${String((p.renewals||[]).length+1).padStart(2,"0")}`;
   const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;
-  const refContent=rBase==="total"?origLines:origLines.filter((l: any)=>rSel.includes(l.name));
+  const refContent=rBase==="total"?origLines:origLines.filter((l: any)=>rSel.includes(l.id));
   const termParts=[uOpt&&!uOpt.sentinel?uOpt.l:null,eOpt&&!eOpt.sentinel?eOpt.l:null].filter(Boolean).join(" + ");
 
   const buildDoc=()=>{
@@ -1677,10 +1677,10 @@ function RenewalModal({p,onSave,onClose,settings,rc}: any) {
           </div>
           {rBase==="selected"&&<div style={{padding:"8px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg}}>
             {origLines.map((l: any,i: number)=>{
-              const on=rSel.includes(l.name);
-              const catShort: Record<string,string>={influencer:"Influencer",ugc:"UGC",editorial:"Editorial"};
+              const on=rSel.includes(l.id);
+              const catShort: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC",editorial:"Editorial"};
               return<label key={i} style={{display:"flex",alignItems:"center",gap:7,fontSize:10,cursor:"pointer",marginBottom:4}}>
-                <input type="checkbox" checked={on} onChange={()=>setRSel(p=>on?p.filter(x=>x!==l.name):[...p,l.name])} style={{accentColor:C.black}}/>
+                <input type="checkbox" checked={on} onChange={()=>setRSel(p=>on?p.filter(x=>x!==l.id):[...p,l.id])} style={{accentColor:C.black}}/>
                 <span>{l.name}</span>{l.cat&&<span style={{fontSize:8,color:C.white,background:l.cat==="ugc"?C.amber:l.cat==="editorial"?"#8fa89a":C.muted,padding:"1px 6px",borderRadius:2,letterSpacing:"0.05em",flexShrink:0}}>{catShort[l.cat]||l.cat}</span>}<span style={{color:C.muted,marginLeft:"auto"}}>{fmt(l.amt)}</span>
               </label>;
             })}
