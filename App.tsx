@@ -526,6 +526,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
   const [confirmClose,setConfirmClose]=useState(false);
+  const [savedClean,setSavedClean]=useState(true);
   const [downloading,setDownloading]=useState(false);
   const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
   const docRef=useRef<HTMLDivElement>(null);
@@ -630,22 +631,30 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
 
   const commit=(snap: any)=>{
     setPreview(snap);
-    setFlash("saved");
-    setTimeout(()=>setFlash(null),3000);
   };
   const undo=()=>{
     const ni=Math.max(0,hs.idx-1);
     if(ni===hs.idx)return;
     setHs(p=>({...p,idx:ni}));
     commit(JSON.parse(JSON.stringify(hs.hist[ni])));
+    setSavedClean(false);
   };
   const redo=()=>{
     const ni=Math.min(hs.hist.length-1,hs.idx+1);
     if(ni===hs.idx)return;
     setHs(p=>({...p,idx:ni}));
     commit(JSON.parse(JSON.stringify(hs.hist[ni])));
+    setSavedClean(false);
   };
   const handleUpdate=()=>commit(JSON.parse(JSON.stringify(staged)));
+  const handleSave=()=>{
+    const snap=JSON.parse(JSON.stringify(staged));
+    commit(snap);
+    if(onSave)onSave(snap);
+    setSavedClean(true);
+    setFlash("saved");
+    setTimeout(()=>setFlash(null),2500);
+  };
   const updStagedLine=(i: number,k: string,v: string)=>setStaged((prev: any)=>{
     const lines=[...(prev.lines||[])];
     lines[i]={...lines[i],[k]:v,
@@ -712,15 +721,15 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
         <div style={{flex:1}}/>
         {isMobile&&<button onClick={()=>setShowEdit(e=>!e)} style={{padding:"5px 12px",background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase",color:C.black,marginRight:4}}>{showEdit?"View PDF":"Edit"}</button>}
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={()=>{const isDirty=JSON.stringify(staged)!==JSON.stringify(data);(onSave&&(isNew||isDirty))?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
+        <button onClick={()=>{const isDirty=!savedClean&&JSON.stringify(staged)!==JSON.stringify(data);isDirty?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
       {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
         <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
-          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save this {type==="revised"?"revised quote":type==="amendment"?"amendment":type==="renewal"?"renewal":type==="invoice"?"invoice":"quote"}?</p>
+          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save before closing?</p>
           <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
           <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-            <B onClick={()=>{onSave(staged);setConfirmClose(false);onClose();}}>Yes</B>
-            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No</B>
+            <B onClick={()=>{handleSave();setConfirmClose(false);onClose();}}>Yes, save</B>
+            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
           </div>
         </div>
       </div>,document.body)}
@@ -783,7 +792,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
           </div>
           <div style={{padding:"12px 18px",borderTop:`1px solid ${C.rule}`,flexShrink:0}}>
             {flash==="saved"&&<p style={{fontSize:9,color:C.green,margin:"0 0 7px",letterSpacing:"0.06em"}}>Saved ✓</p>}
-            <B onClick={handleUpdate} s={{width:"100%",textAlign:"center"}}>Update Preview</B>
+            <B onClick={handleSave} s={{width:"100%",textAlign:"center"}}>Save</B>
           </div>
         </div>}
         {!isMobile&&<div onMouseDown={startDrag} style={{width:6,flexShrink:0,cursor:"col-resize",background:C.rule,opacity:0.5,transition:"opacity 0.15s"}} onMouseEnter={(e: any)=>{e.currentTarget.style.opacity="1";}} onMouseLeave={(e: any)=>{e.currentTarget.style.opacity="0.5";}}/>}
@@ -1029,6 +1038,9 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
   const [docHeight,setDocHeight]=useState(841);
   const [winW,setWinW]=useState(()=>window.innerWidth);
   const [rcSecGuards,setRcSecGuards]=useState<number[]>([]);
+  const [savedClean,setSavedClean]=useState(true);
+  const [flash,setFlash]=useState(false);
+  const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
   const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
@@ -1080,29 +1092,39 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
       if(mw){mw.location.href=pdf.output("bloburl") as string;}else{pdf.save(`${fname}.pdf`);}
     }finally{pages.forEach((p,i)=>{p.style.transform=savedT[i];});setDownloading(false);}
   };
-  const upI=(si: number,id: string,f: string,v: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})})}));
-  const remI=(si: number,id: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.filter((it: any)=>it.id!==id)})}));
-  const upSecT=(si: number,v: string)=>setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,t:v})}));
+  const upI=(si: number,id: string,f: string,v: string)=>{setSavedClean(false);setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})})}));};
+  const remI=(si: number,id: string)=>{setSavedClean(false);setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.filter((it: any)=>it.id!==id)})}));};
+  const upSecT=(si: number,v: string)=>{setSavedClean(false);setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,t:v})}));};
+  const doSave=()=>{onSave(staged);setSavedClean(true);setFlash(true);setTimeout(()=>setFlash(false),2500);};
   return createPortal(
     <div style={{position:"fixed",inset:0,background:C.bg,zIndex:9999,display:"flex",flexDirection:"column",fontFamily:SANS}}>
       <div ref={measureRef} style={{position:"fixed",top:0,left:-9999,width:595,visibility:"hidden",pointerEvents:"none",zIndex:-1}}>
         <RCContent card={staged} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
       </div>
+      {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:700,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
+        <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
+          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save before closing?</p>
+          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
+          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+            <B onClick={()=>{doSave();setConfirmClose(false);onClose();}}>Yes, save</B>
+            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
+          </div>
+        </div>
+      </div>,document.body)}
       {/* toolbar */}
       <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:8,flexShrink:0}}>
         <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flex:1,textAlign:"center"}}>{staged.label||"Rate Card"} — Preview</span>
         <div style={{display:"flex",gap:4}}><Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill><Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill></div>
         <B onClick={download} s={{minWidth:80,textAlign:"center"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <B onClick={()=>onSave(staged)} s={{minWidth:80,textAlign:"center"}}>Save & Close</B>
-        <button onClick={onClose} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22}}>✕</button>
+        <button onClick={()=>{!savedClean?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22}}>✕</button>
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         {/* edit panel */}
         <div style={{width:260,flexShrink:0,borderRight:`1px solid ${C.rule}`,overflowY:"auto",padding:"14px 14px"}}>
           <Lbl>Card Label</Lbl>
-          <I value={staged.label||""} onChange={(e: any)=>setStaged((p: any)=>({...p,label:e.target.value}))} s={{marginBottom:10}}/>
+          <I value={staged.label||""} onChange={(e: any)=>{setSavedClean(false);setStaged((p: any)=>({...p,label:e.target.value}));}} s={{marginBottom:10}}/>
           <Lbl>Subtitle</Lbl>
-          <I value={staged.sub||""} onChange={(e: any)=>setStaged((p: any)=>({...p,sub:e.target.value}))} s={{marginBottom:10}}/>
+          <I value={staged.sub||""} onChange={(e: any)=>{setSavedClean(false);setStaged((p: any)=>({...p,sub:e.target.value}));}} s={{marginBottom:10}}/>
           {staged.sections?.map((sec: any,si: number)=>(
             <div key={si} style={{marginBottom:12,border:`1px solid ${C.rule}`,borderRadius:2,padding:"8px 10px",background:C.white}}>
               <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:7}}>
@@ -1118,7 +1140,11 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
             </div>
           ))}
           <Lbl>Fine Print</Lbl>
-          <textarea value={staged.fine||""} onChange={(e: any)=>setStaged((p: any)=>({...p,fine:e.target.value}))} style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:52}}/>
+          <textarea value={staged.fine||""} onChange={(e: any)=>{setSavedClean(false);setStaged((p: any)=>({...p,fine:e.target.value}));}} style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:52}}/>
+          <div style={{paddingTop:12,borderTop:`1px solid ${C.rule}`,marginTop:12}}>
+            {flash&&<p style={{fontSize:9,color:C.green,margin:"0 0 7px",letterSpacing:"0.06em"}}>Saved ✓</p>}
+            <B onClick={doSave} s={{width:"100%",textAlign:"center"}}>Save</B>
+          </div>
         </div>
         {/* A4 preview */}
         <div style={{flex:1,background:"#888",overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:winW<700?"16px 0":"32px 28px",gap:winW<700?16:28}}>
@@ -1292,8 +1318,13 @@ function RateCard({rc,setRc,settings}: any) {
           <B onClick={()=>setShowBuilder(true)}>+ Add Rate Card</B>
         </div>
       </div>
-      <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap"}}>
-        {tabs.map(k=><Pill key={k} on={tab===k} onClick={()=>setTab(k)}>{rc[k]?.label||CAT_LABEL[k]||k}</Pill>)}
+      <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap",alignItems:"center"}}>
+        {tabs.map(k=>(
+          <div key={k} style={{display:"flex",alignItems:"center",gap:2}}>
+            <Pill on={tab===k} onClick={()=>setTab(k)}>{rc[k]?.label||CAT_LABEL[k]||k}</Pill>
+            {!BASE.includes(k)&&<button onClick={()=>{if(window.confirm(`Delete "${rc[k]?.label||k}"?`)){setRc((prev: any)=>{const n={...prev};delete n[k];return n;});setTab("influencer");}}} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:11,padding:"0 2px",lineHeight:1}} title="Delete">✕</button>}
+          </div>
+        ))}
       </div>
       {card.sections?.map((sec: any,si: number)=>(
         <div key={si} style={{marginBottom:14}}>
