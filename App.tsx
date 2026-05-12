@@ -1557,7 +1557,7 @@ function RenewalModal({p,onSave,onClose,settings}: any) {
 }
 
 // ─── CLIENT DETAIL PANEL ─────────────────────────────────
-function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,setPdf,onRevise,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
+function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,setPdf,onRevise,setAmendT,setRenewT,setRevContractT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
   return(
@@ -1678,9 +1678,9 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
               {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
               {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
-              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
+              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
               {(pr.amendments||[]).map((a: any,ai: number)=>(
-                <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
+                <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" ·  unsigned":""}</B>
               ))}
               {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
             </div>
@@ -1688,39 +1688,41 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             {/* ── ACTIONS ── */}
             <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
 
-              {/* Stage: Quote sent — awaiting client response */}
+              {/* lead: no actions — create quote is in docs row */}
+
+              {/* quoted / revised: revise or move to contract */}
               {["quoted","revised"].includes(pr.status)&&<>
                 <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
                 {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
               </>}
 
-              {/* Stage: Contract created — awaiting signature */}
+              {/* contracted: revise contract text or mark signed */}
               {pr.status==="contracted"&&<>
-                <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Revise Contract</B>
+                <B v="sec" s={{fontSize:8}} onClick={()=>setRevContractT({p:pr,cid:cl.id,pid:pr.id})}>Revise Contract</B>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
               </>}
 
-              {/* Stage: Signed / in production */}
+              {/* production: amendments cycle + create invoice */}
               {pr.status==="production"&&<>
                 <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
+                {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
+                  <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
+                ))}
                 {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
               </>}
 
-              {/* Stage: Invoiced */}
+              {/* invoiced: mark paid only — corrections via preview */}
               {pr.status==="invoiced"&&!pr.paid&&<>
-                {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT&&setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
-                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
               </>}
 
-              {/* Stage: Paid */}
+              {/* paid: undo paid — renewals cycle is in the renewal rows above */}
               {pr.paid&&<>
-                <B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>
                 <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
               </>}
 
-              {/* Undo step — always available while not paid, not at quote stage */}
-              {ps&&!pr.paid&&!["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+              {/* undo step — contracted and production only */}
+              {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
 
             </div>
           </div>
@@ -1754,6 +1756,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   const [ed,setEd]=useState<any>(null);
   const [amendT,setAmendT]=useState<any>(null);
   const [renewT,setRenewT]=useState<any>(null);
+  const [revContractT,setRevContractT]=useState<any>(null);
   const [revInvT,setRevInvT]=useState<any>(null);
   const [pdf,setPdf]=useState<any>(null);
   const [showAddP,setShowAddP]=useState(false);
@@ -1932,24 +1935,55 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
                 </div>
               ))}
               {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
+
+              {/* ── DOCUMENTS ── */}
               <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
                 {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
                 {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
-                {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>Contract</B>}
+                {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
                 {(pr.amendments||[]).map((a: any,ai: number)=>(
-                  <B key={ai} v="sec" s={{fontSize:8}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}</B>
+                  <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" · unsigned":""}</B>
                 ))}
                 {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
               </div>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-                {["quoted","revised"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
-                {ns&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ns)}>{ns==="contracted"?"→ Contracted":ns==="invoiced"?"→ Invoiced":`→ ${ns.charAt(0).toUpperCase()+ns.slice(1)}`}</B>}
-                {["contracted","production"].includes(pr.status)&&<B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>}
-                {pr.status==="invoiced"&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>{const q=pr.qd;const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;setPdf({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});setRevInvT({cid:cl.id,pid:pr.id,p:pr});}}>Revise Invoice</B>}
-                {["invoiced","paid"].includes(pr.status)&&<B v="sec" s={{fontSize:8,color:C.green,borderColor:C.greenBorder}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Renew License</B>}
-                {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
-                {pr.paid&&<B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>}
-                {ps&&!pr.paid&&<B v="sec" s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,ps)}>← Undo</B>}
+
+              {/* ── ACTIONS ── */}
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
+
+                {/* quoted / revised: revise or move to contract */}
+                {["quoted","revised"].includes(pr.status)&&<>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
+                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"contracted")}>→ Create Contract</B>}
+                </>}
+
+                {/* contracted: revise contract text or mark signed */}
+                {pr.status==="contracted"&&<>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>setRevContractT({p:pr,cid:cl.id,pid:pr.id})}>Revise Contract</B>
+                  <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
+                </>}
+
+                {/* production: amendments cycle + create invoice */}
+                {pr.status==="production"&&<>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
+                  {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
+                    <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
+                  ))}
+                  {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
+                </>}
+
+                {/* invoiced: mark paid only — corrections via preview */}
+                {pr.status==="invoiced"&&!pr.paid&&<>
+                  <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                </>}
+
+                {/* paid: undo paid */}
+                {pr.paid&&<>
+                  <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
+                </>}
+
+                {/* undo step — contracted and production only */}
+                {["contracted","production"].includes(pr.status)&&!pr.paid&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
+
               </div>
             </div>
           );
@@ -2050,7 +2084,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         );
       })}
       </div>{/* end left col */}
-      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} setPdf={setPdf} onRevise={onRevise} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)}/>}
+      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} setPdf={setPdf} onRevise={onRevise} setAmendT={setAmendT} setRenewT={setRenewT} setRevContractT={setRevContractT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)}/>}
     </div>
   );
 }
