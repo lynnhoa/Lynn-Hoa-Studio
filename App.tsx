@@ -1873,9 +1873,10 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
     if(c){
       setSel(c.id);
       if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
-      setTimeout(()=>{if(onPendingClear)onPendingClear();},0);
+      setTimeout(()=>{if(onPendingClear)onPendingClear();},100);
     }
-  },[pendingClientName,pendingProjectQNo,clients]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   const [showAdd,setShowAdd]=useState(false);
   const [nb,setNb]=useState({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[] as string[],notes:""});
   const [tagI,setTagI]=useState("");
@@ -2780,7 +2781,12 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [clientSel,setClientSel]=useState<string|null>(null);
   const [pendingClientName,setPendingClientName]=useState<string|null>(null);
   const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
-  const [rc,setRc]=useState(initialRc);
+  const [pendingNav,setPendingNav]=useState(false);
+  useEffect(()=>{
+    if(!pendingNav||!pendingClientName)return;
+    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
+    if(c){setPendingNav(false);setNav(1);}
+  },[pendingNav,pendingClientName,clients]);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
   const [menuOpen,setMenuOpen]=useState(false);
@@ -2829,7 +2835,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const handleAfterSave=(brand: string,qNo?: string)=>{
     setPendingClientName(brand);
     setPendingProjectQNo(qNo||null);
-    setNav(1);
+    setPendingNav(true);
   };
 
   const handleGoToCalc=(clientName: string)=>{
