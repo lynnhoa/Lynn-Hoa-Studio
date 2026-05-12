@@ -2417,7 +2417,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName}: any) {
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
+        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`} onClick={()=>goTo(6)}/>
         <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
@@ -2753,7 +2753,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Service Catalog",3]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2772,7 +2772,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                   <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                   <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                 </div>
-                {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                {([["Creator Profile",4],["Change Password",5],["Service Catalog",3]] as [string,number][]).map(([label,idx])=>(
                   <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                 ))}
                 <div style={{borderTop:`1px solid ${C.rule}`}}/>
