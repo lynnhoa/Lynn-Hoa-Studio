@@ -2199,7 +2199,8 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey}: any) {
+function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProjectQNo,settings,resetKey}: any) {
+  const goToProject=(cName: string,qNo?: string)=>{setPendingClientName(cName);if(qNo)setPendingProjectQNo(qNo);goTo(1);};
   const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   useEffect(()=>{setDrill(null);},[resetKey]);
@@ -2233,8 +2234,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
     const ue=uEnd(pr);
-    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
-    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
+    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:ue,label:"Usage"});
+    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,prQNo:pr.qd?.qNo,end:r.endDate,label:"Excl."});});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
@@ -2297,7 +2298,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
           const next=NEXT_ACTION[pr.status]||"";
           const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
           return(
-            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
+            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
 
               {/* header row */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
@@ -2381,7 +2382,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
           const urgent=d!==null&&d<=14;
           const soon=d!==null&&d>14&&d<=30;
           return(
-            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
+            <div key={i} onClick={()=>goToProject(r.cName,r.prQNo)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                 <div style={{minWidth:0}}>
                   <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
@@ -2411,7 +2412,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
           const days=pr.date?Math.floor((new Date().getTime()-new Date(pr.date).getTime())/864e5):null;
           const old=days!==null&&days>7;
           return(
-            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
+            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                 <div><p style={{fontSize:13,color:C.black,margin:"0 0 2px"}}>{pr.cName}</p><p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p></div>
                 <span style={{fontFamily:SERIF,fontSize:14,flexShrink:0}}>{fmt(pr.amount)}</span>
@@ -2437,7 +2438,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,settings,resetKey
           const days=pr.date?Math.floor((new Date().getTime()-new Date(pr.date).getTime())/864e5):null;
           const old=days!==null&&days>7;
           return(
-            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
+            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{border:`1px solid ${old?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:old?C.amberBg:undefined}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                 <div><p style={{fontSize:13,color:C.black,margin:"0 0 2px"}}>{pr.cName}</p><p style={{fontSize:10.5,color:C.muted,margin:0}}>{pr.name}</p></div>
                 <span style={{fontFamily:SERIF,fontSize:14,flexShrink:0}}>{fmt(pr.amount)}</span>
@@ -2869,7 +2870,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} settings={settings} resetKey={dashReset}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} settings={settings} resetKey={dashReset}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
