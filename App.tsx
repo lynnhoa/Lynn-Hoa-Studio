@@ -1533,6 +1533,13 @@ function AmendModal({p,onSave,onClose,settings,rc}: any) {
 }
 
 // ─── RENEWAL MODAL ────────────────────────────────────────
+const RENEWAL_ADDONS=[
+  {id:"ra1",n:"Whitelisting / boosting",note:"Ads through Lynn's account · per month",p:null,pct:30},
+  {id:"ra2",n:"Link in bio",note:"Per week",p:100},
+  {id:"ra3",n:"Pinned post",note:"Post kept pinned",p:100},
+  {id:"ra4",n:"Additional Story frame",note:"Per frame",p:50},
+  {id:"ra5",n:"Aspect ratio adaptation",note:"Per format",p:65},
+];
 function RenewalModal({p,onSave,onClose,settings}: any) {
   const q=p.qd;
   const [rtype,setRtype]=useState("usage");
@@ -1540,44 +1547,93 @@ function RenewalModal({p,onSave,onClose,settings}: any) {
   const [custFee,setCustFee]=useState("");
   const [startD,setStartD]=useState(today());
   const [pdf,setPdf]=useState<any>(null);
+  // add-ons
+  const [addons,setAddons]=useState<{id:string,amt:string}[]>([]);
+  const toggleAddon=(id: string)=>setAddons(prev=>prev.find(a=>a.id===id)?prev.filter(a=>a.id!==id):[...prev,{id,amt:""}]);
+  const setAddonAmt=(id: string,amt: string)=>setAddons(prev=>prev.map(a=>a.id===id?{...a,amt}:a));
   const opt=RENEWAL_OPTS[rtype][oi];
   const base=q?.total||0;
   const suggested=Math.round(base*(opt.pct/100));
-  const fee=custFee!==""?parseFloat(custFee)||0:suggested;
+  const licenseFee=custFee!==""?parseFloat(custFee)||0:suggested;
+  const addonTotal=addons.reduce((s,a)=>{
+    const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
+    if(!def)return s;
+    const v=parseFloat(a.amt)||0;
+    if(v>0)return s+v;
+    if(def.p)return s+def.p;
+    if(def.pct)return s+Math.round(licenseFee*def.pct/100);
+    return s;
+  },0);
+  const fee=licenseFee+addonTotal;
   const endD=addM(startD,opt.mo);
   const rNo=`INV-${new Date().getFullYear()}-RN${String((p.renewals||[]).length+1).padStart(2,"0")}`;
   const iNo=`INV-${(q?.qNo||"").replace("QUO","").trim()||"001"}`;
-  const buildDoc=()=>({
-    brand:q?.brand,contact:q?.contact,date:today(),rNo,iNo,delivery:startD,
-    ctype:q?.ctype||"Content Creator",projName:p.name,rType:opt.l,
-    origContent:q?.lines||[],footer:"Thank you for the pleasure of working together.",
-    lines:[{name:`License Renewal — ${opt.l}`,note:`${fmtD(startD)} – ${fmtD(endD)}`,qty:1,up:fee,amt:fee}],
-    total:fee,endDate:endD,startDate:startD,optLabel:opt.l,mo:opt.mo
-  });
+  const buildDoc=()=>{
+    const lines=[
+      {name:`License Renewal — ${opt.l}`,note:`${fmtD(startD)} – ${fmtD(endD)}`,qty:1,up:licenseFee,amt:licenseFee},
+      ...addons.map(a=>{
+        const def=RENEWAL_ADDONS.find(x=>x.id===a.id);
+        const v=parseFloat(a.amt)||def?.p||(def?.pct?Math.round(licenseFee*def.pct/100):0);
+        return{name:def?.n||"",note:def?.note||"",qty:1,up:v,amt:v};
+      }).filter(a=>a.amt>0)
+    ];
+    return{brand:q?.brand,contact:q?.contact,date:today(),rNo,iNo,delivery:startD,
+      ctype:q?.ctype||"Content Creator",projName:p.name,rType:opt.l,
+      origContent:q?.lines||[],footer:"Thank you for the pleasure of working together.",
+      lines,total:fee,endDate:endD,startDate:startD,optLabel:opt.l,mo:opt.mo};
+  };
   if(pdf)return<PDFModal data={pdf} type="renewal" onClose={()=>setPdf(null)} settings={settings}
-    onSave={(doc: any)=>{ onSave({id:uid(),type:rtype,optLabel:opt.l,mo:opt.mo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,paid:false,doc}); }}/>;
+    onSave={(doc: any)=>{onSave({id:uid(),type:rtype,optLabel:opt.l,mo:opt.mo,startDate:startD,endDate:endD,fee,invoiceNo:rNo,signed:false,paid:false,doc});}}/>;
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:C.bg,width:450,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.15)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><h3 style={{fontFamily:SERIF,fontSize:16,fontWeight:"normal",margin:0}}>Renew License</h3><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button></div>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:C.bg,width:"100%",maxWidth:460,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.15)",maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+          <h3 style={{fontFamily:SERIF,fontSize:16,fontWeight:"normal",margin:0}}>Add Renewal</h3>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button>
+        </div>
         <p style={{fontSize:11,color:C.muted,margin:"0 0 12px",lineHeight:1.6}}>Project: <strong style={{color:C.black}}>{p.name}</strong><br/>Original total: <strong style={{color:C.black}}>{fmt(base)}</strong></p>
-        <Lbl>Renewal Type</Lbl>
-        <div style={{display:"flex",gap:6,marginBottom:9}}><Pill on={rtype==="usage"} onClick={()=>{setRtype("usage");setOi(2);}}>Usage Rights</Pill><Pill on={rtype==="excl"} onClick={()=>{setRtype("excl");setOi(0);}}>Exclusivity</Pill></div>
+
+        <Lbl>License Type</Lbl>
+        <div style={{display:"flex",gap:6,marginBottom:9}}>
+          <Pill on={rtype==="usage"} onClick={()=>{setRtype("usage");setOi(2);}}>Usage Rights</Pill>
+          <Pill on={rtype==="excl"} onClick={()=>{setRtype("excl");setOi(0);}}>Exclusivity</Pill>
+        </div>
         <Lbl>Scope & Duration</Lbl>
         <S value={oi} onChange={(e: any)=>setOi(parseInt(e.target.value))} s={{marginBottom:9}}>{RENEWAL_OPTS[rtype].map((o: any,i: number)=><option key={i} value={i}>{o.l}</option>)}</S>
-        <Lbl>Start Date</Lbl><I type="date" value={startD} onChange={(e: any)=>setStartD(e.target.value)} s={{marginBottom:4}}/>
+        <Lbl>Start Date</Lbl>
+        <I type="date" value={startD} onChange={(e: any)=>setStartD(e.target.value)} s={{marginBottom:4}}/>
         <p style={{fontSize:10.5,color:C.muted,margin:"0 0 10px"}}>End date: <strong style={{color:C.black}}>{fmtD(endD)}</strong></p>
-        <Lbl>Renewal Fee</Lbl>
+        <Lbl>License Fee</Lbl>
         <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:3}}>
           <I type="number" placeholder={`Suggested: € ${suggested}`} value={custFee} onChange={(e: any)=>setCustFee(e.target.value)}/>
           {custFee!==""&&<B v="sec" s={{fontSize:8}} onClick={()=>setCustFee("")}>Reset</B>}
         </div>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 12px"}}>{opt.pct>0?`Suggested: ${opt.pct}% of original total`:"Set your fee freely"}</p>
-        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Renewal Fee</span>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 14px"}}>{opt.pct>0?`Suggested: ${opt.pct}% of original total`:"Set your fee freely"}</p>
+
+        <Lbl>Add-ons <span style={{fontWeight:"normal",color:C.light,textTransform:"none",letterSpacing:0}}>(optional)</span></Lbl>
+        {RENEWAL_ADDONS.map(a=>{
+          const sel=addons.find(x=>x.id===a.id);
+          return(
+            <div key={a.id} style={{marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <input type="checkbox" checked={!!sel} onChange={()=>toggleAddon(a.id)} style={{accentColor:C.black,flexShrink:0}}/>
+                <span style={{fontSize:10.5,color:C.black}}>{a.n}</span>
+                <span style={{fontSize:9.5,color:C.muted,flex:1}}>{a.note}</span>
+                <span style={{fontSize:9.5,color:C.muted,flexShrink:0}}>{a.p?`€ ${a.p}`:a.pct?`+${a.pct}%`:""}</span>
+              </div>
+              {sel&&(a.p==null)&&<I type="number" placeholder={a.pct?`Suggested: € ${Math.round(licenseFee*a.pct/100)}`:"Amount"} value={sel.amt} onChange={(e: any)=>setAddonAmt(a.id,e.target.value)} s={{marginTop:4,fontSize:10}}/>}
+            </div>
+          );
+        })}
+
+        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,margin:"14px 0 12px",display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Total</span>
           <span style={{fontFamily:SERIF,fontSize:18}}>{fmt(fee)}</span>
         </div>
-        <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}><B v="sec" onClick={onClose}>Cancel</B><B onClick={()=>setPdf(buildDoc())}>Preview & Generate Invoice</B></div>
+        <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}>
+          <B v="sec" onClick={onClose}>Cancel</B>
+          <B onClick={()=>setPdf(buildDoc())}>Preview & Save</B>
+        </div>
       </div>
     </div>
   );
@@ -1687,15 +1743,20 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
             </div>}
             {(pr.renewals||[]).map((r: any,ri: number)=>(
-              <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><p style={{fontSize:11,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>Renewal {ri+1} \u2014 {r.optLabel}</p><p style={{fontSize:10,color:C.muted,margin:0}}>{fmtD(r.startDate)} \u2192 {fmtD(r.endDate)} \u00b7 {r.invoiceNo}</p></div>
-                <div style={{textAlign:"right"}}>
-                  <p style={{fontSize:11,fontFamily:SERIF,margin:"0 0 3px"}}>{fmt(r.fee)}</p>
-                  <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                    <span style={{fontSize:9.5,color:r.paid?C.green:C.amber,border:`1px solid ${r.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2}}>{r.paid?"Paid":"Unpaid"}</span>
-                    <button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:!rn.paid})})}))} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>{r.paid?"Undo":"Mark Paid"}</button>
-                    {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+              <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p>
+                    <p style={{fontSize:10,color:C.muted,margin:"0 0 5px"}}>{fmtD(r.startDate)} → {fmtD(r.endDate)}</p>
                   </div>
+                  <p style={{fontSize:11,fontFamily:SERIF,margin:0,flexShrink:0,marginLeft:8}}>{fmt(r.fee)}</p>
+                </div>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                  <span style={{fontSize:9,color:r.paid?C.green:r.signed?C.muted:C.amber,border:`1px solid ${r.paid?C.greenBorder:r.signed?C.rule:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase"}}>{r.paid?"Renewal Paid":r.signed?"Signed — awaiting payment":"Unsigned"}</span>
+                  {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+                  {!r.signed&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,signed:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Signed</button>}
+                  {r.signed&&!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Renewal Paid</button>}
+                  {r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:false})})}))} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.amber,fontFamily:SANS}}>Undo</button>}
                 </div>
               </div>
             ))}
@@ -1738,9 +1799,10 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
               </>}
 
-              {/* invoiced: mark paid only — corrections via preview */}
+              {/* invoiced: mark paid + undo — corrections via preview */}
               {pr.status==="invoiced"&&!pr.paid&&<>
                 <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
               </>}
 
               {/* paid: undo paid — renewals cycle is in the renewal rows above */}
@@ -1963,15 +2025,20 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
                 <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
               </div>}
               {(pr.renewals||[]).map((r: any,ri: number)=>(
-                <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><p style={{fontSize:11,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p><p style={{fontSize:10,color:C.muted,margin:0}}>{fmtD(r.startDate)} → {fmtD(r.endDate)} · {r.invoiceNo}</p></div>
-                  <div style={{textAlign:"right"}}>
-                    <p style={{fontSize:11,fontFamily:SERIF,margin:"0 0 3px"}}>{fmt(r.fee)}</p>
-                    <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                      <span style={{fontSize:9.5,color:r.paid?C.green:C.amber,border:`1px solid ${r.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2}}>{r.paid?"Paid":"Unpaid"}</span>
-                      <button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:!rn.paid})})}))} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>{r.paid?"Undo":"Mark Paid"}</button>
-                      {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9.5,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+                <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div>
+                      <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p>
+                      <p style={{fontSize:10,color:C.muted,margin:"0 0 5px"}}>{fmtD(r.startDate)} → {fmtD(r.endDate)}</p>
                     </div>
+                    <p style={{fontSize:11,fontFamily:SERIF,margin:0,flexShrink:0,marginLeft:8}}>{fmt(r.fee)}</p>
+                  </div>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                    <span style={{fontSize:9,color:r.paid?C.green:r.signed?C.muted:C.amber,border:`1px solid ${r.paid?C.greenBorder:r.signed?C.rule:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase"}}>{r.paid?"Renewal Paid":r.signed?"Signed — awaiting payment":"Unsigned"}</span>
+                    {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
+                    {!r.signed&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,signed:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Signed</button>}
+                    {r.signed&&!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Renewal Paid</button>}
+                    {r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:false})})}))} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.amber,fontFamily:SANS}}>Undo</button>}
                   </div>
                 </div>
               ))}
@@ -2012,9 +2079,10 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
                   {pr.qd&&<B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"invoiced")}>Create Invoice</B>}
                 </>}
 
-                {/* invoiced: mark paid only — corrections via preview */}
+                {/* invoiced: mark paid + undo — corrections via preview */}
                 {pr.status==="invoiced"&&!pr.paid&&<>
                   <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                  <B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Undo</B>
                 </>}
 
                 {/* paid: undo paid */}
