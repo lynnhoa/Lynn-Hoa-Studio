@@ -2781,14 +2781,8 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [clientSel,setClientSel]=useState<string|null>(null);
   const [pendingClientName,setPendingClientName]=useState<string|null>(null);
   const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
-  const [pendingNav,setPendingNav]=useState(false);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
-  useEffect(()=>{
-    if(!pendingNav||!pendingClientName)return;
-    const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
-    if(c){setPendingNav(false);setNav(1);}
-  },[pendingNav,pendingClientName,clients]);
   const [menuOpen,setMenuOpen]=useState(false);
   const [dashReset,setDashReset]=useState(0);
   const goToDash=()=>{setNav(0);setDashReset(p=>p+1);};
@@ -2835,7 +2829,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const handleAfterSave=(brand: string,qNo?: string)=>{
     setPendingClientName(brand);
     setPendingProjectQNo(qNo||null);
-    setPendingNav(true);
+    setTimeout(()=>setNav(1),100);
   };
 
   const handleGoToCalc=(clientName: string)=>{
