@@ -2497,7 +2497,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -2516,7 +2516,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                   <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                   <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                 </div>
-                {([["Creator Profile",4],["Change Password",5],["Rate Cards",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
+                {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Invoices",6]] as [string,number][]).map(([label,idx])=>(
                   <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                 ))}
                 <div style={{borderTop:`1px solid ${C.rule}`}}/>
