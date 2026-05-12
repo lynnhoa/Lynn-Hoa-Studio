@@ -721,7 +721,11 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
         <div style={{flex:1}}/>
         {isMobile&&<button onClick={()=>setShowEdit(e=>!e)} style={{padding:"5px 12px",background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase",color:C.black,marginRight:4}}>{showEdit?"View PDF":"Edit"}</button>}
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={()=>{const isDirty=!savedClean&&JSON.stringify(staged)!==JSON.stringify(data);isDirty?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
+        <button onClick={()=>{
+          if(savedClean){onClose();return;}
+          const isDirty=JSON.stringify(staged)!==JSON.stringify(data);
+          isDirty?setConfirmClose(true):onClose();
+        }} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
       {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
         <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
@@ -1032,7 +1036,19 @@ function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
 }
 // ─── RATE CARD BUILDER PREVIEW ────────────────────────────
 function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
-  const [staged,setStaged]=useState<any>(JSON.parse(JSON.stringify(card)));
+  const init=()=>JSON.parse(JSON.stringify(card));
+  const [hs,setHs]=useState({hist:[init()],idx:0});
+  const staged=hs.hist[hs.idx];
+  const setStaged=(fn: any)=>setHs(prev=>{
+    const curr=prev.hist[prev.idx];
+    const newD=typeof fn==="function"?fn(curr):fn;
+    const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
+    return{hist:next,idx:next.length-1};
+  });
+  const canUndo=hs.idx>0,canRedo=hs.idx<hs.hist.length-1;
+  const undo=()=>{const ni=Math.max(0,hs.idx-1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
+  const redo=()=>{const ni=Math.min(hs.hist.length-1,hs.idx+1);if(ni!==hs.idx)setHs(p=>({...p,idx:ni}));};
+
   const [pdfLang,setPdfLang]=useState("en");
   const [downloading,setDownloading]=useState(false);
   const [docHeight,setDocHeight]=useState(841);
@@ -1092,56 +1108,62 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
       if(mw){mw.location.href=pdf.output("bloburl") as string;}else{pdf.save(`${fname}.pdf`);}
     }finally{pages.forEach((p,i)=>{p.style.transform=savedT[i];});setDownloading(false);}
   };
-  const upI=(si: number,id: string,f: string,v: string)=>{setSavedClean(false);setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.map((it: any)=>it.id!==id?it:{...it,[f]:f==="p"?(v===""?null:parseFloat(v)||0):v})})}));};
-  const remI=(si: number,id: string)=>{setSavedClean(false);setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,items:sc.items.filter((it: any)=>it.id!==id)})}));};
-  const upSecT=(si: number,v: string)=>{setSavedClean(false);setStaged((prev: any)=>({...prev,sections:prev.sections.map((sc: any,i: number)=>i!==si?sc:{...sc,t:v})}));};
   const doSave=()=>{onSave(staged);setSavedClean(true);setFlash(true);setTimeout(()=>setFlash(false),2500);};
-  return createPortal(
+  const confirmPopup=confirmClose?createPortal(
+    <div style={{position:"fixed",inset:0,zIndex:10001,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
+      <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
+        <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save before closing?</p>
+        <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
+        <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+          <B onClick={()=>{doSave();setConfirmClose(false);onClose();}}>Yes, save</B>
+          <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
+        </div>
+      </div>
+    </div>,document.body):null;
+  return(<>{confirmPopup}{createPortal(
     <div style={{position:"fixed",inset:0,background:C.bg,zIndex:9999,display:"flex",flexDirection:"column",fontFamily:SANS}}>
       <div ref={measureRef} style={{position:"fixed",top:0,left:-9999,width:595,visibility:"hidden",pointerEvents:"none",zIndex:-1}}>
         <RCContent card={staged} lang={pdfLang} cleanSecT={cleanSecT} rcSecGuards={rcSecGuards}/>
       </div>
-      {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:700,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
-        <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
-          <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>Save before closing?</p>
-          <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>Changes will be lost if you don't save.</p>
-          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-            <B onClick={()=>{doSave();setConfirmClose(false);onClose();}}>Yes, save</B>
-            <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
-          </div>
-        </div>
-      </div>,document.body)}
-      {/* toolbar */}
-      <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:8,flexShrink:0}}>
-        <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flex:1,textAlign:"center"}}>{staged.label||"Rate Card"} — Preview</span>
-        <div style={{display:"flex",gap:4}}><Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill><Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill></div>
-        <B onClick={download} s={{minWidth:80,textAlign:"center"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={()=>{!savedClean?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22}}>✕</button>
+      {/* toolbar — identical layout to PDFModal */}
+      <div style={{height:46,borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",padding:"0 14px",gap:6,flexShrink:0}}>
+        <button onClick={undo} disabled={!canUndo} title="Undo" style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${canUndo?C.rule:"transparent"}`,borderRadius:2,cursor:canUndo?"pointer":"default",color:canUndo?C.black:C.light,fontSize:15}}>←</button>
+        <button onClick={redo} disabled={!canRedo} title="Redo" style={{width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:`1px solid ${canRedo?C.rule:"transparent"}`,borderRadius:2,cursor:canRedo?"pointer":"default",color:canRedo?C.black:C.light,fontSize:15}}>→</button>
+        <div style={{width:1,height:20,background:C.rule,margin:"0 4px"}}/>
+        <Pill on={pdfLang==="en"} onClick={()=>setPdfLang("en")}>EN</Pill>
+        <Pill on={pdfLang==="de"} onClick={()=>setPdfLang("de")}>DE</Pill>
+        <div style={{flex:1}}/>
+        <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
+        <button onClick={()=>{
+          if(savedClean){onClose();return;}
+          const isDirty=JSON.stringify(staged)!==JSON.stringify(card);
+          isDirty?setConfirmClose(true):onClose();
+        }} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
-        {/* edit panel */}
-        <div style={{width:260,flexShrink:0,borderRight:`1px solid ${C.rule}`,overflowY:"auto",padding:"14px 14px"}}>
-          <Lbl>Card Label</Lbl>
-          <I value={staged.label||""} onChange={(e: any)=>{setSavedClean(false);setStaged((p: any)=>({...p,label:e.target.value}));}} s={{marginBottom:10}}/>
-          <Lbl>Subtitle</Lbl>
-          <I value={staged.sub||""} onChange={(e: any)=>{setSavedClean(false);setStaged((p: any)=>({...p,sub:e.target.value}));}} s={{marginBottom:10}}/>
-          {staged.sections?.map((sec: any,si: number)=>(
-            <div key={si} style={{marginBottom:12,border:`1px solid ${C.rule}`,borderRadius:2,padding:"8px 10px",background:C.white}}>
-              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:7}}>
-                <I value={sec.t} onChange={(e: any)=>upSecT(si,e.target.value)} s={{flex:1,fontSize:9}}/>
+        {/* left edit panel — identical structure to PDFModal */}
+        <div style={{width:320,flexShrink:0,display:"flex",flexDirection:"column",borderRight:`1px solid ${C.rule}`}}>
+          <div style={{flex:1,overflowY:"auto",padding:"16px 18px"}}>
+            <Lbl>Card Label</Lbl>
+            <I value={staged.label||""} onChange={(e: any)=>setStaged((p: any)=>({...p,label:e.target.value}))} s={{marginBottom:8}}/>
+            <Lbl>Subtitle</Lbl>
+            <I value={staged.sub||""} onChange={(e: any)=>setStaged((p: any)=>({...p,sub:e.target.value}))} s={{marginBottom:10}}/>
+            {staged.sections?.map((sec: any,si: number)=>(
+              <div key={si} style={{marginBottom:10,border:`1px solid ${C.rule}`,borderRadius:2,padding:"8px 10px",background:C.white}}>
+                <I value={sec.t} onChange={(e: any)=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,t:e.target.value})}))} s={{marginBottom:6,fontSize:9,fontWeight:"500"}}/>
+                {sec.items.map((it: any)=>(
+                  <div key={it.id} style={{display:"flex",gap:5,alignItems:"center",marginBottom:4}}>
+                    <I value={it.n} onChange={(e: any)=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.map((x: any)=>x.id!==it.id?x:{...x,n:e.target.value})})}))} s={{flex:2,fontSize:9}}/>
+                    <I type="number" value={it.p??""} onChange={(e: any)=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.map((x: any)=>x.id!==it.id?x:{...x,p:e.target.value===""?null:parseFloat(e.target.value)||0})})}))} s={{width:52,fontSize:9}} placeholder="€"/>
+                    <button onClick={()=>setStaged((p: any)=>({...p,sections:p.sections.map((s: any,i: number)=>i!==si?s:{...s,items:s.items.filter((x: any)=>x.id!==it.id)})}))} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:12,padding:0,flexShrink:0}}>✕</button>
+                  </div>
+                ))}
               </div>
-              {sec.items.map((it: any)=>(
-                <div key={it.id} style={{display:"flex",gap:5,alignItems:"center",marginBottom:4}}>
-                  <I value={it.n} onChange={(e: any)=>upI(si,it.id,"n",e.target.value)} s={{flex:2,fontSize:9}}/>
-                  <I type="number" value={it.p??""} onChange={(e: any)=>upI(si,it.id,"p",e.target.value)} s={{width:52,fontSize:9}} placeholder="€"/>
-                  <button onClick={()=>remI(si,it.id)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:12,padding:0,flexShrink:0}}>✕</button>
-                </div>
-              ))}
-            </div>
-          ))}
-          <Lbl>Fine Print</Lbl>
-          <textarea value={staged.fine||""} onChange={(e: any)=>{setSavedClean(false);setStaged((p: any)=>({...p,fine:e.target.value}));}} style={{width:"100%",padding:"7px 9px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:52}}/>
-          <div style={{paddingTop:12,borderTop:`1px solid ${C.rule}`,marginTop:12}}>
+            ))}
+            <Lbl>Fine Print</Lbl>
+            <textarea value={staged.fine||""} onChange={(e: any)=>setStaged((p: any)=>({...p,fine:e.target.value}))} style={{width:"100%",padding:"8px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:10,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box",minHeight:64}}/>
+          </div>
+          <div style={{padding:"12px 18px",borderTop:`1px solid ${C.rule}`,flexShrink:0}}>
             {flash&&<p style={{fontSize:9,color:C.green,margin:"0 0 7px",letterSpacing:"0.06em"}}>Saved ✓</p>}
             <B onClick={doSave} s={{width:"100%",textAlign:"center"}}>Save</B>
           </div>
@@ -1170,7 +1192,7 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
           ))}
         </div>
       </div>
-    </div>,document.body);
+    </div>,document.body)}</>);
 }
 
 // ─── RATE CARD BUILDER MODAL ──────────────────────────────
@@ -1212,7 +1234,7 @@ function RateCardBuilderModal({rc,onSave,onClose}: any) {
   const builtCard={label,sub:rc[baseCat||""]?.sub||label,sections,fine,usage:rc[baseCat||""]?.usage||rc.influencer?.usage||[],excl:rc[baseCat||""]?.excl||rc.influencer?.excl||[]};
   const catKey=baseCat==="other"?(customName.toLowerCase().replace(/\s+/g,"_")||"custom"):(baseCat||"custom");
 
-  if(showPreview)return<RateCardBuilderPreview card={builtCard} settings={null} onSave={(saved: any)=>{onSave(catKey,saved);setShowPreview(false);}} onClose={()=>setShowPreview(false)}/>;
+  if(showPreview)return<RateCardBuilderPreview card={builtCard} settings={null} onSave={(saved: any)=>{onSave(catKey,saved);}} onClose={()=>setShowPreview(false)}/>;
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -1310,7 +1332,7 @@ function RateCard({rc,setRc,settings}: any) {
   return(
     <div>
       {showBuilder&&<RateCardBuilderModal rc={rc} onSave={saveBuilt} onClose={()=>setShowBuilder(false)}/>}
-      {showPreview&&<RateCardBuilderPreview card={card} settings={settings} onSave={(saved: any)=>{setRc((prev: any)=>({...prev,[tab]:saved}));setShowPreview(false);}} onClose={()=>setShowPreview(false)}/>}
+      {showPreview&&<RateCardBuilderPreview card={card} settings={settings} onSave={(saved: any)=>{setRc((prev: any)=>({...prev,[tab]:saved}));}} onClose={()=>setShowPreview(false)}/>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:18}}>
         <div><h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Rate Card</h2><p style={{fontSize:8,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:0}}>Fashion · Beauty · Lifestyle</p></div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
