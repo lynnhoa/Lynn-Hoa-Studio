@@ -1164,7 +1164,9 @@ function RateCards({rc,setRc,settings}: any) {
 // ─── CALCULATOR ───────────────────────────────────────────
 function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSave}: any) {
   const isRev=prefill?.isRev||false;
+  const isAmend=prefill?.isAmend||false;
   const revN=prefill?.revN||1;
+  const amendN=prefill?.amendN||1;
 
   const [brand,setBrand]=useState(prefill?.brand||"");
   const [contact,setContact]=useState(prefill?.contact||"");
@@ -1230,7 +1232,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   const grand=Math.round(subtotal*(1-(retOn?20:0)/100));
   const vu=new Date(qDate);vu.setDate(vu.getDate()+(parseInt(String(vDays))||14));
   const validUntil=vu.toISOString().split("T")[0];
-  const qNo=isRev?(prefill?.qNo||`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`):(`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`);
+  const qNo=isAmend?`AMD-${(prefill?.qNo||"").replace(/QUO-?/i,"").trim()||new Date().getFullYear()}-${String(amendN).padStart(2,"0")}`:isRev?(prefill?.qNo||`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`):(`QUO-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`);
 
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
@@ -1245,12 +1247,26 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   return(
     <div>
-      {pdf&&<PDFModal data={pdf} type={isRev?"revised":"quote"} onClose={()=>{setPdf(null);}} settings={settings} isNew={true}
-        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);if(onAfterSave)onAfterSave(doc.brand||brand,doc.qNo);}}/>}
+      {pdf&&<PDFModal data={pdf} type={isRev?"revised":isAmend?"amendment":"quote"} onClose={()=>{setPdf(null);}} settings={settings} isNew={true}
+        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:isAmend?"production":"quoted"},doc.brand,doc.contact,isRev,revN,projName,isAmend,amendN,prefill?.origLines||[]);if(onAfterSave)onAfterSave(doc.brand||brand,isAmend?null:doc.qNo);}}/>}
       <div style={{marginBottom:18}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Calculator</h2>
-        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isAmend?`Amendment ${amendN} — ${prefill?.qNo||""}`:isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
       </div>
+
+      {isAmend&&prefill?.origLines?.length>0&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:16,background:C.white}}>
+        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 9px"}}>Original Quote — read only</p>
+        {prefill.origLines.map((ln: any,i: number)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
+            <span style={{fontSize:10,color:C.black}}>{ln.qty>1?`${ln.qty}× `:""}{ln.name}</span>
+            <span style={{fontSize:10,fontFamily:SERIF,color:C.muted,flexShrink:0,marginLeft:8}}>{fmt(ln.amt)}</span>
+          </div>
+        ))}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingTop:7,marginTop:2}}>
+          <span style={{fontSize:9,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Original Total</span>
+          <span style={{fontSize:12,fontFamily:SERIF,color:C.black}}>{fmt(prefill.origLines.reduce((s: number,l: any)=>s+(l.amt||0),0))}</span>
+        </div>
+      </div>}
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:9}}>
         <div><Lbl>Brand / Company</Lbl><I value={brand} onChange={(e: any)=>setBrand(e.target.value)} placeholder="Sephora"/></div>
@@ -1568,7 +1584,7 @@ function RenewalModal({p,onSave,onClose,settings}: any) {
 }
 
 // ─── CLIENT DETAIL PANEL ─────────────────────────────────
-function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
+function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
   return(
@@ -1715,7 +1731,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
 
               {/* production: amendments cycle + create invoice */}
               {pr.status==="production"&&<>
-                <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
+                <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
                 {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
                   <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
                 ))}
@@ -1744,7 +1760,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
 }
 
 // ─── CLIENTS ──────────────────────────────────────────────
-function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear,pendingProjectQNo}: any) {
+function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear,pendingProjectQNo}: any) {
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
   const [typeFilter,setTypeFilter]=useState("all");
@@ -1989,7 +2005,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
 
                 {/* production: amendments cycle + create invoice */}
                 {pr.status==="production"&&<>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>setAmendT({p:pr,cid:cl.id,pid:pr.id})}>Add Amendment</B>
+                  <B v="sec" s={{fontSize:8}} onClick={()=>onAmend(pr)}>Add Amendment</B>
                   {(pr.amendments||[]).filter((a: any)=>!a.signed).map((a: any,ai: number)=>(
                     <B key={ai} v="sec" s={{fontSize:8,color:C.amber,borderColor:C.amberBorder}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,amendments:proj.amendments.map((am: any)=>am.aNo===a.aNo?{...am,signed:true}:am)})}))}>Mark Amend {a.aNo} Signed</B>
                   ))}
@@ -2109,7 +2125,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         );
       })}
       </div>{/* end left col */}
-      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)}/>}
+      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)}/>}
     </div>
   );
 }
@@ -2509,9 +2525,13 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   if(!authed)return<Auth onAuth={(r)=>{setRole(r);setAuthed(true);}} currentPass={settings.password||PASS}/>;
   if(role==="creator")return<CreatorPage settings={settings} logout={()=>{setAuthed(false);setNav(0);}}/>;
 
-  const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string)=>{
+  const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string,isAmend?: boolean,amendN?: number,origLines?: any[])=>{
     const ex=clients.find((c: any)=>c.name.toLowerCase()===brand.toLowerCase());
-    if(isRev&&ex){
+    if(isAmend&&ex){
+      const aNo=`Amend ${amendN||1}`;
+      const amendTotal=(q.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
+      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===prefill?.qNo?{...pr,amendments:[...(pr.amendments||[]),{id:uid(),aNo,lines:q.lines||[],amendTotal,origTotal:pr.amount,signed:false,doc:q}],amount:pr.amount+amendTotal}:pr)}));
+    } else if(isRev&&ex){
       setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===q.qNo?{...pr,qd:q,status:"revised",amount:q.total}:pr)}));
     } else {
       const existPr=ex?.projects?.find((pr: any)=>pr.qd?.qNo===q.qNo);
@@ -2543,6 +2563,13 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       qty:ln.qty||1,neg:ln.up?String(ln.up):"",vol:false,ui:1,ei:0,ao:[],cLabel:"",cAmt:""
     }));
     setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isRev:true,revN:(q?.rev||0)+1,ctab:q?.ctab||"influencer",lines:prefillLines,origLines:q?.lines||[]});
+    setNav(2);
+  };
+
+  const handleAmend=(pr: any)=>{
+    const q=pr.qd;
+    const amendN=(pr.amendments||[]).length+1;
+    setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isAmend:true,amendN,origLines:q?.lines||[]});
     setNav(2);
   };
 
@@ -2604,7 +2631,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
-        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
+        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
