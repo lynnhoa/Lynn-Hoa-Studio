@@ -340,49 +340,6 @@ const B = ({v="pri",s,...p}: any) => <button style={{padding:"7px 14px",border:v
 const Pill = ({on,onClick,children}: any) => <button onClick={onClick} style={{padding:"5px 13px",border:`1px solid ${on?C.black:C.rule}`,background:on?C.black:"transparent",color:on?C.white:C.muted,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.1em",textTransform:"uppercase"}}>{children}</button>;
 const Lbl = ({children}: any) => <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"12px 0 5px"}}>{children}</p>;
 const Tag = ({children,onRemove}: any) => <span style={{display:"inline-flex",alignItems:"center",gap:4,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 8px",fontSize:10,color:C.muted}}>{children}{onRemove&&<button onClick={onRemove} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:10,padding:0}}>✕</button>}</span>;
-
-const CATEGORY_SUGGESTIONS = ["Beauty","Fashion","Lifestyle","Food","Travel","Fitness","Tech","Gaming","Music","Art","Design","Photography","Sports","Health","Wellness","Finance","Education","Entertainment","Luxury","Sustainability"];
-
-function TagInput({tags,onChange,placeholder="Add tag"}: {tags:string[],onChange:(t:string[])=>void,placeholder?:string}) {
-  const [val,setVal]=useState("");
-  const [open,setOpen]=useState(false);
-  const [rect,setRect]=useState<DOMRect|null>(null);
-  const inputRef=useRef<HTMLInputElement>(null);
-  const picking=useRef(false);
-  const hasTag=(v:string)=>tags.some(t=>t.toLowerCase()===v.toLowerCase());
-  const suggestions=CATEGORY_SUGGESTIONS.filter(s=>val.trim().length>=2&&s.toLowerCase().startsWith(val.trim().toLowerCase())&&!hasTag(s));
-  const add=(t:string)=>{const v=t.trim();if(!v||hasTag(v))return;onChange([...tags,v]);setVal("");setOpen(false);};
-  const openDropdown=()=>{if(inputRef.current)setRect(inputRef.current.getBoundingClientRect());setOpen(true);};
-  return(
-    <div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{tags.map((t:string)=><Tag key={t} onRemove={()=>onChange(tags.filter(x=>x!==t))}>{t}</Tag>)}</div>
-      <div style={{position:"relative"}}>
-        <div style={{display:"flex",gap:5}}>
-          <input ref={inputRef} value={val}
-            onChange={(e:any)=>{setVal(e.target.value);openDropdown();}}
-            placeholder={placeholder}
-            onKeyDown={(e:any)=>{if(e.key==="Enter"){e.preventDefault();if(suggestions.length>0)add(suggestions[0]);else add(val);}if(e.key==="Escape")setOpen(false);}}
-            onFocus={openDropdown}
-            onBlur={()=>{if(!picking.current)setOpen(false);picking.current=false;}}
-            style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box"}}/>
-          <B v="sec" onClick={()=>add(val)} s={{fontSize:9}}>+</B>
-        </div>
-        {open&&suggestions.length>0&&rect&&createPortal(
-          <div style={{position:"fixed",top:rect.bottom+2,left:rect.left,width:rect.width,background:C.white,border:`1px solid ${C.rule}`,borderRadius:2,zIndex:9999,boxShadow:"0 4px 12px rgba(0,0,0,0.10)"}}>
-            {suggestions.map((s:string)=>(
-              <div key={s}
-                onMouseDown={()=>{picking.current=true;add(s);}}
-                style={{padding:"7px 11px",fontSize:11,color:C.black,cursor:"pointer",borderBottom:`1px solid ${C.rule}`}}
-                onMouseEnter={(e:any)=>e.currentTarget.style.background="rgba(0,0,0,0.03)"}
-                onMouseLeave={(e:any)=>e.currentTarget.style.background="transparent"}>{s}</div>
-            ))}
-          </div>,
-          document.body
-        )}
-      </div>
-    </div>
-  );
-}
 const IR = ({label,value}: any) => <div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${C.rule}`}}><span style={{fontSize:10.5,color:C.muted}}>{label}</span><span style={{fontSize:10.5,color:C.black,fontWeight:"500",maxWidth:"60%",textAlign:"right"}}>{value||"—"}</span></div>;
 const scol = (s: string) => ({invoiced:C.amber,contracted:C.muted,quoted:C.light,revised:"#b8a090",production:"#8fa89a",paid:C.green,lead:C.light}[s as keyof typeof C]||C.light);
 
@@ -1595,16 +1552,16 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
   const edt=editMode?ed:cl;
   return(
     <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
-      <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>&larr; Clients</button>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
         <div style={{minWidth:0}}>
           {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
         </div>
-        <div style={{display:"flex",gap:6,flexShrink:0}}>
+        <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
           {editMode
             ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
             :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
+          <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1616,7 +1573,8 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
             <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
             <Lbl>Tags</Lbl>
-            <TagInput tags={edt.tags||[]} onChange={(t:string[])=>setEd((p:any)=>({...p,tags:t}))} placeholder="Add tag"/>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
+            <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
           </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
         </div>
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
@@ -1813,16 +1771,16 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
     const edt=editMode?ed:cl;
     return(
       <div>
-        <button onClick={()=>{setSel(null);setEditMode(false);}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Clients</button>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
           <div style={{minWidth:0}}>
             {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
           </div>
-          <div style={{display:"flex",gap:6,flexShrink:0}}>
+          <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
             {editMode
               ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
               :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
+            <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1834,7 +1792,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
               <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
               <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
               <Lbl>Tags</Lbl>
-              <TagInput tags={edt.tags||[]} onChange={(t:string[])=>setEd((p:any)=>({...p,tags:t}))} placeholder="Add tag"/>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
+              <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
             </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
           </div>
           <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
@@ -1995,7 +1954,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
             <div><Lbl>Agency / Direct</Lbl><S value={nb.agency} onChange={(e: any)=>setNb(p=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S></div>
             <div><Lbl>Country</Lbl><I value={nb.country} onChange={(e: any)=>setNb(p=>({...p,country:e.target.value}))} placeholder="Germany"/></div>
             <div><Lbl>Tags</Lbl>
-              <TagInput tags={nb.tags} onChange={(t:string[])=>setNb(p=>({...p,tags:t}))} placeholder="Beauty, Fashion…"/>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>{nb.tags.map(t=><Tag key={t} onRemove={()=>setNb(p=>({...p,tags:p.tags.filter(x=>x!==t)}))}>{t}</Tag>)}</div>
+              <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Beauty, Fashion…" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setNb(p=>({...p,tags:[...p.tags,tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setNb(p=>({...p,tags:[...p.tags,tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
             </div>
           </div>
           <div style={{marginTop:9}}><Lbl>Relationship Notes</Lbl><I value={nb.notes} onChange={(e: any)=>setNb(p=>({...p,notes:e.target.value}))} placeholder="Fast payer, luxury aesthetic…"/></div>
