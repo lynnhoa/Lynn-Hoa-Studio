@@ -535,7 +535,8 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const docRef=useRef<HTMLDivElement>(null);
   const [docHeight,setDocHeight]=useState(841);
   const PAGE_H=841;
-  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
+  const MIN_PAGE_CONTENT=60;
+  const numPages=Math.max(1,Math.floor((docHeight-MIN_PAGE_CONTENT)/PAGE_H)+1);
   const s={...SETTINGS_DEFAULT,...(settings||{})};
   const isDE=lang==="de";
   const _dc=s.company||s.name||(isDE?"Der/Die Auftragnehmer/in":"The creator");
@@ -1065,7 +1066,8 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
   const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
-  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
+  const MIN_PAGE_CONTENT=60;
+  const numPages=Math.max(1,Math.floor((docHeight-MIN_PAGE_CONTENT)/PAGE_H)+1);
   const pageScale=winW<700?Math.min(1,(winW-32)/595):1;
   const sett={...SETTINGS_DEFAULT,...(settings||{})};
   const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
@@ -1853,7 +1855,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
     if(c){setSel(c.id);if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);}
     if(onPendingClear)setTimeout(()=>onPendingClear(),100);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[pendingClientName,pendingProjectQNo]);
+  },[]);
   const [revInvT,setRevInvT]=useState<any>(null);
   const [pdf,setPdf]=useState<any>(null);
   const [showAddP,setShowAddP]=useState(false);
@@ -2714,7 +2716,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const handleAfterSave=(brand: string,qNo?: string)=>{
     setPendingClientName(brand);
     setPendingProjectQNo(qNo||null);
-    setNav(1);
+    setTimeout(()=>setNav(1),100);
   };
 
   const handleGoToCalc=(clientName: string)=>{
