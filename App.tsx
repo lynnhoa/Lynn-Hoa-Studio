@@ -499,7 +499,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   );
 }
 
-function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
+function PDFModal({data,type,onClose,onSave,settings}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
@@ -700,7 +700,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
         <div style={{flex:1}}/>
         {isMobile&&<button onClick={()=>setShowEdit(e=>!e)} style={{padding:"5px 12px",background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase",color:C.black,marginRight:4}}>{showEdit?"View PDF":"Edit"}</button>}
         <B onClick={download} s={{opacity:downloading?0.5:1,cursor:downloading?"default":"pointer"}}>{downloading?"Saving…":"Save PDF"}</B>
-        <button onClick={()=>{const isDirty=JSON.stringify(staged)!==JSON.stringify(data);(onSave&&(isNew||isDirty))?setConfirmClose(true):onClose();}} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
+        <button onClick={()=>onSave?setConfirmClose(true):onClose()} style={{width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:22,marginLeft:4}}>✕</button>
       </div>
       {confirmClose&&createPortal(<div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(250,249,247,0.88)"}}>
         <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",boxShadow:"0 4px 24px rgba(0,0,0,0.12)",textAlign:"center",minWidth:220}}>
@@ -1234,8 +1234,8 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   return(
     <div>
-      {pdf&&<PDFModal data={pdf} type={isRev?"revised":"quote"} onClose={()=>{setPdf(null);}} settings={settings} isNew={true}
-        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);if(onAfterSave)onAfterSave(doc.brand||brand,doc.qNo);}}/>}
+      {pdf&&<PDFModal data={pdf} type={isRev?"revised":"quote"} onClose={()=>{setPdf(null);}} settings={settings}
+        onSave={(doc: any)=>{onSave({...doc,id:uid(),status:"quoted"},doc.brand,doc.contact,isRev,revN,projName);if(onAfterSave)onAfterSave(doc.brand||brand);}}/>}
       <div style={{marginBottom:18}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Calculator</h2>
         <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",margin:0}}>{isRev?`Revising ${prefill?.qNo} — R${revN}`:"Build a Quote"}</p>
@@ -1557,21 +1557,21 @@ function RenewalModal({p,onSave,onClose,settings}: any) {
 }
 
 // ─── CLIENT DETAIL PANEL ─────────────────────────────────
-function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,setPdf,onRevise,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
+function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,setPdf,onRevise,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
   return(
     <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
-        <div style={{minWidth:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:12}}>
+        <div style={{minWidth:0,flex:1}}>
           {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
         </div>
-        <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
+        <div style={{display:"flex",alignItems:"center",gap:0,flexShrink:0,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
           {editMode
-            ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
-            :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
-          <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
+            ?<><button onClick={()=>{upCl(cl.id,ed);setEditMode(false);}} style={{padding:"6px 13px",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.09em",textTransform:"uppercase"}}>Save</button><button onClick={()=>setEditMode(false)} style={{padding:"6px 13px",background:"none",color:C.muted,border:"none",borderLeft:`1px solid ${C.rule}`,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.09em",textTransform:"uppercase"}}>Cancel</button></>
+            :<><button onClick={()=>{setEd({...cl});setEditMode(true);}} style={{padding:"6px 13px",background:"none",color:C.muted,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.09em",textTransform:"uppercase"}}>Edit</button><button onClick={()=>delCl(cl.id)} style={{padding:"6px 13px",background:"none",color:C.red,border:"none",borderLeft:`1px solid ${C.rule}`,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.09em",textTransform:"uppercase"}}>Delete</button></>}
+          <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{padding:"6px 10px",background:"none",color:C.light,border:"none",borderLeft:`1px solid ${C.rule}`,cursor:"pointer",fontSize:14,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1630,14 +1630,13 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
       </div>}
       {cl.projects.map((pr: any,i: number)=>{
         const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
-        const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
         return(
-          <div key={pr.id} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
+          <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
               <div style={{flex:1,minWidth:0}}>
                 {editPrName===pr.id
                   ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 6px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:3}}/>
-                  :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>✎</span></p>}
+                  :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>\u270e</span></p>}
                 <p style={{fontSize:10.5,color:C.muted,margin:"0 0 6px"}}>{fmtD(pr.date)}</p>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
                   <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
@@ -1700,7 +1699,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
 }
 
 // ─── CLIENTS ──────────────────────────────────────────────
-function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear,pendingProjectQNo}: any) {
+function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear}: any) {
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
   const [typeFilter,setTypeFilter]=useState("all");
@@ -1708,12 +1707,10 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
   const [sel,setSel_]=useState<string|null>(null);
   const setSel=(v: string|null)=>{setSel_(v);if(onSelChange)onSelChange(v);};
   useEffect(()=>{setSel(null);},[selReset]);
-  const [highlightedProjectQNo,setHighlightedProjectQNo]=useState<string|null>(null);
   useEffect(()=>{
     if(!pendingClientName)return;
     const c=clients.find((x: any)=>x.name.toLowerCase()===pendingClientName.toLowerCase());
     if(c)setSel(c.id);
-    if(pendingProjectQNo)setHighlightedProjectQNo(pendingProjectQNo);
     if(onPendingClear)onPendingClear();
   },[pendingClientName]);
   const [showAdd,setShowAdd]=useState(false);
@@ -1858,9 +1855,8 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         </div>}
         {cl.projects.map((pr: any,i: number)=>{
           const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
-          const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
           return(
-            <div key={pr.id} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
+            <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div style={{flex:1,minWidth:0}}>
                   {editPrName===pr.id
@@ -2019,7 +2015,7 @@ function Clients({clients,setClients,onRevise,goTo,settings,onGoToCalc,isMobile,
         );
       })}
       </div>{/* end left col */}
-      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} setPdf={setPdf} onRevise={onRevise} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)}/>}
+      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} setPdf={setPdf} onRevise={onRevise} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel}/>}
     </div>
   );
 }
@@ -2395,7 +2391,6 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [clientSelReset,setClientSelReset]=useState(0);
   const [clientSel,setClientSel]=useState<string|null>(null);
   const [pendingClientName,setPendingClientName]=useState<string|null>(null);
-  const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
@@ -2436,7 +2431,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     }
     setPrefill(null);
   };
-  const handleAfterSave=(brand: string,qNo?: string)=>{setPendingClientName(brand);setPendingProjectQNo(qNo||null);setNav(1);};
+  const handleAfterSave=(brand: string)=>{setPendingClientName(brand);setNav(1);};
 
   const handleGoToCalc=(clientName: string)=>{
     setPrefill({brand:clientName,contact:""});
@@ -2514,7 +2509,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
-        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
+        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>setPendingClientName(null)}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<RateCards rc={rc} setRc={setRc} settings={settings}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
