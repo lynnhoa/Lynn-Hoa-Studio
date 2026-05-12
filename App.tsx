@@ -2052,8 +2052,8 @@ function Dashboard({clients,goTo,isMobile}: any) {
   const Card=({label,count,items,warm,sub,onClick}: any)=>(
     <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
-        <span style={{fontSize:9.5,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>{label}</span>
-        <span style={{fontFamily:SERIF,fontSize:22,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
+        <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>{label}</span>
+        <span style={{fontFamily:SERIF,fontSize:15,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
       </div>
       {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 8px"}}>{sub}</p>}
       {items?.slice(0,3).map((pr: any,i: number)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}><span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span><span style={{fontSize:10.5}}>{pr.amount?fmt(pr.amount):""}</span></div>)}
@@ -2474,7 +2474,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
           </div>
         )}
       </div>
-      <div style={{maxWidth:appMobile?"100%":nav===0?1100:nav===1&&clientSel?"none":840,margin:"0 auto",padding:appMobile?"20px 12px":nav===1&&clientSel&&!appMobile?"28px 32px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel}/>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile}/>}
