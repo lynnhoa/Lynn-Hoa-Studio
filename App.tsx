@@ -4355,6 +4355,7 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
 function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) {
   const todayDate=new Date();
   const todayStr=todayDate.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+  const [drill,setDrill]=useState<"output"|null>(null);
 
   // ── source of truth: same as Workspace
   const allItems=getWsItems(clients);
@@ -4367,23 +4368,24 @@ function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) 
   // delivered this month — from workspaceStatusHistory
   const nowY=todayDate.getFullYear();
   const nowM=todayDate.getMonth();
-  const deliveredThisMonth=(()=>{
+  const allDelivered=(()=>{
     const out: any[]=[];
     clients.forEach((c:any)=>c.projects.forEach((pr:any)=>{
       const hist=pr.workspaceStatusHistory||{};
       Object.entries(hist).forEach(([id,entries]:any)=>{
         const lastDelivered=[...(entries||[])].reverse().find((e:any)=>e.status==="Delivered");
         if(lastDelivered){
-          const d=new Date(lastDelivered.date);
-          if(d.getFullYear()===nowY&&d.getMonth()===nowM){
-            const item=allItems.find((it:any)=>it.id===id);
-            if(item)out.push({...item,deliveredDate:lastDelivered.date});
-          }
+          const item=allItems.find((it:any)=>it.id===id);
+          if(item)out.push({...item,deliveredDate:lastDelivered.date});
         }
       });
     }));
-    return out;
+    return out.sort((a:any,b:any)=>new Date(b.deliveredDate).getTime()-new Date(a.deliveredDate).getTime());
   })();
+  const deliveredThisMonth=allDelivered.filter((it:any)=>{
+    const d=new Date(it.deliveredDate);
+    return d.getFullYear()===nowY&&d.getMonth()===nowM;
+  });
 
   // velocity — delivered per week last 4 weeks
   const velocity=(()=>{
@@ -4461,6 +4463,66 @@ function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) 
 
   const cols=isMobile?"1fr":"1fr 1fr";
 
+  // ── output drill view
+  if(drill==="output"){
+    const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const groups: {year:number,month:number,items:any[]}[]=[];
+    allDelivered.forEach((it:any)=>{
+      const d=new Date(it.deliveredDate);
+      const y=d.getFullYear(),m=d.getMonth();
+      let g=groups.find(x=>x.year===y&&x.month===m);
+      if(!g){g={year:y,month:m,items:[]};groups.push(g);}
+      g.items.push(it);
+    });
+    const catLbl=(cat:string)=>cat==="Influencer"?"Collab":cat;
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20,fontFamily:SANS}}>← Dashboard</button>
+        <div style={{marginBottom:20}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Output log</h2>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:0}}>{allDelivered.length} delivered total</p>
+        </div>
+        {allDelivered.length===0&&(
+          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const}}>
+            <p style={{fontSize:12,color:C.muted,margin:0}}>Nothing delivered yet.</p>
+          </div>
+        )}
+        {groups.map(g=>{
+          const byCat: Record<string,number>={};
+          g.items.forEach((it:any)=>{byCat[it.category]=(byCat[it.category]||0)+1;});
+          return(
+            <div key={`${g.year}-${g.month}`} style={{marginBottom:52}}>
+              <div style={{display:"flex",alignItems:"baseline",gap:12,marginBottom:6}}>
+                <span style={{fontSize:13,fontWeight:"500",color:C.black}}>{MO[g.month]} {g.year}</span>
+                <span style={{fontSize:11,color:C.muted}}>{g.items.length} delivered</span>
+                <div style={{display:"flex",gap:5,marginLeft:4,flexWrap:"wrap" as const}}>
+                  {Object.entries(byCat).map(([cat,cnt])=>{
+                    const cs=wsCatPill(cat);
+                    return <span key={cat} style={{fontSize:10,padding:"1px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color}}>{catLbl(cat)} {cnt as number}</span>;
+                  })}
+                </div>
+              </div>
+              <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
+              {g.items.map((it:any)=>{
+                const cs=wsCatPill(it.category);
+                return(
+                  <div key={it.id} style={{display:"flex",alignItems:"center",gap:isMobile?6:10,padding:"9px 0",borderBottom:`1px solid ${C.rule}`}}>
+                    <span style={{fontSize:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{it.clientName.toUpperCase()}</span>
+                    <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:13,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{it.name}</span>
+                      <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{catLbl(it.category)}</span>
+                    </div>
+                    <span style={{fontSize:11,color:C.muted,flexShrink:0}}>{fmtD(it.deliveredDate)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   if(allItems.length===0)return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Dashboard</h2>
@@ -4506,10 +4568,10 @@ function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) 
           <p style={{fontFamily:SERIF,fontSize:28,color:C.black,margin:"0 0 3px",lineHeight:1}}>{open.length}</p>
           <p style={{fontSize:10,color:C.muted}}>across {clientNames.length} client{clientNames.length!==1?"s":""}</p>
         </div>
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg}}>
+        <div onClick={()=>setDrill("output")} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg,cursor:"pointer"}}>
           <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Delivered this month</p>
           <p style={{fontFamily:SERIF,fontSize:28,color:deliveredThisMonth.length>0?C.green:C.light,margin:"0 0 3px",lineHeight:1}}>{deliveredThisMonth.length}</p>
-          <p style={{fontSize:10,color:deliveredThisMonth.length>0?C.green:C.light}}>{new Date().toLocaleString("en-GB",{month:"long"})}</p>
+          <p style={{fontSize:10,color:deliveredThisMonth.length>0?C.green:C.light}}>{new Date().toLocaleString("en-GB",{month:"long"})} · tap to view all</p>
         </div>
       </div>
 
