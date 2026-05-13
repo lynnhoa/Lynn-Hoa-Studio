@@ -2212,15 +2212,50 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   if(drill==="projects"){
     const FILTERS=[["all","All"],["production","Production"],["contracted","Contracted"],["invoiced","Invoiced"],["quoted","Quoted"]];
     const SORTS=[["status","By Stage"],["amount_hi","Amount ↓"],["amount_lo","Amount ↑"],["delivery","Delivery"]];
+    const totalActive=activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0);
+    const daysIn=(pr: any)=>pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+    const dCol=(d: number|null)=>d===null?C.light:d>=14?C.red:d>=7?C.amber:C.muted;
+
+    // group: needs your action first, then in progress
+    const needsAction=filteredProjects.filter((pr: any)=>["invoiced","contracted"].includes(pr.status));
+    const inProgress=filteredProjects.filter((pr: any)=>["production","quoted","revised"].includes(pr.status));
+
+    const Row=({pr}: {pr: any})=>{
+      const d=daysIn(pr);
+      const col=STATUS_COLOR[pr.status]||C.muted;
+      const next=NEXT_ACTION[pr.status]||"";
+      const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
+      return(
+        <div onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
+          <span style={{fontSize:10,color:dCol(d),flexShrink:0,minWidth:28,fontWeight:"500"}}>{d!==null?`${d}d`:"—"}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+              <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+              <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+              <span style={{fontSize:8,color:col,border:`1px solid ${col}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase" as const,flexShrink:0}}>{pr.status}</span>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:3,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:9,color:C.light}}>{next}</span>
+              {pr.deliveryDate&&<span style={{fontSize:9,color:C.light}}>· Due {fmtD(pr.deliveryDate)}</span>}
+              {unsignedAmends>0&&<span style={{fontSize:9,color:C.amber}}>· {unsignedAmends} unsigned amend</span>}
+            </div>
+          </div>
+          <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+          <span style={{fontSize:9,color:C.light}}>→</span>
+        </div>
+      );
+    };
+
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
-          <div>
-            <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 3px"}}>Active Projects</h2>
-            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{filteredProjects.length} of {activeProjects.length} project{activeProjects.length!==1?"s":""}</p>
-          </div>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4,flexWrap:"wrap",gap:8}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Active Projects</h2>
+          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(totalActive)}</span>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:6}}>
+          <p style={{fontSize:10.5,color:C.muted,margin:0}}>{filteredProjects.length} of {activeProjects.length} project{activeProjects.length!==1?"s":""}</p>
+          <div style={{display:"flex",gap:5}}>
             <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
               {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
             </S>
@@ -2231,39 +2266,16 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         </div>
 
         {filteredProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No projects match this filter.</p>}
-        {filteredProjects.map((pr: any,i: number)=>{
-          const col=STATUS_COLOR[pr.status]||C.muted;
-          const next=NEXT_ACTION[pr.status]||"";
-          const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
-          return(
-            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
 
-              {/* header row */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-                <div style={{minWidth:0}}>
-                  <p style={{fontSize:12,color:C.muted,margin:"0 0 2px",letterSpacing:"0.04em"}}>{pr.cName}</p>
-                  <p style={{fontSize:15,color:C.black,margin:0,fontFamily:SERIF,fontWeight:"normal"}}>{pr.name}</p>
-                </div>
-                <span style={{fontFamily:SERIF,fontSize:15,flexShrink:0}}>{fmt(pr.amount)}</span>
-              </div>
+        {needsAction.length>0&&<>
+          <p style={{fontSize:9,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 4px",fontWeight:"600"}}>Needs your action</p>
+          {needsAction.map((pr: any,i: number)=><Row key={i} pr={pr}/>)}
+        </>}
 
-              {/* meta row */}
-              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
-                <span style={{fontSize:9,letterSpacing:"0.08em",textTransform:"uppercase",color:col,border:`1px solid ${col}`,padding:"2px 7px",borderRadius:2}}>{pr.status}</span>
-                {pr.deliveryDate&&<span style={{fontSize:10,color:C.muted}}>Due {fmtD(pr.deliveryDate)}</span>}
-                {(pr.amendments||[]).length>0&&<span style={{fontSize:10,color:unsignedAmends>0?C.amber:C.muted}}>{pr.amendments.length} amend{unsignedAmends>0?` · ${unsignedAmends} unsigned`:""}</span>}
-                {(pr.renewals||[]).length>0&&<span style={{fontSize:10,color:C.green}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
-              </div>
-
-              {/* next action */}
-              <div style={{paddingTop:7,borderTop:`1px solid ${C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:10,color:C.muted}}>Next: <strong style={{color:C.black}}>{next}</strong></span>
-                <span style={{fontSize:9,color:C.light,letterSpacing:"0.06em"}}>→ Open in Clients</span>
-              </div>
-
-            </div>
-          );
-        })}
+        {inProgress.length>0&&<>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${needsAction.length>0?"20px":"0"} 0 4px`,fontWeight:"600"}}>In progress</p>
+          {inProgress.map((pr: any,i: number)=><Row key={i} pr={pr}/>)}
+        </>}
       </div>
     );
   }
