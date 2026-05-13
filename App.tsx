@@ -1979,20 +1979,28 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
   const [showPreview,setShowPreview]=useState(false);
 
   const buildDoc=()=>{
-    const lines=[];
+    const lines: any[]=[];
     const selLines=allLines.filter((_l: any,i: number)=>{const key=_l.id||`line_${i}`;return (selQty[key]||0)>0;});
+    const itemsSummary=selLines.map((_l: any,i: number)=>{
+      const key=_l.id||`line_${i}`;
+      const qty=selQty[key]||0;
+      const cat=_l.cat==="influencer"?"Influencer":_l.cat==="ugc"?"UGC":_l.cat==="editorial"?"Editorial":"";
+      return`${qty}× ${_l.name}${cat?` [${cat}]`:""}`;
+    }).join(", ");
     if(uMode!=="none"&&uFee>0){
-      const label=uMode==="predefined"?uOpt.l:`Usage Rights — Custom (${uCustomDays} ${uCustomUnit})`;
-      lines.push({name:`Usage Rights Renewal — ${label}`,note:`${fmtD(startD)}${uEnd?` → ${fmtD(uEnd)}`:""}`,qty:1,up:uFee,amt:uFee});
+      const label=uMode==="predefined"?uOpt.l:`Custom (${uCustomDays} ${uCustomUnit})`;
+      const pctNote=uMode==="predefined"&&uOpt.pct>0?` · ${fmt(base)} × ${uOpt.pct}% = ${fmt(uFee)}`:"";
+      lines.push({name:`Usage Rights — ${label}`,note:`${itemsSummary}${pctNote} · ${fmtD(startD)}${uEnd?` → ${fmtD(uEnd)}`:""}`,qty:1,up:uFee,amt:uFee});
     }
     if(eMode!=="none"&&eFee>0){
-      const label=eMode==="predefined"?eOpt.l:`Exclusivity — Custom (${eCustomDays} ${eCustomUnit})`;
-      lines.push({name:`Exclusivity Renewal — ${label}`,note:`${fmtD(startD)}${eEnd?` → ${fmtD(eEnd)}`:""}`,qty:1,up:eFee,amt:eFee});
+      const label=eMode==="predefined"?eOpt.l:`Custom (${eCustomDays} ${eCustomUnit})`;
+      const pctNote=eMode==="predefined"&&eOpt.pct>0?` · ${fmt(base)} × ${eOpt.pct}% = ${fmt(eFee)}`:"";
+      lines.push({name:`Exclusivity — ${label}`,note:`${itemsSummary}${pctNote} · ${fmtD(startD)}${eEnd?` → ${fmtD(eEnd)}`:""}`,qty:1,up:eFee,amt:eFee});
     }
     return{
       brand:q?.brand,contact:q?.contact,date:today(),
       rNo,qNo:q?.qNo,ctype:q?.ctype||"Content Creator",
-      origContent:selLines,lines,total:totalFee,
+      lines,total:totalFee,
       startDate:startD,endDate:endD,
       footer:"Thank you for the pleasure of working together.",
       type:"renewal"
