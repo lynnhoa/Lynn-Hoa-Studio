@@ -2509,15 +2509,11 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
 
         {/* 1 — Revenue */}
-        <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("year")}
+        <Card label="Revenue" count={fmt(thisMonthRev)} onClick={()=>setDrill("year")}
           sub={<>
             <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
               <span style={{fontSize:10,color:C.muted}}>{nowY}</span>
               <span style={{fontSize:10,color:C.black}}>{fmt(thisYearRev)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>{MO[nowM]} {nowY}</span>
-              <span style={{fontSize:10,color:C.black}}>{fmt(thisMonthRev)}</span>
             </div>
           </>}
         />
@@ -2530,8 +2526,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
               <span style={{fontSize:10,color:C.amber}}>{fmt(out)}</span>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>Paid · {paid.length}</span>
-              <span style={{fontSize:10,color:C.muted}}>{fmt(rev)}</span>
+              <span style={{fontSize:10,color:C.muted}}>Paid {nowY} · {thisYearPaid.length}</span>
+              <span style={{fontSize:10,color:C.muted}}>{fmt(thisYearRev)}</span>
             </div>
           </>}
         />
