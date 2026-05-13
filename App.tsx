@@ -3711,6 +3711,9 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
   const [noteVal,setNoteVal]=useState("");
   const [confirmInvoice,setConfirmInvoice]=useState<{cid:string,pid:string,pname:string,cname:string}|null>(null);
   const [confirmDelete,setConfirmDelete]=useState<{id:string,clientId:string,projectId:string}|null>(null);
+  const [pickerOpen,setPickerOpen]=useState<string|null>(null);
+  const [snackbar,setSnackbar]=useState<{msg:string,undo:()=>void}|null>(null);
+  const snackTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
 
   const allItems=getWsItems(clients);
 
@@ -3719,13 +3722,25 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
     :allItems;
 
   // ── mutators ──
-  const advanceStatus=(item: any)=>{
-    if(item.status==="Done")return;
-    const next=WS_STATUSES[WS_STATUSES.indexOf(item.status)+1];
-    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+  const showSnackbar=(msg: string,undo: ()=>void)=>{
+    if(snackTimerRef.current)clearTimeout(snackTimerRef.current);
+    setSnackbar({msg,undo});
+    snackTimerRef.current=setTimeout(()=>setSnackbar(null),5000);
+  };
+
+  const setItemStatus=(item: any,next: string)=>{
+    const prev=item.status;
+    setClients((p: any[])=>p.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
       workspaceStatus:{...(pr.workspaceStatus||{}),[item.id]:next},
       workspaceStatusHistory:{...(pr.workspaceStatusHistory||{}),[item.id]:[...((pr.workspaceStatusHistory||{})[item.id]||[]),{status:next,date:today()}]}
     })}));
+    setPickerOpen(null);
+    showSnackbar(`${item.name} → ${next}`,()=>{
+      setClients((p: any[])=>p.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+        workspaceStatus:{...(pr.workspaceStatus||{}),[item.id]:prev}
+      })}));
+      setSnackbar(null);
+    });
   };
 
   const saveName=(item: any,val: string)=>{
@@ -3859,71 +3874,92 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
             <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
 
             {isOpen&&g.items.map(item=>{
-              const {icon,color:stColor}=wsStatusIcon(item.status);
               const catStyle=wsCatPill(item.category);
               const isEditing=editingId===item.id;
               const isNoting=noteId===item.id;
               const dlColor=deadlineColor(item);
               const dayTag=plannerDayLabel(item.plannerDate);
               const isDone=item.status==="Done";
-
+              const isPickerOpen=pickerOpen===item.id;
               const descriptor=[item.defaultName,item.lineNote].filter(Boolean).join(" · ");
 
+              // left border color per status
+              const borderCol=item.status==="Done"?C.green:item.status==="In Review"?C.black:item.status==="In Production"?C.amber:C.rule;
+
+              // status pill style
+              const pillStyle=item.status==="Done"
+                ?{bg:C.greenBg,border:C.greenBorder,color:C.green}
+                :item.status==="In Review"
+                ?{bg:"#f0f0f0",border:C.rule,color:C.black}
+                :item.status==="In Production"
+                ?{bg:C.amberBg,border:C.amberBorder,color:C.amber}
+                :{bg:C.bg,border:C.rule,color:C.light};
+
               return(
-                <div key={item.id}
-                  style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:"9px 0",borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
+                <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.6:1}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:"9px 0 9px 0"}}>
+                    {/* left border */}
+                    <div style={{width:3,alignSelf:"stretch",background:borderCol,borderRadius:2,flexShrink:0,marginRight:4}}/>
 
-                  {/* Status icon */}
-                  <button onClick={()=>advanceStatus(item)}
-                    style={{width:22,height:22,flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:isDone?"default":"pointer",color:stColor,fontSize:14,padding:0,lineHeight:1}}>
-                    {icon}
-                  </button>
+                    {/* status pill */}
+                    <button
+                      onClick={()=>setPickerOpen(isPickerOpen?null:item.id)}
+                      title={item.status}
+                      style={{fontSize:10,padding:"3px 9px",borderRadius:10,border:`1px solid ${pillStyle.border}`,background:pillStyle.bg,color:pillStyle.color,cursor:"pointer",fontFamily:SANS,flexShrink:0,marginTop:1,whiteSpace:"nowrap" as const}}>
+                      {item.status}
+                    </button>
 
-                  {/* Category pill */}
-                  <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em",marginTop:2}}>
-                    {item.category}
-                  </span>
+                    {/* category pill */}
+                    <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em",marginTop:2}}>
+                      {item.category}
+                    </span>
 
-                  {/* Name + descriptor */}
-                  <div style={{flex:1,minWidth:0}}>
-                    {isEditing?(
-                      <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
-                        onBlur={()=>saveName(item,editingVal)}
-                        onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
-                        placeholder={item.defaultName}
-                        style={{width:"100%",fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",marginBottom:3}}/>
-                    ):(
-                      <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
-                        style={{fontSize:13,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
-                        {item.name}
+                    {/* name + descriptor */}
+                    <div style={{flex:1,minWidth:0}}>
+                      {isEditing?(
+                        <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
+                          onBlur={()=>saveName(item,editingVal)}
+                          onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
+                          placeholder={item.defaultName}
+                          style={{width:"100%",fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",marginBottom:3}}/>
+                      ):(
+                        <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
+                          style={{fontSize:13,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                          {item.name}
+                        </span>
+                      )}
+                      <span style={{fontSize:11,color:C.light,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                        {descriptor}
                       </span>
-                    )}
-                    <span style={{fontSize:11,color:C.light,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
-                      {descriptor}
-                    </span>
+                    </div>
+
+                    {/* right side */}
+                    <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?4:8,flexShrink:0,marginTop:2}}>
+                      {!isMobile&&<span style={{fontSize:11,color:C.muted,letterSpacing:"0.04em"}}>{item.clientName.toUpperCase()}</span>}
+                      <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400",minWidth:isMobile?undefined:54,textAlign:"right" as const}}>
+                        {fmtDeadline(item.deadline)}
+                      </span>
+                      {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white}}>{dayTag}</span>}
+                      {!isNoting&&(
+                        <button onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}}
+                          style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:item.notes?C.amber:C.light,padding:0,lineHeight:1,flexShrink:0}}>
+                          {item.notes?"💬":"○"}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Right side */}
-                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?4:8,flexShrink:0,marginTop:2}}>
-                    {/* Client */}
-                    {!isMobile&&<span style={{fontSize:11,color:C.muted,letterSpacing:"0.04em"}}>{item.clientName.toUpperCase()}</span>}
-
-                    {/* Deadline */}
-                    <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400",minWidth:isMobile?undefined:54,textAlign:"right" as const}}>
-                      {isDone?`Done ${fmtD(item.deadline)||""}`:`${fmtDeadline(item.deadline)}`}
-                    </span>
-
-                    {/* Planned day tag */}
-                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white}}>{dayTag}</span>}
-
-                    {/* Notes icon */}
-                    {!isNoting&&(
-                      <button onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}}
-                        style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:item.notes?C.amber:C.light,padding:0,lineHeight:1,flexShrink:0}}>
-                        {item.notes?"💬":"○"}
-                      </button>
-                    )}
-                  </div>
+                  {/* inline picker */}
+                  {isPickerOpen&&(
+                    <div style={{display:"flex",gap:6,padding:"6px 8px 8px 16px",background:"#f7f6f4",borderTop:`1px solid ${C.rule}`}}>
+                      {WS_STATUSES.map(st=>(
+                        <button key={st} onClick={()=>setItemStatus(item,st)}
+                          style={{fontSize:10,padding:"4px 10px",borderRadius:10,border:`1px solid ${item.status===st?C.black:C.rule}`,background:item.status===st?C.black:"none",color:item.status===st?C.white:C.muted,cursor:"pointer",fontFamily:SANS}}>
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -3944,6 +3980,14 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
           </div>
         );
       })}
+
+      {/* Snackbar undo */}
+      {snackbar&&(
+        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:3000,display:"flex",alignItems:"center",gap:16,background:C.black,color:C.white,borderRadius:2,padding:"10px 18px",fontSize:12,boxShadow:"0 4px 20px rgba(0,0,0,0.18)",whiteSpace:"nowrap" as const}}>
+          <span>{snackbar.msg}</span>
+          <button onClick={snackbar.undo} style={{background:"none",border:"none",cursor:"pointer",color:C.amber,fontFamily:SANS,fontSize:12,fontWeight:"500",padding:0}}>Undo</button>
+        </div>
+      )}
 
       {/* Ready to Invoice banners */}
       {readyProjects.map(rp=>(
