@@ -3618,6 +3618,97 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
+// ─── CREATOR PLANNER ──────────────────────────────────────
+function CreatorPlanner({isMobile}: {isMobile:boolean}) {
+  const [weekOffset,setWeekOffset]=useState(0);
+
+  const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  // Get Monday of current week + offset
+  const getMonday=(offset: number)=>{
+    const d=new Date();
+    const day=d.getDay();
+    const diff=d.getDate()-day+(day===0?-6:1);
+    d.setDate(diff+offset*7);
+    d.setHours(0,0,0,0);
+    return d;
+  };
+
+  const monday=getMonday(weekOffset);
+  const weekDays=Array.from({length:7},(_,i)=>{
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    return d;
+  });
+
+  const isToday=(d: Date)=>{
+    const t=new Date();
+    return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear();
+  };
+
+  const fmtDay=(d: Date)=>d.getDate();
+  const fmtMonth=(d: Date)=>d.toLocaleDateString("en-GB",{month:"short"});
+
+  const weekLabel=(()=>{
+    const s=weekDays[0];
+    const e=weekDays[6];
+    if(s.getMonth()===e.getMonth())return`${s.getDate()}–${e.getDate()} ${fmtMonth(e)} ${e.getFullYear()}`;
+    return`${s.getDate()} ${fmtMonth(s)} – ${e.getDate()} ${fmtMonth(e)} ${e.getFullYear()}`;
+  })();
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Planner</h2>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <button onClick={()=>setWeekOffset(0)} style={{padding:"4px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const}}>Today</button>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button onClick={()=>setWeekOffset(w=>w-1)} style={{width:26,height:26,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+            <span style={{fontSize:11,color:C.muted,minWidth:160,textAlign:"center" as const}}>{weekLabel}</span>
+            <button onClick={()=>setWeekOffset(w=>w+1)} style={{width:26,height:26,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar grid — desktop */}
+      {!isMobile&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,background:C.rule,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+          {weekDays.map((d,i)=>(
+            <div key={i} style={{background:C.bg,minHeight:520}}>
+              {/* Day header */}
+              <div style={{padding:"10px 10px 8px",borderBottom:`1px solid ${C.rule}`,textAlign:"center" as const}}>
+                <p style={{fontSize:9,color:isToday(d)?C.black:C.muted,letterSpacing:"0.1em",textTransform:"uppercase" as const,margin:"0 0 3px",fontWeight:isToday(d)?"600":"400"}}>{DAYS[i]}</p>
+                <p style={{fontFamily:isToday(d)?SERIF:SANS,fontSize:isToday(d)?18:13,color:isToday(d)?C.black:C.muted,margin:0,fontWeight:"normal",lineHeight:1}}>{fmtDay(d)}</p>
+              </div>
+              {/* Drop zone — empty for now */}
+              <div style={{padding:"8px 6px",minHeight:460}}/>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Calendar — mobile: stacked rows */}
+      {isMobile&&(
+        <div style={{display:"flex",flexDirection:"column" as const,gap:1,background:C.rule,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+          {weekDays.map((d,i)=>(
+            <div key={i} style={{background:C.bg}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderBottom:`1px solid ${C.rule}`}}>
+                <div style={{minWidth:36,textAlign:"center" as const}}>
+                  <p style={{fontSize:9,color:isToday(d)?C.black:C.muted,letterSpacing:"0.1em",textTransform:"uppercase" as const,margin:"0 0 1px",fontWeight:isToday(d)?"600":"400"}}>{DAYS[i]}</p>
+                  <p style={{fontFamily:isToday(d)?SERIF:SANS,fontSize:isToday(d)?18:13,color:isToday(d)?C.black:C.muted,margin:0,fontWeight:"normal",lineHeight:1}}>{fmtDay(d)}</p>
+                </div>
+                {/* Drop zone — empty for now */}
+                <div style={{flex:1,minHeight:40}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── CREATOR CLIENTS ──────────────────────────────────────
 const PROD_STATUSES=["production","invoiced","paid"];
 const DEL_STATUSES=["Not Started","Filming","Editing","Review","Done"];
@@ -4019,7 +4110,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
         {nav===0&&<CreatorDashboard isMobile={isMobile}/>}
         {nav===1&&<CreatorClients clients={clients} setClients={setClients} isMobile={isMobile}/>}
         {nav===2&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Workspace</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
-        {nav===3&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Planner</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
+        {nav===3&&<CreatorPlanner isMobile={isMobile}/>}
       </div>
     </div>
   );
