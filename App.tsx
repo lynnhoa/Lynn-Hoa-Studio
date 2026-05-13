@@ -2128,8 +2128,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProjectQNo,setFromDrill,settings,resetKey}: any) {
-  const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
+function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProjectQNo,setFromDrill,settings,resetKey,drill,setDrill}: any) {
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
@@ -3154,13 +3153,14 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [role,setRole]=useState<"manager"|"creator">("manager");
   const [nav,setNav]=useState(0);
   const [dashReset,setDashReset]=useState(0);
-  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);};
+  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);setDashDrill(null);};
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
   const [clientSel,setClientSel]=useState<string|null>(null);
   const [pendingClientName,setPendingClientName]=useState<string|null>(null);
   const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
   const [fromDrill,setFromDrill]=useState<string|null>(null);
+  const [dashDrill,setDashDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
@@ -3293,9 +3293,9 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} setFromDrill={setFromDrill} settings={settings} resetKey={dashReset}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} setFromDrill={setFromDrill} settings={settings} resetKey={dashReset} drill={dashDrill} setDrill={setDashDrill}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={(n: number)=>{if(n!==1)setFromDrill(null);setNav(n);}} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
-        {nav===1&&fromDrill&&<button onClick={()=>{setFromDrill(null);setNav(0);}} style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:999,background:C.bg,border:`1px solid ${C.rule}`,borderRadius:20,padding:"7px 18px",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.06em",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.10)",whiteSpace:"nowrap"}}>← Active Projects</button>}
+        {nav===1&&fromDrill&&<button onClick={()=>{setFromDrill(null);setNav(0);}} style={{position:"fixed",bottom:24,right:24,zIndex:999,background:C.bg,border:`1px solid ${C.rule}`,borderRadius:20,padding:"7px 18px",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.06em",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.10)",whiteSpace:"nowrap"}}>← Active Projects</button>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
         {nav===7&&<RateCard rc={rc} setRc={setRc} settings={settings}/>}
