@@ -3896,7 +3896,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
               };
 
               const cbBox=(checked: boolean,color: string)=>({
-                width:20,height:20,borderRadius:3,
+                width:isMobile?26:20,height:isMobile?26:20,borderRadius:3,
                 border:`1.5px solid ${checked?color:C.rule}`,
                 background:checked?color:"transparent",
                 display:"flex",alignItems:"center",justifyContent:"center",
@@ -3905,10 +3905,10 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
 
               return(
                 <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDelivered?0.6:1}}>
-                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:"9px 0"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:isMobile?"12px 0":"9px 0"}}>
 
                     {/* brand */}
-                    <span style={{fontSize:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
+                    <span style={{fontSize:isMobile?13:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
                       {item.clientName.toUpperCase()}
                     </span>
 
@@ -3933,7 +3933,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                       </div>
                       {item.lineNote&&<span style={{fontSize:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
                       {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
-                      {!item.notes&&!isNoting&&!isDelivered&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
+                      {!item.notes&&!isNoting&&!isDelivered&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:isMobile?12:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
                     </div>
 
                     {/* deadline */}
@@ -3949,21 +3949,21 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                       {/* Created */}
                       <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
                         <div onClick={()=>toggleCheck("Finished")} style={cbBox(chkFinished,C.black)}>
-                          {chkFinished&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                          {chkFinished&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                         </div>
                         {!isMobile&&<span style={{fontSize:9,color:chkFinished?C.muted:C.light,letterSpacing:"0.02em"}}>Created</span>}
                       </div>
                       {/* Reviewed */}
                       <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
                         <div onClick={()=>chkFinished&&toggleCheck("Reviewed")} style={{...cbBox(chkReviewed,C.amber),cursor:chkFinished?"pointer":"default",opacity:chkFinished?1:0.4}}>
-                          {chkReviewed&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                          {chkReviewed&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                         </div>
                         {!isMobile&&<span style={{fontSize:9,color:chkReviewed?C.muted:C.light,letterSpacing:"0.02em"}}>Reviewed</span>}
                       </div>
                       {/* Delivered */}
                       <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
                         <div onClick={()=>chkReviewed&&toggleCheck("Delivered")} style={{...cbBox(chkDelivered,C.green),cursor:chkReviewed?"pointer":"default",opacity:chkReviewed?1:0.4}}>
-                          {chkDelivered&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                          {chkDelivered&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                         </div>
                         {!isMobile&&<span style={{fontSize:9,color:chkDelivered?C.muted:C.light,letterSpacing:"0.02em"}}>Delivered</span>}
                       </div>
