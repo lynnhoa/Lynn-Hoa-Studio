@@ -3619,7 +3619,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
 }
 
 // ─── CREATOR WORKSPACE ────────────────────────────────────
-const WS_STATUSES=["Not Started","In Production","In Review","Done"];
+const WS_STATUSES=["Not started","Finished","Reviewed","Delivered"];
 
 function getWsCategory(lineName: string): string {
   const n=(lineName||"").toLowerCase();
@@ -3629,10 +3629,10 @@ function getWsCategory(lineName: string): string {
 }
 
 function wsStatusIcon(st: string){
-  if(st==="Not Started")return{icon:"○",color:C.light};
-  if(st==="In Production")return{icon:"▶",color:C.amber};
-  if(st==="In Review")return{icon:"⚙",color:C.black};
-  return{icon:"✓",color:C.green};
+  if(st==="Finished")return{icon:"",color:C.black};
+  if(st==="Reviewed")return{icon:"",color:C.amber};
+  if(st==="Delivered")return{icon:"",color:C.green};
+  return{icon:"",color:C.light};
 }
 
 function wsCatPill(cat: string){
@@ -3663,7 +3663,7 @@ function getWsItems(clients: any[]): any[] {
             projectName:pr.name,
             deadline:pr.deliveryDate||null,
             category:getWsCategory(ln.name),
-            status:(pr.workspaceStatus||{})[id]||"Not Started",
+            status:(pr.workspaceStatus||{})[id]||"Not started",
             plannerDate:(pr.workspacePlanner||{})[id]||null,
             notes:(pr.workspaceNotes||{})[id]||"",
           });
@@ -3782,15 +3782,15 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
   let groups: GroupDef[]=[];
 
   if(group==="Urgency"){
-    const overdue=activeItems.filter(it=>it.status!=="Done"&&isOverdue(it.deadline));
-    const week=activeItems.filter(it=>it.status!=="Done"&&!isOverdue(it.deadline)&&isThisWeek(it.deadline));
-    const later=activeItems.filter(it=>it.status!=="Done"&&!isOverdue(it.deadline)&&!isThisWeek(it.deadline));
-    const done=activeItems.filter(it=>it.status==="Done");
+    const overdue=activeItems.filter(it=>it.status!=="Delivered"&&isOverdue(it.deadline));
+    const week=activeItems.filter(it=>it.status!=="Delivered"&&!isOverdue(it.deadline)&&isThisWeek(it.deadline));
+    const later=activeItems.filter(it=>it.status!=="Delivered"&&!isOverdue(it.deadline)&&!isThisWeek(it.deadline));
+    const done=activeItems.filter(it=>it.status==="Delivered");
     groups=[
       {key:"overdue",label:`OVERDUE`,items:overdue},
       {key:"week",label:`DUE THIS WEEK`,items:week},
       {key:"later",label:`LATER`,items:later},
-      {key:"done",label:`DONE`,items:done},
+      {key:"done",label:`DELIVERED`,items:done},
     ];
   } else if(group==="Client"){
     const byClient: Record<string,any[]>={};
@@ -3821,7 +3821,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
   const readyProjects: {cid:string,pid:string,pname:string,cname:string}[]=[];
   clients.forEach((c: any)=>c.projects.filter((pr: any)=>pr.status==="production"&&!pr.readyToInvoice).forEach((pr: any)=>{
     const items=getWsItems([{...c,projects:[pr]}]);
-    if(items.length>0&&items.every(it=>it.status==="Done"))readyProjects.push({cid:c.id,pid:pr.id,pname:pr.name,cname:c.name});
+    if(items.length>0&&items.every(it=>it.status==="Delivered"))readyProjects.push({cid:c.id,pid:pr.id,pname:pr.name,cname:c.name});
   }));
 
   const deadlineColor=(item: any)=>{
@@ -3879,87 +3879,99 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
               const isNoting=noteId===item.id;
               const dlColor=deadlineColor(item);
               const dayTag=plannerDayLabel(item.plannerDate);
-              const isDone=item.status==="Done";
-              const isPickerOpen=pickerOpen===item.id;
-              const descriptor=[item.defaultName,item.lineNote].filter(Boolean).join(" · ");
+              const isDelivered=item.status==="Delivered";
 
-              // left border color per status
-              const borderCol=item.status==="Done"?C.green:item.status==="In Review"?C.black:item.status==="In Production"?C.amber:C.rule;
+              // derive which checkboxes are checked from status
+              const chkFinished=["Finished","Reviewed","Delivered"].includes(item.status);
+              const chkReviewed=["Reviewed","Delivered"].includes(item.status);
+              const chkDelivered=item.status==="Delivered";
 
-              // status pill style
-              const pillStyle=item.status==="Done"
-                ?{bg:C.greenBg,border:C.greenBorder,color:C.green}
-                :item.status==="In Review"
-                ?{bg:"#f0f0f0",border:C.rule,color:C.black}
-                :item.status==="In Production"
-                ?{bg:C.amberBg,border:C.amberBorder,color:C.amber}
-                :{bg:C.bg,border:C.rule,color:C.light};
+              const toggleCheck=(box: "Finished"|"Reviewed"|"Delivered")=>{
+                const order=["Not started","Finished","Reviewed","Delivered"];
+                let next: string;
+                if(box==="Finished") next=chkFinished?"Not started":"Finished";
+                else if(box==="Reviewed") next=chkReviewed?"Finished":"Reviewed";
+                else next=chkDelivered?"Reviewed":"Delivered";
+                setItemStatus(item,next);
+              };
+
+              const cbBox=(checked: boolean,color: string)=>({
+                width:20,height:20,borderRadius:3,
+                border:`1.5px solid ${checked?color:C.rule}`,
+                background:checked?color:"transparent",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                cursor:"pointer",flexShrink:0,
+              });
 
               return(
-                <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.6:1}}>
-                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:"9px 0 9px 0"}}>
-                    {/* left border */}
-                    <div style={{width:3,alignSelf:"stretch",background:borderCol,borderRadius:2,flexShrink:0,marginRight:4}}/>
+                <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDelivered?0.6:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:isMobile?6:10,padding:"9px 0"}}>
 
-                    {/* status pill */}
-                    <button
-                      onClick={()=>setPickerOpen(isPickerOpen?null:item.id)}
-                      title={item.status}
-                      style={{fontSize:10,padding:"3px 9px",borderRadius:10,border:`1px solid ${pillStyle.border}`,background:pillStyle.bg,color:pillStyle.color,cursor:"pointer",fontFamily:SANS,flexShrink:0,marginTop:1,whiteSpace:"nowrap" as const,minWidth:88,textAlign:"center" as const}}>
-                      {item.status}
-                    </button>
-
-                    {/* category pill */}
-                    <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em",marginTop:2}}>
-                      {item.category}
+                    {/* brand */}
+                    <span style={{fontSize:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                      {item.clientName.toUpperCase()}
                     </span>
 
-                    {/* name + descriptor */}
-                    <div style={{flex:1,minWidth:0}}>
+                    {/* name + category tag */}
+                    <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:6}}>
                       {isEditing?(
                         <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
                           onBlur={()=>saveName(item,editingVal)}
                           onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
                           placeholder={item.defaultName}
-                          style={{width:"100%",fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",marginBottom:3}}/>
+                          style={{fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",flex:1,minWidth:0}}/>
                       ):(
-                        <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
-                          style={{fontSize:13,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                        <span onClick={()=>{if(!isDelivered){setEditingId(item.id);setEditingVal(item.name);}}}
+                          style={{fontSize:13,color:C.black,cursor:isDelivered?"default":"text",textDecoration:isDelivered?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
                           {item.name}
                         </span>
                       )}
-                      <span style={{fontSize:11,color:C.light,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
-                        {descriptor}
+                      <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
+                        {item.category}
                       </span>
                     </div>
 
-                    {/* right side */}
-                    <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?4:8,flexShrink:0,marginTop:2}}>
-                      {!isMobile&&<span style={{fontSize:11,color:C.muted,letterSpacing:"0.04em"}}>{item.clientName.toUpperCase()}</span>}
-                      <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400",minWidth:isMobile?undefined:54,textAlign:"right" as const}}>
-                        {fmtDeadline(item.deadline)}
-                      </span>
-                      {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white}}>{dayTag}</span>}
-                      {!isNoting&&(
-                        <button onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}}
-                          style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:item.notes?C.amber:C.light,padding:0,lineHeight:1,flexShrink:0}}>
-                          {item.notes?"💬":"○"}
-                        </button>
-                      )}
+                    {/* deadline */}
+                    <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400",flexShrink:0,minWidth:44,textAlign:"right" as const}}>
+                      {fmtDeadline(item.deadline)}
+                    </span>
+
+                    {/* day tag */}
+                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0}}>{dayTag}</span>}
+
+                    {/* notes icon */}
+                    {!isNoting&&(
+                      <button onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}}
+                        style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:item.notes?C.amber:C.light,padding:0,lineHeight:1,flexShrink:0}}>
+                        {item.notes?"💬":"○"}
+                      </button>
+                    )}
+
+                    {/* three checkboxes */}
+                    <div style={{display:"flex",gap:isMobile?4:6,flexShrink:0}}>
+                      {/* Created */}
+                      <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                        <div onClick={()=>toggleCheck("Finished")} style={cbBox(chkFinished,C.black)}>
+                          {chkFinished&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                        </div>
+                        {!isMobile&&<span style={{fontSize:9,color:chkFinished?C.muted:C.light,letterSpacing:"0.02em"}}>Created</span>}
+                      </div>
+                      {/* Reviewed */}
+                      <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                        <div onClick={()=>chkFinished&&toggleCheck("Reviewed")} style={{...cbBox(chkReviewed,C.amber),cursor:chkFinished?"pointer":"default",opacity:chkFinished?1:0.4}}>
+                          {chkReviewed&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                        </div>
+                        {!isMobile&&<span style={{fontSize:9,color:chkReviewed?C.muted:C.light,letterSpacing:"0.02em"}}>Reviewed</span>}
+                      </div>
+                      {/* Delivered */}
+                      <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                        <div onClick={()=>chkReviewed&&toggleCheck("Delivered")} style={{...cbBox(chkDelivered,C.green),cursor:chkReviewed?"pointer":"default",opacity:chkReviewed?1:0.4}}>
+                          {chkDelivered&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                        </div>
+                        {!isMobile&&<span style={{fontSize:9,color:chkDelivered?C.muted:C.light,letterSpacing:"0.02em"}}>Delivered</span>}
+                      </div>
                     </div>
                   </div>
-
-                  {/* inline picker */}
-                  {isPickerOpen&&(
-                    <div style={{display:"flex",gap:6,padding:"6px 8px 8px 16px",background:"#f7f6f4",borderTop:`1px solid ${C.rule}`}}>
-                      {WS_STATUSES.map(st=>(
-                        <button key={st} onClick={()=>setItemStatus(item,st)}
-                          style={{fontSize:10,padding:"4px 10px",borderRadius:10,border:`1px solid ${item.status===st?C.black:C.rule}`,background:item.status===st?C.black:"none",color:item.status===st?C.white:C.muted,cursor:"pointer",fontFamily:SANS}}>
-                          {st}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -4160,7 +4172,7 @@ function getLineGroups(c: any, pr: any): any[] {
       grp.items.push({
         id,
         name:(pr.workspaceNames||{})[id]||ln.name+(qty>1?` ${q+1}`:""),
-        status:(pr.workspaceStatus||{})[id]||"Not Started",
+        status:(pr.workspaceStatus||{})[id]||"Not started",
       });
     }
   });
@@ -4188,7 +4200,7 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
     return(
       <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:8}}>
         {groups.map((g: any)=>{
-          const done=g.items.filter((it: any)=>it.status==="Done").length;
+          const done=g.items.filter((it: any)=>it.status==="Delivered").length;
           const total=g.items.length;
           const pct=total>0?done/total:0;
           const complete=done===total;
@@ -4215,7 +4227,7 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
     const pastProjects=c.projects.filter((p: any)=>p.status==="invoiced"||p.status==="paid");
     const groups=pr?getLineGroups(c,pr):[];
     const allItems=groups.flatMap((g: any)=>g.items);
-    const totalDone=allItems.filter((it: any)=>it.status==="Done").length;
+    const totalDone=allItems.filter((it: any)=>it.status==="Delivered").length;
     const totalAll=allItems.length;
     const dl=dLeft(pr?.deliveryDate);
 
@@ -4239,7 +4251,7 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
         {pr&&<>
           <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 10px"}}>{pr.name} — Active</p>
           {groups.map((g: any)=>{
-            const done=g.items.filter((it: any)=>it.status==="Done").length;
+            const done=g.items.filter((it: any)=>it.status==="Delivered").length;
             const total=g.items.length;
             const complete=done===total;
             const cs=ccCatStyle(g.category);
@@ -4252,9 +4264,10 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
                   <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{ccCatLabel(g.category)}</span>
                   <span style={{fontSize:12,color:C.black,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{total}× {g.lineName}</span>
                   <div style={{display:"flex",gap:3,flexShrink:0}}>
-                    {g.items.map((it: any)=>(
-                      <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:it.status==="Done"?(complete?C.green:C.black):C.rule,display:"inline-block"}}/>
-                    ))}
+                    {g.items.map((it: any)=>{
+                      const dotColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.rule;
+                      return <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:dotColor,display:"inline-block"}}/>;
+                    })}
                   </div>
                   <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",flexShrink:0}}>{done}/{total}</span>
                   <span style={{fontSize:10,color:C.light,flexShrink:0}}>{isOpen?"▾":"▸"}</span>
@@ -4262,12 +4275,11 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
                 {isOpen&&(
                   <div>
                     {g.items.map((it: any)=>{
-                      const {icon,color}=wsStatusIcon(it.status);
+                      const stColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.light;
                       return(
                         <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:`1px solid ${C.rule}`}}>
-                          <span style={{fontSize:12,color,width:16,textAlign:"center" as const,flexShrink:0}}>{icon}</span>
                           <span style={{fontSize:12,color:C.black,flex:1}}>{it.name}</span>
-                          <span style={{fontSize:11,color:it.status==="Done"?C.green:it.status==="In Review"?C.amber:C.muted}}>{it.status}</span>
+                          <span style={{fontSize:11,color:stColor}}>{it.status}</span>
                         </div>
                       );
                     })}
