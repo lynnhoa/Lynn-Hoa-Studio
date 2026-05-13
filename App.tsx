@@ -2551,9 +2551,9 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
 
         {/* 5 — Active Projects */}
-        <Card label="Active Projects" count={activeProjects.length} onClick={()=>setDrill("projects")}
+        <Card label="Active Projects" count={fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} onClick={()=>setDrill("projects")}
           sub={<>
-            <p style={{fontSize:10,color:C.muted,margin:"0 0 6px"}}>{fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress</p>
+            <p style={{fontSize:10,color:C.muted,margin:"0 0 6px"}}>{activeProjects.length} project{activeProjects.length!==1?"s":""} in progress</p>
             {activeProjects.slice(0,3).map((pr: any,i: number)=>(
               <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
                 <div style={{minWidth:0,flex:1}}>
