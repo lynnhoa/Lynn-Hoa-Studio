@@ -2278,12 +2278,18 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   if(drill==="invoices"){
     const allInvRows=buildInvoiceRows(clients);
     const tabRows=invTab==="unpaid"?allInvRows.filter((r: any)=>!r.pr.paid):allInvRows.filter((r: any)=>r.pr.paid);
+    // build period options: "all", "y:2026", "m:2026:4"
     const allInvYears=Array.from(new Set(allInvRows.map((r: any)=>r.year))).sort((a: any,b: any)=>b-a) as number[];
-    const allInvClients=Array.from(new Set(allInvRows.map((r: any)=>r.cName))).sort() as string[];
+    const periodOptions: {value:string,label:string,indent:boolean}[]=[{value:"all",label:"All periods",indent:false}];
+    allInvYears.forEach(y=>{
+      periodOptions.push({value:`y:${y}`,label:String(y),indent:false});
+      const monthsInYear=Array.from(new Set(allInvRows.filter((r: any)=>r.year===y).map((r: any)=>r.month))).sort((a: any,b: any)=>b-a) as number[];
+      monthsInYear.forEach(m=>periodOptions.push({value:`m:${y}:${m}`,label:`${MO_SHORT[m]} ${y}`,indent:true}));
+    });
     const filteredInvRows=tabRows.filter((r: any)=>{
-      if(invYear!=="all"&&String(r.year)!==invYear)return false;
-      if(invType!=="all"&&getTypeOfWork(r.pr)!==invType)return false;
-      if(invClient!=="all"&&r.cName!==invClient)return false;
+      if(invYear==="all")return true;
+      if(invYear.startsWith("y:"))return String(r.year)===invYear.slice(2);
+      if(invYear.startsWith("m:")){const[,y,m]=invYear.split(":");return String(r.year)===y&&String(r.month)===m;}
       return true;
     });
     // group by year→month, newest first
@@ -2361,6 +2367,12 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
 
     const selBtnS: any={height:26,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.07em",color:C.muted,whiteSpace:"nowrap"};
     const filterS: any={height:28,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,outline:"none"};
+    const allChecked=filteredInvRows.length>0&&filteredInvRows.every((r: any)=>invSel.has(r.iNo));
+    const someChecked=!allChecked&&filteredInvRows.some((r: any)=>invSel.has(r.iNo));
+    const toggleAll=()=>{
+      if(allChecked){setInvSel(new Set());}
+      else{setInvSel(new Set(filteredInvRows.map((r: any)=>r.iNo)));}
+    };
 
     if(invPdfData)return<PDFModal data={invPdfData.data} type={invPdfData.type} onClose={()=>setInvPdfData(null)} settings={settings}/>;
 
@@ -2373,19 +2385,23 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
           <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
           <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
-            {/* filters */}
-            <select value={invYear} onChange={(e: any)=>setInvYear(e.target.value)} style={filterS}>
-              <option value="all">All years</option>
-              {allInvYears.map(y=><option key={y} value={String(y)}>{y}</option>)}
+            {/* period filter */}
+            <select value={invYear} onChange={(e: any)=>{setInvYear(e.target.value);setInvSel(new Set());}} style={filterS}>
+              {periodOptions.map(o=>(
+                <option key={o.value} value={o.value} style={{paddingLeft:o.indent?20:0,color:o.indent?C.muted:C.black}}>
+                  {o.indent?`  ${o.label}`:o.label}
+                </option>
+              ))}
             </select>
-            <select value={invType} onChange={(e: any)=>setInvType(e.target.value)} style={filterS}>
-              <option value="all">All types</option>
-              {["Collab","UGC","Editorial","Combination"].map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
-            <select value={invClient} onChange={(e: any)=>setInvClient(e.target.value)} style={filterS}>
-              <option value="all">All clients</option>
-              {allInvClients.map(c=><option key={c} value={c}>{c}</option>)}
-            </select>
+            {/* export filtered CSV */}
+            <button
+              onClick={()=>exportMonthCsv(filteredInvRows,invYear==="all"?"all_invoices":invYear.replace(/[:\s]/g,"_"))}
+              title="Export current view as CSV"
+              style={{...filterS,cursor:"pointer",display:"flex",alignItems:"center",gap:4,padding:"0 9px"}}
+            >
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v7M5.5 8 2.5 5M5.5 8l3-3M1 10h9" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em"}}>CSV</span>
+            </button>
           </div>
         </div>
 
@@ -2415,6 +2431,16 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         )}
 
         {filteredInvRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices match this filter.</p>}
+
+        {/* select all row */}
+        {filteredInvRows.length>0&&(
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:4}}>
+            <input type="checkbox" checked={allChecked} ref={(el)=>{if(el)el.indeterminate=someChecked;}} onChange={toggleAll}
+              style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
+            />
+            <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{allChecked?"Deselect all":"Select all"} · {filteredInvRows.length}</span>
+          </div>
+        )}
 
         {invGrouped.map(yg=>(
           <div key={yg.year}>
