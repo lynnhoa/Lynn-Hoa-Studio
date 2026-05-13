@@ -2051,7 +2051,9 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
             const key=l.id||`line_${i}`;
             const max=l.qty||1;
             const qty=selQty[key]||0;
-            const cat=catLabel(l.id||"");
+            const catFromId=catLabel(l.id||"");
+            const catFromField=l.cat==="influencer"?"Influencer":l.cat==="ugc"?"UGC":l.cat==="editorial"?"Editorial":l.cat==="hotels"?"Hotels":"";
+            const cat=catFromId||catFromField;
             return(
               <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.rule}`}}>
                 <div style={{flex:1,minWidth:0}}>
