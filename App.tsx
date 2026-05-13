@@ -3905,7 +3905,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                     <button
                       onClick={()=>setPickerOpen(isPickerOpen?null:item.id)}
                       title={item.status}
-                      style={{fontSize:10,padding:"3px 9px",borderRadius:10,border:`1px solid ${pillStyle.border}`,background:pillStyle.bg,color:pillStyle.color,cursor:"pointer",fontFamily:SANS,flexShrink:0,marginTop:1,whiteSpace:"nowrap" as const}}>
+                      style={{fontSize:10,padding:"3px 9px",borderRadius:10,border:`1px solid ${pillStyle.border}`,background:pillStyle.bg,color:pillStyle.color,cursor:"pointer",fontFamily:SANS,flexShrink:0,marginTop:1,whiteSpace:"nowrap" as const,minWidth:88,textAlign:"center" as const}}>
                       {item.status}
                     </button>
 
