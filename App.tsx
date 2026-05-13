@@ -2104,24 +2104,13 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
   const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
 
-  const Card=({label,count,items,warm,sub,onClick}: any)=>(
-    <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
-        <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>{label}</span>
-        <span style={{fontFamily:SERIF,fontSize:16,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
+  const Card=({label,count,warm,sub,onClick}: any)=>(
+    <div onClick={onClick} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:onClick?"pointer":"default"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+        <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{label}</span>
+        <span style={{fontFamily:SERIF,fontSize:20,color:typeof count==="number"?(count>0&&warm?C.amber:count>0?C.black:C.light):C.black}}>{count}</span>
       </div>
-      {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 8px"}}>{sub}</p>}
-      {items?.slice(0,3).map((pr: any,i: number)=>(
-        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-          <div style={{minWidth:0,flex:1}}>
-            <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
-            {pr.name&&<span style={{fontSize:9.5,color:C.light,display:"block"}}>{pr.name}</span>}
-          </div>
-          <span style={{fontSize:10.5,flexShrink:0,marginLeft:8}}>{pr.amount?fmt(pr.amount):""}</span>
-        </div>
-      ))}
-      {items?.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{items.length-3} more</p>}
-      {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
+      {sub}
     </div>
   );
 
@@ -2271,24 +2260,120 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       </div>
     );
   }
+  const unsignedC=all.filter((pr: any)=>pr.status==="contracted");
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
-        <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
+
+        {/* 1 — Revenue */}
+        <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("year")}
+          sub={<>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>This month</span>
+              <span style={{fontSize:10,color:C.black}}>{fmt(thisMonthRev)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>{nowY}</span>
+              <span style={{fontSize:10,color:C.black}}>{fmt(thisYearRev)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>All time</span>
+              <span style={{fontSize:10,color:C.black}}>{fmt(rev)}</span>
+            </div>
+          </>}
+        />
+
+        {/* 2 — Invoices */}
+        <Card label="Invoices" count={unpaid.length>0?<span style={{color:C.amber}}>{unpaid.length} unpaid</span>:0} onClick={()=>setDrill("invoices")}
+          sub={<>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.amber}}>Unpaid · {unpaid.length}</span>
+              <span style={{fontSize:10,color:C.amber}}>{fmt(out)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>Paid · {paid.length}</span>
+              <span style={{fontSize:10,color:C.muted}}>{fmt(rev)}</span>
+            </div>
+          </>}
+        />
+
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
-        <Card label={`${MO[nowM]} Revenue`} count={fmt(thisMonthRev)} sub={`${thisMonthPaid.length} paid project${thisMonthPaid.length!==1?"s":""}`} onClick={()=>setDrill("month")}/>
+
+        {/* 3 — Open Quotes */}
+        <Card label="Open Quotes" count={openQ.length} warm={openQ.length>0} onClick={()=>setDrill("quotes")}
+          sub={<>
+            {openQ.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>—</p>}
+            {openQ.slice(0,3).map((pr: any,i: number)=>{
+              const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+              return(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
+                  {days!==null&&<span style={{fontSize:9.5,color:days>=7?C.amber:C.light}}>{days}d</span>}
+                </div>
+              );
+            })}
+            {openQ.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{openQ.length-3} more</p>}
+          </>}
+        />
+
+        {/* 4 — Unsigned Contracts */}
+        <Card label="Unsigned Contracts" count={unsignedC.length} warm={unsignedC.length>0} onClick={()=>setDrill("contracts")}
+          sub={<>
+            {unsignedC.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>—</p>}
+            {unsignedC.slice(0,3).map((pr: any,i: number)=>{
+              const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+              return(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
+                  {days!==null&&<span style={{fontSize:9.5,color:days>=7?C.amber:C.light}}>{days}d</span>}
+                </div>
+              );
+            })}
+            {unsignedC.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{unsignedC.length-3} more</p>}
+          </>}
+        />
+
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
-        <Card label="Active Projects" count={activeProjects.length} sub={`${fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress`} items={activeProjects} onClick={()=>setDrill("projects")}/>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
-        <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
+
+        {/* 5 — Active Projects */}
+        <Card label="Active Projects" count={activeProjects.length} onClick={()=>setDrill("projects")}
+          sub={<>
+            <p style={{fontSize:10,color:C.muted,margin:"0 0 6px"}}>{fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress</p>
+            {activeProjects.slice(0,3).map((pr: any,i: number)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
+                  <span style={{fontSize:9.5,color:C.light,display:"block"}}>{pr.name}</span>
+                </div>
+                <span style={{fontSize:10.5,flexShrink:0,marginLeft:8}}>{fmt(pr.amount)}</span>
+              </div>
+            ))}
+            {activeProjects.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{activeProjects.length-3} more</p>}
+          </>}
+        />
+
+        {/* 6 — License Tracker */}
+        <Card label="License Tracker" count={allLicenses.length} onClick={()=>setDrill("license")}
+          sub={<>
+            {allLicenses.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>—</p>}
+            {allLicenses.slice(0,3).map((r: any,i: number)=>{
+              const d=dLeft(r.end);
+              const urgent=d!==null&&d<=14;
+              const soon=d!==null&&d>14&&d<=30;
+              return(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{r.cName}</span>
+                  <span style={{fontSize:9.5,color:urgent?C.red:soon?C.amber:C.green}}>{d!==null?`${d}d`:"—"}</span>
+                </div>
+              );
+            })}
+            {allLicenses.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{allLicenses.length-3} more</p>}
+          </>}
+        />
+
       </div>
     </div>
   );
