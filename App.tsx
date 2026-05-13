@@ -397,23 +397,18 @@ function getUsageMo(qd: any): number|null {
 function ProjectLicenseTracker({pr}: {pr:any}) {
   if(!pr||!pr.qd)return null;
   const mo=getUsageMo(pr.qd);
-  const hasRenewal=(pr.renewals||[]).length>0;
-  const usageEnd=(mo||hasRenewal)?
-    (pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null))
-    :null;
-  const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
-  const usageRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate);
-  if(!usageEnd&&!exclRenewals.length&&!usageRenewals.length)return null;
+  const originalUsageEnd=(pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null));
+  const usageRenewalDates=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+  const allUsageDates=[originalUsageEnd,...usageRenewalDates].filter(Boolean) as string[];
+  const activeUsageEnd=allUsageDates.length>0?allUsageDates.reduce((a,b)=>a>b?a:b):null;
+  const exclDates=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+  const activeExclEnd=exclDates.length>0?exclDates.reduce((a,b)=>a>b?a:b):null;
+  if(!activeUsageEnd&&!activeExclEnd)return null;
   return(
     <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
-      {usageEnd&&<LicenseLine label="Usage Rights" end={usageEnd}/>}
-      {usageRenewals.map((r: any,i: number)=>(
-        <LicenseLine key={`ur${i}`} label={`Renewal ${i+1}`} end={r.endDate} note={r.optLabel||undefined}/>
-      ))}
-      {exclRenewals.map((r: any,i: number)=>(
-        <LicenseLine key={`er${i}`} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
-      ))}
+      {activeUsageEnd&&<LicenseLine label="Usage Rights" end={activeUsageEnd}/>}
+      {activeExclEnd&&<LicenseLine label="Exclusivity" end={activeExclEnd}/>}
     </div>
   );
 }
@@ -2432,9 +2427,14 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   };
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string,type:"usage"|"excl",key:string}[]=[];
-    const ue=uEnd(pr);
-    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
-    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any,ri: number)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}_${ri}`});});
+    const originalUe=uEnd(pr);
+    const usageRenewalDates=(pr.renewals||[]).filter((r: any)=>r.type!=="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+    const allUDates=[originalUe,...usageRenewalDates].filter(Boolean) as string[];
+    const latestUe=allUDates.length>0?allUDates.reduce((a,b)=>a>b?a:b):null;
+    if(latestUe)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestUe,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
+    const exclDates=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+    const latestExcl=exclDates.length>0?exclDates.reduce((a: string,b: string)=>a>b?a:b):null;
+    if(latestExcl)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestExcl,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}`});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
