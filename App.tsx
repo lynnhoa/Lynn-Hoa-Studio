@@ -2717,11 +2717,6 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
             </div>
           );
         })}
-        {/* pipeline total */}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginTop:4}}>
-          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Potential pipeline</span>
-          <span style={{fontFamily:SERIF,fontSize:13,color:C.muted}}>{fmt(totalQ)}</span>
-        </div>
       </div>
     );
   }
@@ -2771,11 +2766,6 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
             </div>
           );
         })}
-        {/* confirmed pipeline total */}
-        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginTop:4}}>
-          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Confirmed pipeline</span>
-          <span style={{fontFamily:SERIF,fontSize:13,color:C.muted}}>{fmt(totalC)}</span>
-        </div>
       </div>
     );
   }
