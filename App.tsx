@@ -2178,7 +2178,10 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div>
         <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:18}}>
+          <p style={{fontSize:10.5,color:C.muted,margin:0}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
+          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(rev)}</span>
+        </div>
         {allYears.map((y: number)=>{
           const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
           const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
@@ -2206,7 +2209,10 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div>
         <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:18}}>
+          <p style={{fontSize:10.5,color:C.muted,margin:0}}>{nowY} · Jan — {MO[nowM]}</p>
+          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(thisYearRev)}</span>
+        </div>
         {[...monthsToShow].reverse().map((m: number)=>{
           const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
           const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
