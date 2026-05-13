@@ -398,23 +398,22 @@ function ProjectLicenseTracker({pr}: {pr:any}) {
   if(!pr||!pr.qd)return null;
   const mo=getUsageMo(pr.qd);
   const hasRenewal=(pr.renewals||[]).length>0;
-  const originalUsageEnd=(mo||hasRenewal)?
+  const usageEnd=(mo||hasRenewal)?
     (pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null))
     :null;
-  // Usage: pick the latest end date across original + all usage renewals
-  const usageRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate);
-  const allUsageDates=[originalUsageEnd,...usageRenewals.map((r: any)=>r.endDate)].filter(Boolean) as string[];
-  const activeUsageEnd=allUsageDates.length>0?allUsageDates.reduce((a,b)=>a>b?a:b):null;
-  // Exclusivity: pick the latest end date across all excl renewals
   const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
-  const allExclDates=exclRenewals.map((r: any)=>r.endDate) as string[];
-  const activeExclEnd=allExclDates.length>0?allExclDates.reduce((a,b)=>a>b?a:b):null;
-  if(!activeUsageEnd&&!activeExclEnd)return null;
+  const usageRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate);
+  if(!usageEnd&&!exclRenewals.length&&!usageRenewals.length)return null;
   return(
     <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
-      {activeUsageEnd&&<LicenseLine label="Usage Rights" end={activeUsageEnd}/>}
-      {activeExclEnd&&<LicenseLine label="Exclusivity" end={activeExclEnd}/>}
+      {usageEnd&&<LicenseLine label="Usage Rights" end={usageEnd}/>}
+      {usageRenewals.map((r: any,i: number)=>(
+        <LicenseLine key={`ur${i}`} label={`Renewal ${i+1}`} end={r.endDate} note={r.optLabel||undefined}/>
+      ))}
+      {exclRenewals.map((r: any,i: number)=>(
+        <LicenseLine key={`er${i}`} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
+      ))}
     </div>
   );
 }
@@ -571,7 +570,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   );
 }
 
-function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
+function PDFModal({data,type,onClose,onSave,onSaveClose,settings,isNew}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
@@ -797,7 +796,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
           <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>{isNew?"Save this document?":"Save before closing?"}</p>
           <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>{isNew?"It will be added to the client's project.":"Changes will be lost if you don't save."}</p>
           <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-            <B onClick={()=>{handleSave();setConfirmClose(false);onClose();}}>Yes, save</B>
+            <B onClick={()=>{handleSave();setConfirmClose(false);if(onSaveClose)onSaveClose();else onClose();}}>Yes, save</B>
             <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
           </div>
         </div>
@@ -2024,9 +2023,10 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
   if(showPreview){
     const doc=buildDoc();
     const renewal={id:uid(),optLabel:[uMode!=="none"?uOpt?.l:"",eMode!=="none"?eOpt?.l:""].filter(Boolean).join(" + ")||"Custom",startDate:startD,endDate:endD,fee:totalFee,rNo,signed:false,paid:false,doc};
-    return<PDFModal data={doc} type="renewal" settings={settings}
-      onClose={()=>setShowPreview(false)}
+    return<PDFModal data={doc} type="renewal" settings={settings} isNew={true}
+      onClose={onClose}
       onSave={()=>onSave(renewal)}
+      onSaveClose={()=>{onSave(renewal);onClose();}}
     />;
   }
 
@@ -2432,16 +2432,9 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   };
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string,type:"usage"|"excl",key:string}[]=[];
-    // Usage: pick latest end date across original + all usage renewals
-    const originalUe=uEnd(pr);
-    const usageRenewalDates=(pr.renewals||[]).filter((r: any)=>r.type!=="excl"&&r.endDate).map((r: any)=>r.endDate as string);
-    const allUDates=[originalUe,...usageRenewalDates].filter(Boolean) as string[];
-    const latestUe=allUDates.length>0?allUDates.reduce((a,b)=>a>b?a:b):null;
-    if(latestUe)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestUe,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
-    // Exclusivity: pick latest end date across all excl renewals
-    const exclDates=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).map((r: any)=>r.endDate as string);
-    const latestExcl=exclDates.length>0?exclDates.reduce((a: string,b: string)=>a>b?a:b):null;
-    if(latestExcl)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestExcl,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}`});
+    const ue=uEnd(pr);
+    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
+    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any,ri: number)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}_${ri}`});});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
