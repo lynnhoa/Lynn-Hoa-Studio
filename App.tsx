@@ -2376,97 +2376,105 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
 
     if(invPdfData)return<PDFModal data={invPdfData.data} type={invPdfData.type} onClose={()=>setInvPdfData(null)} settings={settings}/>;
 
+    const tabPillS=(active: boolean):any=>({
+      padding:"5px 13px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",
+      color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",
+      textTransform:"uppercase" as const,outline:"none"
+    });
+
     return(
       <div>
         {/* back */}
-        <button onClick={()=>{setDrill(null);setInvSel(new Set());}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+        <button onClick={()=>{setDrill(null);setInvSel(new Set());}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
 
-        {/* header row */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+        {/* title + tabs top right */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:8,flexWrap:"wrap"}}>
           <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
-          <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
-            {/* period filter */}
-            <select value={invYear} onChange={(e: any)=>{setInvYear(e.target.value);setInvSel(new Set());}} style={filterS}>
-              {periodOptions.map(o=>(
-                <option key={o.value} value={o.value} style={{paddingLeft:o.indent?20:0,color:o.indent?C.muted:C.black}}>
-                  {o.indent?`  ${o.label}`:o.label}
-                </option>
-              ))}
-            </select>
-            {/* export filtered CSV */}
-            <button
-              onClick={()=>exportMonthCsv(filteredInvRows,invYear==="all"?"all_invoices":invYear.replace(/[:\s]/g,"_"))}
-              title="Export current view as CSV"
-              style={{...filterS,cursor:"pointer",display:"flex",alignItems:"center",gap:4,padding:"0 9px"}}
-            >
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v7M5.5 8 2.5 5M5.5 8l3-3M1 10h9" stroke={C.muted} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em"}}>CSV</span>
+          <div style={{display:"flex"}}>
+            <button onClick={()=>{setInvTab("unpaid");setInvSel(new Set());}} style={{...tabPillS(invTab==="unpaid"),borderRadius:"2px 0 0 2px"}}>
+              Unpaid <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{allInvRows.filter((r: any)=>!r.pr.paid).length}</span>
+            </button>
+            <button onClick={()=>{setInvTab("paid");setInvSel(new Set());}} style={{...tabPillS(invTab==="paid"),borderRadius:"0 2px 2px 0",borderLeft:"none"}}>
+              Paid <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{allInvRows.filter((r: any)=>r.pr.paid).length}</span>
             </button>
           </div>
         </div>
 
-        {/* tabs */}
-        <div style={{display:"flex",gap:0,borderBottom:`1px solid ${C.rule}`,marginBottom:16}}>
-          {(["unpaid","paid"] as const).map(tab=>(
-            <button key={tab} onClick={()=>{setInvTab(tab);setInvSel(new Set());}} style={{padding:"7px 16px",background:"none",border:"none",borderBottom:invTab===tab?`2px solid ${C.black}`:"2px solid transparent",cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.1em",textTransform:"uppercase",color:invTab===tab?C.black:C.muted,marginBottom:-1}}>
-              {tab==="unpaid"?"Unpaid":"Paid"}
-              <span style={{marginLeft:6,fontSize:9,color:invTab===tab?C.black:C.light}}>
-                {tab==="unpaid"?allInvRows.filter((r: any)=>!r.pr.paid).length:allInvRows.filter((r: any)=>r.pr.paid).length}
-              </span>
-            </button>
-          ))}
+        {/* filter + export row — no border */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <select value={invYear} onChange={(e: any)=>{setInvYear(e.target.value);setInvSel(new Set());}} style={filterS}>
+            {periodOptions.map(o=>(
+              <option key={o.value} value={o.value}>
+                {o.indent?`  ${o.label}`:o.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={()=>exportMonthCsv(filteredInvRows,invYear==="all"?"all_invoices":invYear.replace(/[:\s]/g,"_"))}
+            title="Export current view as CSV"
+            style={{height:28,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:SANS,fontSize:9,color:C.muted,letterSpacing:"0.07em"}}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="4" x2="9" y2="4" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="6" x2="9" y2="6" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="8" x2="7" y2="8" stroke={C.muted} strokeWidth="1.1"/></svg>
+            Export CSV
+          </button>
         </div>
-
-        {/* bulk action bar */}
-        {invSel.size>0&&(
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,marginBottom:12}}>
-            <span style={{fontSize:10,color:C.amber}}>{invSel.size} selected</span>
-            <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>setInvSel(new Set())} style={{...selBtnS,fontSize:9}}>Clear</button>
-              <button onClick={()=>doInvBulk(selRows)} disabled={!!invBulkStatus} style={{...selBtnS,background:C.black,color:C.white,border:"none",opacity:invBulkStatus?0.5:1}}>
-                {invBulkStatus||`↓ Download ${invSel.size} PDF${invSel.size>1?"s":""}`}
-              </button>
-            </div>
-          </div>
-        )}
 
         {filteredInvRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices match this filter.</p>}
 
-        {/* select all row */}
-        {filteredInvRows.length>0&&(
-          <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:4}}>
-            <input type="checkbox" checked={allChecked} ref={(el)=>{if(el)el.indeterminate=someChecked;}} onChange={toggleAll}
-              style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
-            />
-            <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{allChecked?"Deselect all":"Select all"} · {filteredInvRows.length}</span>
-          </div>
-        )}
-
-        {invGrouped.map(yg=>(
+        {invGrouped.map((yg,yi)=>(
           <div key={yg.year}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:"18px 0 8px",fontWeight:"600"}}>{yg.year}</p>
+            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${yi===0?"0":"20px"} 0 10px`,fontWeight:"600"}}>{yg.year}</p>
             {yg.months.map(mg=>(
-              <div key={mg.month} style={{marginBottom:18}}>
-                {/* month header */}
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
+              <div key={mg.month} style={{marginBottom:20}}>
+                {/* month header — no border, just spacing */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
                   <span style={{fontSize:10,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase"}}>{MO_LONG[mg.month]} {yg.year} · {mg.rows.length}</span>
                   <button
                     onClick={()=>exportMonthCsv(mg.rows,`${MO_SHORT[mg.month]}_${yg.year}`)}
                     title={`Download ${MO_LONG[mg.month]} ${yg.year} as CSV`}
-                    style={{background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",padding:"2px 7px",fontSize:10,color:C.muted,lineHeight:1.2}}
-                  >↓</button>
+                    style={{height:22,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:4,fontFamily:SANS,fontSize:9,color:C.muted,letterSpacing:"0.06em"}}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="4" x2="9" y2="4" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="6" x2="9" y2="6" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="8" x2="7" y2="8" stroke={C.muted} strokeWidth="1.1"/></svg>
+                    CSV
+                  </button>
                 </div>
+
+                {/* select all — right-aligned, directly above checkboxes, no line */}
+                {mg.rows.length>0&&(
+                  <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:6,padding:"4px 0 2px"}}>
+                    <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>select all</span>
+                    <input type="checkbox"
+                      checked={mg.rows.every((r: any)=>invSel.has(r.iNo))}
+                      ref={(el)=>{if(el)el.indeterminate=!mg.rows.every((r: any)=>invSel.has(r.iNo))&&mg.rows.some((r: any)=>invSel.has(r.iNo));}}
+                      onChange={()=>{
+                        const allCheckedInMonth=mg.rows.every((r: any)=>invSel.has(r.iNo));
+                        setInvSel(prev=>{
+                          const n=new Set(prev);
+                          if(allCheckedInMonth){mg.rows.forEach((r: any)=>n.delete(r.iNo));}
+                          else{mg.rows.forEach((r: any)=>n.add(r.iNo));}
+                          return n;
+                        });
+                      }}
+                      style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
+                    />
+                  </div>
+                )}
+
+                {/* one separator line between month header area and first invoice */}
+                <div style={{borderTop:`1px solid ${C.rule}`}}/>
+
                 {mg.rows.map((r: any,i: number)=>{
                   const pr=r.pr;
                   const isChecked=invSel.has(r.iNo);
-                  const typeOfWork=getTypeOfWork(pr);
                   return(
-                    <div key={r.iNo+i} style={{display:"flex",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.rule}`,gap:8,background:isChecked?"rgba(0,0,0,0.02)":undefined}}>
-                      {/* checkbox */}
-                      <input type="checkbox" checked={isChecked} onChange={()=>toggleSel(r.iNo)}
-                        style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
-                        onClick={(e: any)=>e.stopPropagation()}
-                      />
+                    <div key={r.iNo+i} style={{display:"flex",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.rule}`,gap:10,background:isChecked?"rgba(0,0,0,0.015)":undefined}}>
+                      {/* ↓ plain arrow — download PDF */}
+                      <button
+                        onClick={(e: any)=>{e.stopPropagation();doInvBulk([r]);}}
+                        disabled={!!invBulkStatus}
+                        title="Download PDF"
+                        style={{flexShrink:0,background:"none",border:"none",cursor:invBulkStatus?"not-allowed":"pointer",padding:0,fontSize:14,color:C.light,fontFamily:SANS,opacity:invBulkStatus?0.4:1,lineHeight:1}}
+                      >↓</button>
                       {/* main info — clickable to preview */}
                       <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>openInvPreview(r)}>
                         <div style={{display:"flex",alignItems:"baseline",gap:7,flexWrap:"wrap"}}>
@@ -2477,20 +2485,16 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
                         </div>
                         <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
                           <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em"}}>{fmtD(pr.date)}</span>
-                          <span style={{fontSize:9,color:C.light}}>·</span>
-                          <span style={{fontSize:9,color:C.muted}}>{typeOfWork}</span>
                           <span style={{fontSize:9,color:pr.paid?C.green:C.amber,border:`1px solid ${pr.paid?C.greenBorder:C.amberBorder}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em"}}>{pr.paid?"Paid":"Invoiced"}</span>
                         </div>
                       </div>
                       {/* amount */}
                       <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
-                      {/* per-row PDF download */}
-                      <button
-                        onClick={(e: any)=>{e.stopPropagation();doInvBulk([r]);}}
-                        disabled={!!invBulkStatus}
-                        title="Download PDF"
-                        style={{flexShrink:0,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:invBulkStatus?"not-allowed":"pointer",padding:"4px 8px",fontSize:10,color:C.muted,fontFamily:SANS,opacity:invBulkStatus?0.4:1}}
-                      >↓</button>
+                      {/* checkbox right */}
+                      <input type="checkbox" checked={isChecked} onChange={()=>toggleSel(r.iNo)}
+                        style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
+                        onClick={(e: any)=>e.stopPropagation()}
+                      />
                     </div>
                   );
                 })}
@@ -2498,6 +2502,19 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
             ))}
           </div>
         ))}
+
+        {/* bulk bar — bottom, appears when rows selected */}
+        {invSel.size>0&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,marginTop:12}}>
+            <span style={{fontSize:10,color:C.amber}}>{invSel.size} selected</span>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>setInvSel(new Set())} style={{...selBtnS,color:C.amber,border:`1px solid ${C.amberBorder}`}}>Clear</button>
+              <button onClick={()=>doInvBulk(selRows)} disabled={!!invBulkStatus} style={{...selBtnS,background:C.black,color:C.white,border:"none",opacity:invBulkStatus?0.5:1}}>
+                {invBulkStatus||`↓ Download ${invSel.size} PDF${invSel.size>1?"s":""}`}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -2509,11 +2526,15 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
 
         {/* 1 — Revenue */}
-        <Card label="Revenue" count={fmt(thisMonthRev)} onClick={()=>setDrill("year")}
+        <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("year")}
           sub={<>
             <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
               <span style={{fontSize:10,color:C.muted}}>{nowY}</span>
               <span style={{fontSize:10,color:C.black}}>{fmt(thisYearRev)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>{MO[nowM]} {nowY}</span>
+              <span style={{fontSize:10,color:C.black}}>{fmt(thisMonthRev)}</span>
             </div>
           </>}
         />
@@ -2526,8 +2547,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
               <span style={{fontSize:10,color:C.amber}}>{fmt(out)}</span>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>Paid {nowY} · {thisYearPaid.length}</span>
-              <span style={{fontSize:10,color:C.muted}}>{fmt(thisYearRev)}</span>
+              <span style={{fontSize:10,color:C.muted}}>Paid · {paid.length}</span>
+              <span style={{fontSize:10,color:C.muted}}>{fmt(rev)}</span>
             </div>
           </>}
         />
