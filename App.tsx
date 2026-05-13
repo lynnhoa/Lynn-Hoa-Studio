@@ -387,11 +387,18 @@ function LicenseRow({label,end,note}: {label:string,end:string,note?:string}) {
 function ProjectLicenseTracker({pr,uEnd}: {pr:any,uEnd:(p:any)=>string|null}) {
   const usageEnd=uEnd(pr);
   const exclRenewals=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate);
-  if(!usageEnd&&exclRenewals.length===0)return null;
+  const hasQuote=!!pr.qd;
+  // show if: has usage end, has excl, or has quote (to show "set delivery date" hint)
+  if(!usageEnd&&exclRenewals.length===0&&!hasQuote)return null;
   return(
-    <div style={{marginBottom:8}}>
+    <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
       {usageEnd&&<LicenseRow label="Usage Rights" end={usageEnd}/>}
+      {!usageEnd&&hasQuote&&(
+        <div style={{padding:"4px 8px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:3}}>
+          <span style={{fontSize:9,color:C.light}}>{pr.deliveryDate?"Usage rights tracked once delivery date is confirmed":"Set delivery date to track usage rights"}</span>
+        </div>
+      )}
       {exclRenewals.map((r: any,i: number)=>(
         <LicenseRow key={i} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
       ))}
@@ -1974,9 +1981,8 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
   const uEnd=(pr: any)=>{
     if(pr.usageEndOverride)return pr.usageEndOverride;
-    if(!pr.deliveryDate)return null;
-    const mo=pr.qd?.mo||(()=>{const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);if(!ul?.usageLabel)return null;const m=ul.usageLabel.match(/(\d+)\s*month/i);return m?parseInt(m[1]):3;})();
-    if(!mo)return null;
+    if(!pr.deliveryDate||!pr.qd)return null;
+    const mo=pr.qd?.mo||(()=>{const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);if(!ul?.usageLabel)return 3;const m=ul.usageLabel.match(/(\d+)\s*month/i);return m?parseInt(m[1]):3;})();
     return addM(pr.deliveryDate,mo);
   };
   const fin=(c: any)=>{const paid=c.projects.filter((pr: any)=>pr.paid);const tot=paid.reduce((s: number,pr: any)=>s+pr.amount,0);const last=[...paid].sort((a: any,b: any)=>b.date.localeCompare(a.date))[0];return{total:tot,last:last?.amount||0,lastDate:last?.date||null,avg:paid.length?Math.round(tot/paid.length):0,count:paid.length,out:c.projects.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0)};};
@@ -2159,11 +2165,10 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     if(!pr.deliveryDate)return null;
     const mo=pr.qd?.mo||(()=>{
       const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);
-      if(!ul?.usageLabel)return null;
+      if(!ul?.usageLabel)return 3;
       const m=ul.usageLabel.match(/(\d+)\s*month/i);
       return m?parseInt(m[1]):3;
     })();
-    if(!mo)return null;
     return addM(pr.deliveryDate,mo);
   };
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
