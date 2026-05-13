@@ -377,8 +377,8 @@ function LicenseLine({label,end,note}: {label:string,end:string,note?:string}) {
   );
 }
 
-function getUsageMo(qd: any): number {
-  if(!qd)return 3;
+function getUsageMo(qd: any): number|null {
+  if(!qd)return null;
   if(qd.mo&&qd.mo>0)return qd.mo;
   const lines=qd.lines||[];
   for(const l of lines){
@@ -391,21 +391,21 @@ function getUsageMo(qd: any): number {
       if(m)return parseInt(m[1]);
     }
   }
-  return 3;
+  return null;
 }
 
 function ProjectLicenseTracker({pr}: {pr:any}) {
   if(!pr||!pr.qd)return null;
-  const usageEnd=pr.usageEndOverride||(pr.deliveryDate?addM(pr.deliveryDate,getUsageMo(pr.qd)):null);
+  const mo=getUsageMo(pr.qd);
+  const usageEnd=pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null);
   const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
+  if(!usageEnd&&!exclRenewals.length)return null;
   return(
     <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
       {usageEnd
         ?<LicenseLine label="Usage Rights" end={usageEnd}/>
-        :<div style={{padding:"4px 8px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:3}}>
-          <span style={{fontSize:9,color:C.light}}>Set delivery date to activate usage rights tracking</span>
-        </div>
+        :null
       }
       {exclRenewals.map((r: any,i: number)=>(
         <LicenseLine key={i} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
