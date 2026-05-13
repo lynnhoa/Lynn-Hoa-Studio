@@ -1623,14 +1623,14 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
           <div>
             <Lbl>Usage Rights</Lbl>
             <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>
-              {card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
+              {card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}</option>)}
             </S>
             <div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:5}}>
               {(["Instagram","TikTok","YouTube","Other"] as const).map(p=>{const on=bPlatforms.includes(p);return<button key={p} type="button" onClick={()=>setBPlatforms(pr=>on?pr.filter(x=>x!==p):[...pr,p])} style={{padding:"3px 8px",border:`1px solid ${on?C.black:C.rule}`,background:on?C.black:C.bg,color:on?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:8.5,letterSpacing:"0.05em",borderRadius:2}}>{p}</button>;})}
             </div>
           </div>
           <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>
-            {card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{!e.sentinel&&e.pct>0?` (+${e.pct}%)`:""}</option>)}
+            {card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}</option>)}
           </S></div>
         </div>
         <div style={{marginBottom:9}}>
