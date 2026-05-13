@@ -1884,10 +1884,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               ))}
               {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
               {(pr.renewals||[]).map((r: any,ri: number)=>(
-                r.doc&&<span key={ri} style={{display:"inline-flex",alignItems:"center",gap:2}}>
-                  <B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px",color:r.paid?C.black:C.green,borderColor:r.paid?C.rule:C.greenBorder}} onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})}>Renewal {ri+1}</B>
-                  {!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.filter((_: any,i: number)=>i!==ri).map((rn: any,newRi: number)=>({...rn}))})}))} style={{width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:12,padding:0,lineHeight:1,flexShrink:0}} title="Delete renewal">✕</button>}
-                </span>
+                r.doc&&<B key={ri} v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px",color:r.paid?C.black:C.green,borderColor:r.paid?C.rule:C.greenBorder}} onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})}>Renewal {ri+1}</B>
               ))}
             </div>
 
@@ -2037,7 +2034,7 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
     return<PDFModal data={doc} type="renewal" settings={settings} isNew={true}
       onClose={onClose}
       onSave={()=>onSave(renewal)}
-      onSaveClose={()=>{onSave(renewal);onClose();}}
+      onSaveClose={onClose}
     />;
   }
 
@@ -2561,23 +2558,18 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
           const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
           return(
-            <div key={y} style={{marginBottom:24}}>
-              {/* year header */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"8px 0",borderBottom:`2px solid ${y===nowY?C.black:C.rule}`}}>
-                <span style={{fontSize:13,color:y===nowY?C.black:C.muted,fontWeight:"600",letterSpacing:"0.04em"}}>{y}{y===nowY?" · Current":""}</span>
+            <div key={y} style={{borderBottom:`1px solid ${C.rule}`,paddingBottom:10,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 0 6px"}}>
+                <span style={{fontSize:13,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
                 <span style={{fontFamily:SERIF,fontSize:15,color:C.black}}>{fmt(yRev)}</span>
               </div>
-              {/* project rows */}
               {yPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <span style={{fontSize:13,color:C.black,fontWeight:"500",display:"block"}}>{pr.cName}</span>
-                    <span style={{fontSize:11,color:C.muted}}>{pr.name}</span>
-                  </div>
-                  <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
+                  <span style={{fontSize:12,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:12,color:C.muted}}>{fmt(pr.amount)}</span>
                 </div>
               ))}
-              {yPaid.length>3&&<p style={{fontSize:11,color:C.light,margin:"6px 0 0"}}>+{yPaid.length-3} more</p>}
+              {yPaid.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
             </div>
           );
         })}
