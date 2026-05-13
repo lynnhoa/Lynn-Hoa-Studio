@@ -2395,6 +2395,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
+  const [revYear,setRevYear]=useState<string>("all");
+  const [revSort,setRevSort]=useState<string>("date_new");
   const [invTab,setInvTab]=useState<"unpaid"|"paid">("unpaid");
   const [invYear,setInvYear]=useState<string>("all");
   const [invType,setInvType]=useState<string>("all");
@@ -2553,29 +2555,78 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     );
   }
   if(drill==="revenue"){
+    // filter + sort
+    const revFiltered=revYear==="all"?paid:paid.filter((pr: any)=>String(yearOf(pr))===revYear);
+    const revSorted=(()=>{
+      const arr=[...revFiltered];
+      if(revSort==="date_new")arr.sort((a: any,b: any)=>b.date.localeCompare(a.date));
+      else if(revSort==="date_old")arr.sort((a: any,b: any)=>a.date.localeCompare(b.date));
+      else if(revSort==="amount_hi")arr.sort((a: any,b: any)=>b.amount-a.amount);
+      else if(revSort==="amount_lo")arr.sort((a: any,b: any)=>a.amount-b.amount);
+      else if(revSort==="client")arr.sort((a: any,b: any)=>(a.cName||"").localeCompare(b.cName||""));
+      return arr;
+    })();
+    // group by year then month
+    const revGroups: {year:number,months:{month:number,rows:any[]}[]}[]=[];
+    revSorted.forEach((pr: any)=>{
+      const y=yearOf(pr),m=monthOf(pr);
+      let yg=revGroups.find(g=>g.year===y);
+      if(!yg){yg={year:y,months:[]};revGroups.push(yg);}
+      let mg=yg.months.find(x=>x.month===m);
+      if(!mg){mg={month:m,rows:[]};yg.months.push(mg);}
+      mg.rows.push(pr);
+    });
     return(
       <div>
         <DrillBack onClick={()=>setDrill(null)}/>
-        <DrillHeader title="Revenue" count={fmt(rev)} sub={`${allYears.length} year${allYears.length!==1?"s":""} with paid projects`}/>
-        {allYears.map((y: number)=>{
-          const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
-          const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-          return(
-            <div key={y} style={{borderBottom:`1px solid ${C.rule}`,paddingBottom:10,marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 0 6px"}}>
-                <span style={{fontSize:13,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:15,color:C.black}}>{fmt(yRev)}</span>
-              </div>
-              {yPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
-                  <span style={{fontSize:12,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:12,color:C.muted}}>{fmt(pr.amount)}</span>
-                </div>
-              ))}
-              {yPaid.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4,flexWrap:"wrap" as const,gap:8}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Revenue</h2>
+          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(rev)}</span>
+        </div>
+        <p style={{fontSize:12,color:C.muted,margin:"0 0 16px"}}>{paid.length} paid project{paid.length!==1?"s":""} · all time</p>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:5,marginBottom:20}}>
+          <S value={revYear} onChange={(e: any)=>setRevYear(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
+            <option value="all">All years</option>
+            {allYears.map((y: number)=><option key={y} value={String(y)}>{y}</option>)}
+          </S>
+          <S value={revSort} onChange={(e: any)=>setRevSort(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
+            <option value="date_new">Newest first</option>
+            <option value="date_old">Oldest first</option>
+            <option value="amount_hi">Amount ↓</option>
+            <option value="amount_lo">Amount ↑</option>
+            <option value="client">Client A→Z</option>
+          </S>
+        </div>
+        {revSorted.length===0&&<p style={{fontSize:12,color:C.muted}}>No paid projects yet.</p>}
+        {revGroups.map((yg,yi)=>(
+          <div key={yg.year} style={{marginBottom:28}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingBottom:8,borderBottom:`2px solid ${yg.year===nowY?C.black:C.rule}`,marginBottom:4}}>
+              <span style={{fontSize:13,color:yg.year===nowY?C.black:C.muted,fontWeight:"600",letterSpacing:"0.04em"}}>{yg.year}{yg.year===nowY?" · Current":""}</span>
+              <span style={{fontFamily:SERIF,fontSize:15,color:C.black}}>{fmt(yg.months.flatMap((m: any)=>m.rows).reduce((s: number,pr: any)=>s+pr.amount,0))}</span>
             </div>
-          );
-        })}
+            {yg.months.map((mg: any)=>(
+              <div key={mg.month} style={{marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"8px 0 4px"}}>
+                  <span style={{fontSize:11,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase" as const}}>{MO[mg.month]} {yg.year}</span>
+                  <span style={{fontSize:11,color:C.muted}}>{fmt(mg.rows.reduce((s: number,pr: any)=>s+pr.amount,0))}</span>
+                </div>
+                {mg.rows.map((pr: any,i: number)=>(
+                  <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo,"revenue")} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap" as const}}>
+                        <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                        <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+                      </div>
+                      <span style={{fontSize:11,color:C.light}}>{fmtD(pr.date)}</span>
+                    </div>
+                    <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+                    <span style={{fontSize:11,color:C.light}}>→</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     );
   }
