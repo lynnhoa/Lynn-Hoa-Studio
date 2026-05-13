@@ -3618,6 +3618,190 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
+// ─── CREATOR DASHBOARD ────────────────────────────────────
+function CreatorDashboard({isMobile}: {isMobile:boolean}) {
+  const today=new Date();
+
+  // ── Daily Creation List
+  const dailyList=[
+    {label:"Film unboxing reel · Sephora",done:false},
+    {label:"Edit BTS clip · Vogue shoot",done:true},
+    {label:"Caption review · ŌURA campaign",done:false},
+    {label:"Upload story set · Zalando",done:false},
+  ];
+  const dailyDone=dailyList.filter(t=>t.done).length;
+
+  // ── Editing Queue
+  const editingQueue=[
+    {title:"Spring Reel",client:"Sephora",format:"Reel",due:"2026-05-15"},
+    {title:"Hero video v2",client:"Vogue",format:"Hero Video",due:"2026-05-18"},
+    {title:"BTS cutdown",client:"Vogue",format:"Short Video",due:"2026-05-20"},
+  ];
+
+  // ── Production Category Split
+  const catSplit=[
+    {cat:"UGC",count:4},
+    {cat:"Brand Collab",count:3},
+    {cat:"Editorial",count:2},
+  ];
+  const catTotal=catSplit.reduce((s,c)=>s+c.count,0);
+
+  // ── Format Count
+  const formats=[
+    {fmt:"Reel / TikTok",count:5},
+    {fmt:"Story Set",count:3},
+    {fmt:"Photo Set",count:2},
+    {fmt:"Hero Video",count:2},
+  ];
+  const fmtTotal=formats.reduce((s,f)=>s+f.count,0);
+
+  // ── Deadlines
+  const deadlines=[
+    {title:"Spring Reel",client:"Sephora",due:"2026-05-15"},
+    {title:"Hero video v2",client:"Vogue",due:"2026-05-18"},
+    {title:"Campaign photo set",client:"ŌURA",due:"2026-05-22"},
+  ];
+  const daysUntil=(d:string)=>Math.ceil((new Date(d).getTime()-Date.now())/864e5);
+  const dueCol=(d:number)=>d<=3?C.red:d<=7?C.amber:C.black;
+  const dueBg=(d:number)=>d<=3?C.redBg:d<=7?C.amberBg:"transparent";
+  const dueBd=(d:number)=>d<=3?C.redBorder:d<=7?C.amberBorder:C.rule;
+
+  // ── Production Velocity
+  const velocity=[
+    {week:"Wk 1",count:2},
+    {week:"Wk 2",count:4},
+    {week:"Wk 3",count:3},
+    {week:"Wk 4",count:5},
+  ];
+  const velTotal=velocity.reduce((s,v)=>s+v.count,0);
+  const velMax=Math.max(...velocity.map(v=>v.count));
+
+  const Card=({label,children}: {label:string,children:any})=>(
+    <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px"}}>
+      <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 10px"}}>{label}</p>
+      {children}
+    </div>
+  );
+
+  const cols=isMobile?"1fr":"1fr 1fr";
+
+  return(
+    <div>
+      <div style={{marginBottom:20}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Dashboard</h2>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:0}}>{today.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:cols,gap:10}}>
+
+        {/* 1 — Daily Creation List */}
+        <Card label="Daily Creation List">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+            <span style={{fontFamily:SERIF,fontSize:20,color:dailyDone===dailyList.length?C.green:C.black}}>{dailyDone}/{dailyList.length}</span>
+            <span style={{fontSize:10,color:C.muted}}>completed today</span>
+          </div>
+          {dailyList.map((t,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<dailyList.length-1?`1px solid ${C.rule}`:"none"}}>
+              <div style={{width:10,height:10,borderRadius:"50%",border:`1px solid ${t.done?C.green:C.light}`,background:t.done?C.green:"transparent",flexShrink:0}}/>
+              <span style={{fontSize:11,color:t.done?C.light:C.black,textDecoration:t.done?"line-through":"none"}}>{t.label}</span>
+            </div>
+          ))}
+        </Card>
+
+        {/* 2 — Editing Queue */}
+        <Card label="Editing Queue">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+            <span style={{fontFamily:SERIF,fontSize:20,color:editingQueue.length>0?C.amber:C.light}}>{editingQueue.length}</span>
+            <span style={{fontSize:10,color:C.muted}}>pieces to edit</span>
+          </div>
+          {editingQueue.map((item,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<editingQueue.length-1?`1px solid ${C.rule}`:"none"}}>
+              <div>
+                <span style={{fontSize:11,color:C.black}}>{item.title}</span>
+                <span style={{fontSize:10,color:C.muted,display:"block"}}>{item.client} · {item.format}</span>
+              </div>
+              <span style={{fontSize:10,color:dueCol(daysUntil(item.due)),flexShrink:0,marginLeft:8}}>{daysUntil(item.due)}d</span>
+            </div>
+          ))}
+        </Card>
+
+        {/* 3 — Production Category Split */}
+        <Card label="Production Category Split">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+            <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{catTotal}</span>
+            <span style={{fontSize:10,color:C.muted}}>active pieces</span>
+          </div>
+          {catSplit.map((c,i)=>(
+            <div key={i} style={{marginBottom:i<catSplit.length-1?6:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <span style={{fontSize:11,color:C.black}}>{c.cat}</span>
+                <span style={{fontSize:11,color:C.muted}}>{c.count}</span>
+              </div>
+              <div style={{height:3,background:C.rule,borderRadius:2}}>
+                <div style={{height:3,width:`${(c.count/catTotal)*100}%`,background:C.black,borderRadius:2}}/>
+              </div>
+            </div>
+          ))}
+        </Card>
+
+        {/* 4 — Format Count */}
+        <Card label="Format Count">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+            <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmtTotal}</span>
+            <span style={{fontSize:10,color:C.muted}}>total formats</span>
+          </div>
+          {formats.map((f,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:i<formats.length-1?`1px solid ${C.rule}`:"none"}}>
+              <span style={{fontSize:11,color:C.black}}>{f.fmt}</span>
+              <span style={{fontFamily:SERIF,fontSize:13,color:C.black}}>{f.count}</span>
+            </div>
+          ))}
+        </Card>
+
+        {/* 5 — Deadlines */}
+        <Card label="Deadlines">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+            <span style={{fontFamily:SERIF,fontSize:20,color:deadlines.some(d=>daysUntil(d.due)<=3)?C.red:C.black}}>{deadlines.length}</span>
+            <span style={{fontSize:10,color:C.muted}}>upcoming</span>
+          </div>
+          {deadlines.map((d,i)=>{
+            const days=daysUntil(d.due);
+            return(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 7px",marginBottom:4,background:dueBg(days),border:`1px solid ${dueBd(days)}`,borderRadius:2}}>
+                <div>
+                  <span style={{fontSize:11,color:dueCol(days),fontWeight:"500"}}>{d.title}</span>
+                  <span style={{fontSize:10,color:dueCol(days),display:"block",opacity:0.8}}>{d.client}</span>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
+                  <span style={{fontSize:11,color:dueCol(days),fontWeight:"600"}}>{days}d</span>
+                  <span style={{fontSize:9,color:dueCol(days),display:"block",opacity:0.7}}>{fmtD(d.due)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+
+        {/* 6 — Production Velocity */}
+        <Card label="Production Velocity">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12}}>
+            <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{velTotal}</span>
+            <span style={{fontSize:10,color:C.muted}}>pieces · last 30 days</span>
+          </div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:6,height:48}}>
+            {velocity.map((v,i)=>(
+              <div key={i} style={{flex:1,display:"flex",flexDirection:"column" as const,alignItems:"center",gap:4}}>
+                <span style={{fontSize:9,color:C.muted}}>{v.count}</span>
+                <div style={{width:"100%",background:C.black,borderRadius:2,height:`${Math.round((v.count/velMax)*36)}px`}}/>
+                <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>{v.week}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── CREATOR PAGE ─────────────────────────────────────────
 function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
   const [menuOpen,setMenuOpen]=useState(false);
@@ -3678,7 +3862,7 @@ function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
       </div>
       {/* ── CONTENT ── */}
       <div style={{maxWidth:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px"}}>
-        {nav===0&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Dashboard</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
+        {nav===0&&<CreatorDashboard isMobile={isMobile}/>}
         {nav===1&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Clients</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
         {nav===2&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Workspace</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
         {nav===3&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Planner</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
