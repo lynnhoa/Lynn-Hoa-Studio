@@ -1330,7 +1330,7 @@ function RateCardBuilderModal({rc,onSave,onClose}: any) {
           </div>}
 
           {sections.map((sec,si)=>{
-            const available=catItems(baseCat).filter((it: any)=>!sec.items.find((s: any)=>s.n===it.n));
+            const available=catItems(baseCat).filter((it: any)=>!sec.items.find((s: any)=>s.id===it.id));
             return(
               <div key={sec.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 12px",marginBottom:10,background:C.white}}>
                 {/* section heading */}
@@ -3214,7 +3214,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     const items=card.sections.filter((s: any)=>isSingle(s.t)).flatMap((s: any)=>s.items);
     const prefillLines=(q?.lines||[]).map((ln: any)=>({
       id:uid(),ck:q?.ctab==="complete"?"influencer":(q?.ctab||"influencer"),
-      ii:Math.max(0,items.findIndex((it: any)=>it.n===ln.name)),
+      ii:Math.max(0,items.findIndex((it: any)=>it.id===ln.id)),
       qty:ln.qty||1,neg:ln.up?String(ln.up):"",vol:false,ui:1,ei:0,ao:[],cLabel:"",cAmt:""
     }));
     setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isRev:true,revN:(q?.rev||0)+1,ctab:q?.ctab||"influencer",lines:prefillLines,origLines:q?.lines||[]});
