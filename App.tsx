@@ -397,7 +397,10 @@ function getUsageMo(qd: any): number|null {
 function ProjectLicenseTracker({pr}: {pr:any}) {
   if(!pr||!pr.qd)return null;
   const mo=getUsageMo(pr.qd);
-  const usageEnd=pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null);
+  const hasRenewal=(pr.renewals||[]).length>0;
+  const usageEnd=(mo||hasRenewal)?
+    (pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null))
+    :null;
   const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
   if(!usageEnd&&!exclRenewals.length)return null;
   return(
@@ -2189,10 +2192,15 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
   const uEnd=(pr: any)=>{
-    if(pr.usageEndOverride)return pr.usageEndOverride;
     if(!pr.deliveryDate||!pr.qd)return null;
-    const mo=pr.qd?.mo||(()=>{const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);if(!ul?.usageLabel)return 3;const m=ul.usageLabel.match(/(\d+)\s*month/i);return m?parseInt(m[1]):3;})();
-    return addM(pr.deliveryDate,mo);
+    const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);
+    const hasRenewals=(pr.renewals||[]).length>0;
+    if(!ul?.usageLabel&&!hasRenewals)return null;
+    if(pr.usageEndOverride)return pr.usageEndOverride;
+    if(!ul?.usageLabel)return null;
+    const m=ul.usageLabel.match(/(\d+)\s*month/i);
+    const mo=m?parseInt(m[1]):null;
+    return mo?addM(pr.deliveryDate,mo):null;
   };
   const fin=(c: any)=>{const paid=c.projects.filter((pr: any)=>pr.paid);const tot=paid.reduce((s: number,pr: any)=>s+pr.amount,0);const last=[...paid].sort((a: any,b: any)=>b.date.localeCompare(a.date))[0];return{total:tot,last:last?.amount||0,lastDate:last?.date||null,avg:paid.length?Math.round(tot/paid.length):0,count:paid.length,out:c.projects.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0)};};
   const flagged=clients.filter((c: any)=>{if(!c.projects.length)return false;if(c.projects.some((pr: any)=>pr.status==="invoiced"||pr.status==="paid"))return false;const lat=c.projects.reduce((a: any,b: any)=>a.date>b.date?a:b);return(new Date().getTime()-new Date(lat.date).getTime())/864e5>90;});
@@ -2370,15 +2378,15 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{
+    if(!pr.deliveryDate||!pr.qd)return null;
+    const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);
+    const hasRenewals=(pr.renewals||[]).length>0;
+    if(!ul?.usageLabel&&!hasRenewals)return null;
     if(pr.usageEndOverride)return pr.usageEndOverride;
-    if(!pr.deliveryDate)return null;
-    const mo=pr.qd?.mo||(()=>{
-      const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);
-      if(!ul?.usageLabel)return 3;
-      const m=ul.usageLabel.match(/(\d+)\s*month/i);
-      return m?parseInt(m[1]):3;
-    })();
-    return addM(pr.deliveryDate,mo);
+    if(!ul?.usageLabel)return null;
+    const m=ul.usageLabel.match(/(\d+)\s*month/i);
+    const mo=m?parseInt(m[1]):null;
+    return mo?addM(pr.deliveryDate,mo):null;
   };
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string,type:"usage"|"excl",key:string}[]=[];
