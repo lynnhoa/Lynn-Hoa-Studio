@@ -398,22 +398,23 @@ function ProjectLicenseTracker({pr}: {pr:any}) {
   if(!pr||!pr.qd)return null;
   const mo=getUsageMo(pr.qd);
   const hasRenewal=(pr.renewals||[]).length>0;
-  const usageEnd=(mo||hasRenewal)?
+  const originalUsageEnd=(mo||hasRenewal)?
     (pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null))
     :null;
-  const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
+  // Usage: pick the latest end date across original + all usage renewals
   const usageRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate);
-  if(!usageEnd&&!exclRenewals.length&&!usageRenewals.length)return null;
+  const allUsageDates=[originalUsageEnd,...usageRenewals.map((r: any)=>r.endDate)].filter(Boolean) as string[];
+  const activeUsageEnd=allUsageDates.length>0?allUsageDates.reduce((a,b)=>a>b?a:b):null;
+  // Exclusivity: pick the latest end date across all excl renewals
+  const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
+  const allExclDates=exclRenewals.map((r: any)=>r.endDate) as string[];
+  const activeExclEnd=allExclDates.length>0?allExclDates.reduce((a,b)=>a>b?a:b):null;
+  if(!activeUsageEnd&&!activeExclEnd)return null;
   return(
     <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
-      {usageEnd&&<LicenseLine label="Usage Rights" end={usageEnd}/>}
-      {usageRenewals.map((r: any,i: number)=>(
-        <LicenseLine key={`ur${i}`} label={`Renewal ${i+1}`} end={r.endDate} note={r.optLabel||undefined}/>
-      ))}
-      {exclRenewals.map((r: any,i: number)=>(
-        <LicenseLine key={`er${i}`} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
-      ))}
+      {activeUsageEnd&&<LicenseLine label="Usage Rights" end={activeUsageEnd}/>}
+      {activeExclEnd&&<LicenseLine label="Exclusivity" end={activeExclEnd}/>}
     </div>
   );
 }
@@ -471,7 +472,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     );
   };
   return(
-    <div style={{padding:"120px 62px 90px",fontSize:9.5,lineHeight:1.5,position:"relative",fontFamily:SANS,color:C.black,background:C.bg}}>
+    <div style={{padding:"120px 62px 90px",fontSize:9.5,lineHeight:1.5,position:"relative",minHeight:841,fontFamily:SANS,color:C.black,background:C.bg}}>
       <div style={{margin:"0 0 22px"}}>
         <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 28px"}}>{titles[type]||type}</h1>
         {type!=="contract"&&<p style={{fontSize:7.5,color:C.muted,margin:0}}>{creatorFullLine}</p>}
@@ -594,7 +595,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const docRef=useRef<HTMLDivElement>(null);
   const [docHeight,setDocHeight]=useState(841);
   const PAGE_H=841;
-  const CHROME_H=210; // top padding (120px) + bottom padding (90px) inside A4 div — only add a page if real body content overflows
+  const CHROME_H=136; // header (~49px) + footer (~87px) — only add a page if real body content overflows
   const numPages=docHeight>PAGE_H+CHROME_H?Math.ceil(docHeight/PAGE_H):1;
   const s={...SETTINGS_DEFAULT,...(settings||{})};
   const isDE=lang==="de";
@@ -2431,9 +2432,16 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   };
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string,type:"usage"|"excl",key:string}[]=[];
-    const ue=uEnd(pr);
-    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
-    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any,ri: number)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}_${ri}`});});
+    // Usage: pick latest end date across original + all usage renewals
+    const originalUe=uEnd(pr);
+    const usageRenewalDates=(pr.renewals||[]).filter((r: any)=>r.type!=="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+    const allUDates=[originalUe,...usageRenewalDates].filter(Boolean) as string[];
+    const latestUe=allUDates.length>0?allUDates.reduce((a,b)=>a>b?a:b):null;
+    if(latestUe)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestUe,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
+    // Exclusivity: pick latest end date across all excl renewals
+    const exclDates=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+    const latestExcl=exclDates.length>0?exclDates.reduce((a: string,b: string)=>a>b?a:b):null;
+    if(latestExcl)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestExcl,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}`});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
