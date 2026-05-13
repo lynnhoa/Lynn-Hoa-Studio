@@ -3905,30 +3905,35 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
 
               return(
                 <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDelivered?0.6:1}}>
-                  <div style={{display:"flex",alignItems:"center",gap:isMobile?6:10,padding:"9px 0"}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:"9px 0"}}>
 
                     {/* brand */}
-                    <span style={{fontSize:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                    <span style={{fontSize:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
                       {item.clientName.toUpperCase()}
                     </span>
 
-                    {/* name + category tag */}
-                    <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:6}}>
-                      {isEditing?(
-                        <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
-                          onBlur={()=>saveName(item,editingVal)}
-                          onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
-                          placeholder={item.defaultName}
-                          style={{fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",flex:1,minWidth:0}}/>
-                      ):(
-                        <span onClick={()=>{if(!isDelivered){setEditingId(item.id);setEditingVal(item.name);}}}
-                          style={{fontSize:13,color:C.black,cursor:isDelivered?"default":"text",textDecoration:isDelivered?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
-                          {item.name}
+                    {/* name + category tag + lineNote + user note */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {isEditing?(
+                          <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
+                            onBlur={()=>saveName(item,editingVal)}
+                            onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
+                            placeholder={item.defaultName}
+                            style={{fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",flex:1,minWidth:0}}/>
+                        ):(
+                          <span onClick={()=>{if(!isDelivered){setEditingId(item.id);setEditingVal(item.name);}}}
+                            style={{fontSize:13,color:C.black,cursor:isDelivered?"default":"text",textDecoration:isDelivered?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                            {item.name}
+                          </span>
+                        )}
+                        <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
+                          {item.category}
                         </span>
-                      )}
-                      <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
-                        {item.category}
-                      </span>
+                      </div>
+                      {item.lineNote&&<span style={{fontSize:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
+                      {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
+                      {!item.notes&&!isNoting&&!isDelivered&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
                     </div>
 
                     {/* deadline */}
@@ -3938,14 +3943,6 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
 
                     {/* day tag */}
                     {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0}}>{dayTag}</span>}
-
-                    {/* notes icon */}
-                    {!isNoting&&(
-                      <button onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}}
-                        style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:item.notes?C.amber:C.light,padding:0,lineHeight:1,flexShrink:0}}>
-                        {item.notes?"💬":"○"}
-                      </button>
-                    )}
 
                     {/* three checkboxes */}
                     <div style={{display:"flex",gap:isMobile?4:6,flexShrink:0}}>
