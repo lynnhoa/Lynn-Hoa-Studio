@@ -1991,7 +1991,7 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
     return{
       brand:q?.brand,contact:q?.contact,date:today(),
       rNo,qNo:q?.qNo,ctype:q?.ctype||"Content Creator",
-      refLines:selLines,lines,total:totalFee,
+      origContent:selLines,lines,total:totalFee,
       startDate:startD,endDate:endD,
       footer:"Thank you for the pleasure of working together.",
       type:"renewal"
@@ -2012,11 +2012,9 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
   if(showPreview){
     const doc=buildDoc();
     const renewal={id:uid(),optLabel:[uMode!=="none"?uOpt?.l:"",eMode!=="none"?eOpt?.l:""].filter(Boolean).join(" + ")||"Custom",startDate:startD,endDate:endD,fee:totalFee,rNo,signed:false,paid:false,doc};
-    return<RateCardBuilderPreview
-      card={{label:"License Renewal",sub:q?.brand||"",sections:[{id:"s1",t:"Renewal Terms",items:doc.lines.map((l: any,i: number)=>({id:`rl${i}`,n:l.name,note:l.note,p:l.amt}))}],fine:sett.taxNote||""}}
-      settings={settings}
-      onSave={()=>onSave(renewal)}
+    return<PDFModal data={doc} type="renewal" settings={settings}
       onClose={()=>setShowPreview(false)}
+      onSave={()=>onSave(renewal)}
     />;
   }
 
