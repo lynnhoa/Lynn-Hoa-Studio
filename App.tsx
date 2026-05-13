@@ -3459,9 +3459,9 @@ const initClients=[
 
 function AppInner({initialClients,initialRc,initialSettings}: {initialClients: any[], initialRc: any, initialSettings: any}) {
   const [authed,setAuthed]=useState(()=>sessionStorage.getItem("lh_authed")==="1");
-  const doAuth=(r: string)=>{sessionStorage.setItem("lh_authed","1");setRole(r);setAuthed(true);};
-  const doLogout=()=>{sessionStorage.removeItem("lh_authed");setAuthed(false);setNav(0);setMenuOpen(false);};
-  const [role,setRole]=useState<"manager"|"creator">("manager");
+  const doAuth=(r: string)=>{sessionStorage.setItem("lh_authed","1");sessionStorage.setItem("lh_role",r);setRole(r as "manager"|"creator");setAuthed(true);};
+  const doLogout=()=>{sessionStorage.removeItem("lh_authed");sessionStorage.removeItem("lh_role");setAuthed(false);setNav(0);setMenuOpen(false);};
+  const [role,setRole]=useState<"manager"|"creator">(()=>(sessionStorage.getItem("lh_role")||"manager") as "manager"|"creator");
   const [nav,setNav]=useState(0);
   const [dashReset,setDashReset]=useState(0);
   const goToDash=()=>{setNav(0);setDashReset(p=>p+1);setDashDrill(null);};
@@ -3618,95 +3618,32 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
-// ─── CREATOR PAGE ─────────────────────────────────────────
+// ─── CREATOR PAGE (placeholder) ───────────────────────────
 function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
   const [menuOpen,setMenuOpen]=useState(false);
-  const [nav,setNav]=useState(0);
-  const [winW,setWinW]=useState(()=>window.innerWidth);
-  useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
-  const isMobile=winW<700;
-  const goToDash=()=>setNav(0);
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
-  const NAV=["Dashboard","Clients","Workspace","Planner"];
-
-  const Menu=({dropLeft=false}:{dropLeft?:boolean})=>(
-    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
-      {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
-      <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:200,flexShrink:0}}>{initials}</button>
-      {menuOpen&&<div style={{position:"absolute",...(dropLeft?{left:0}:{right:0}),top:"calc(100% + 13px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
-        <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
-          <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
-          <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>Creator · Private</p>
-        </div>
-        <div style={{borderTop:`1px solid ${C.rule}`}}/>
-        <button onClick={()=>{setMenuOpen(false);logout();}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
-      </div>}
-    </div>
-  );
-
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
-      {/* ── NAV ── */}
-      <div style={{borderBottom:`1px solid ${C.rule}`,position:"sticky",top:0,background:C.bg,zIndex:100}}>
-        {isMobile?(
-          <>
-            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={goToDash}>
-              <AppLogo/>
-            </div>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
-              <div style={{display:"flex"}}>
-                {NAV.map((n,i)=>(
-                  <button key={i} onClick={()=>setNav(i)} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>
-                ))}
+      <div style={{borderBottom:`1px solid ${C.rule}`,padding:"0 20px",display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",minHeight:56,position:"sticky",top:0,background:C.bg,zIndex:100}}>
+        <div/>
+        <AppLogo/>
+        <div style={{display:"flex",justifyContent:"flex-end"}}>
+          <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+            {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
+            <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",flexShrink:0,position:"relative",zIndex:200}}>{initials}</button>
+            {menuOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
+              <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
+                <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
+                <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>Creator · Private</p>
               </div>
-              <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
-                <Menu dropLeft={false}/>
-              </div>
-            </div>
-          </>
-        ):(
-          <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 28px",height:56}}>
-            <div style={{display:"flex",alignItems:"center"}}>
-              <Menu dropLeft={true}/>
-            </div>
-            <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}>
-              <AppLogo size="web"/>
-            </div>
-            <div style={{display:"flex",justifyContent:"flex-end"}}>
-              {NAV.map((n,i)=>(
-                <button key={i} onClick={()=>setNav(i)} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>
-              ))}
-            </div>
+              <button onClick={()=>{setMenuOpen(false);logout();}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
+            </div>}
           </div>
-        )}
+        </div>
       </div>
-
-      {/* ── CONTENT ── */}
-      <div style={{maxWidth:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px"}}>
-        {nav===0&&(
-          <div style={{textAlign:"center",padding:"80px 20px"}}>
-            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Dashboard</p>
-            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
-          </div>
-        )}
-        {nav===1&&(
-          <div style={{textAlign:"center",padding:"80px 20px"}}>
-            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Clients</p>
-            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
-          </div>
-        )}
-        {nav===2&&(
-          <div style={{textAlign:"center",padding:"80px 20px"}}>
-            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Workspace</p>
-            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
-          </div>
-        )}
-        {nav===3&&(
-          <div style={{textAlign:"center",padding:"80px 20px"}}>
-            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Planner</p>
-            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
-          </div>
-        )}
+      <div style={{maxWidth:840,margin:"0 auto",padding:"80px 20px",textAlign:"center"}}>
+        <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Creator View</p>
+        <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>This space is being built.<br/>Check back soon.</p>
       </div>
     </div>
   );
