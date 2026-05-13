@@ -471,7 +471,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     );
   };
   return(
-    <div style={{padding:"120px 62px 90px",fontSize:9.5,lineHeight:1.5,position:"relative",minHeight:841,fontFamily:SANS,color:C.black,background:C.bg}}>
+    <div style={{padding:"120px 62px 90px",fontSize:9.5,lineHeight:1.5,position:"relative",fontFamily:SANS,color:C.black,background:C.bg}}>
       <div style={{margin:"0 0 22px"}}>
         <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 28px"}}>{titles[type]||type}</h1>
         {type!=="contract"&&<p style={{fontSize:7.5,color:C.muted,margin:0}}>{creatorFullLine}</p>}
@@ -594,7 +594,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const docRef=useRef<HTMLDivElement>(null);
   const [docHeight,setDocHeight]=useState(841);
   const PAGE_H=841;
-  const CHROME_H=136; // header (~49px) + footer (~87px) — only add a page if real body content overflows
+  const CHROME_H=210; // top padding (120px) + bottom padding (90px) inside A4 div — only add a page if real body content overflows
   const numPages=docHeight>PAGE_H+CHROME_H?Math.ceil(docHeight/PAGE_H):1;
   const s={...SETTINGS_DEFAULT,...(settings||{})};
   const isDE=lang==="de";
