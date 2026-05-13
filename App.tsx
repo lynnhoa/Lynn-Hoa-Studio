@@ -4052,13 +4052,11 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
   const [selectedId,setSelectedId]=useState<string|null>(null);
   const [overlayId,setOverlayId]=useState<string|null>(null);
 
-  // Wed=3 Thu=4 Fri=5 Sat=6 Sun=0 — 5 day columns
   const COLS=[{label:"Wed",day:3},{label:"Thu",day:4},{label:"Fri",day:5},{label:"Sat",day:6},{label:"Sun",day:0}];
 
-  // get Wednesday of current week + offset
-  const getWed=(offset: number)=>{
-    const d=new Date(); d.setHours(0,0,0,0);
-    const dow=d.getDay(); // 0=Sun
+  const getWed=(offset:number)=>{
+    const d=new Date();d.setHours(0,0,0,0);
+    const dow=d.getDay();
     const diffToWed=((3-dow)+7)%7;
     d.setDate(d.getDate()+diffToWed+offset*7);
     return d;
@@ -4066,27 +4064,17 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
   const wed=getWed(weekOffset);
   const weekDays=COLS.map(col=>{
     const d=new Date(wed);
-    const diffFromWed=((col.day-3)+7)%7;
-    d.setDate(wed.getDate()+diffFromWed);
+    const diff=((col.day-3)+7)%7;
+    d.setDate(wed.getDate()+diff);
     return{...col,date:d};
   });
-  const toDateStr=(d: Date)=>d.toISOString().split("T")[0];
-  const isToday=(d: Date)=>{const t=new Date();return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear();};
-  const isPast=(d: Date)=>{const t=new Date();t.setHours(0,0,0,0);return d<t;};
-
-  const s=weekDays[0].date;
-  const e=weekDays[4].date;
+  const toDateStr=(d:Date)=>d.toISOString().split("T")[0];
+  const isToday=(d:Date)=>{const t=new Date();return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear();};
+  const isPast=(d:Date)=>{const t=new Date();t.setHours(0,0,0,0);return d<t&&!isToday(d);};
   const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const weekLabel=s.getMonth()===e.getMonth()
-    ?`${s.getDate()}–${e.getDate()} ${MO[e.getMonth()]} ${e.getFullYear()}`
-    :`${s.getDate()} ${MO[s.getMonth()]} – ${e.getDate()} ${MO[e.getMonth()]} ${e.getFullYear()}`;
-
-  // min week = start of current year
-  const minOffset=(()=>{
-    const t=new Date(); t.setHours(0,0,0,0);
-    const jan1=new Date(t.getFullYear(),0,1);
-    return-Math.ceil((t.getTime()-jan1.getTime())/(7*864e5))-1;
-  })();
+  const s=weekDays[0].date;const e=weekDays[4].date;
+  const weekLabel=s.getMonth()===e.getMonth()?`${s.getDate()}–${e.getDate()} ${MO[e.getMonth()]} ${e.getFullYear()}`:`${s.getDate()} ${MO[s.getMonth()]} – ${e.getDate()} ${MO[e.getMonth()]} ${e.getFullYear()}`;
+  const minOffset=(()=>{const t=new Date();t.setHours(0,0,0,0);const jan1=new Date(t.getFullYear(),0,1);return-Math.ceil((t.getTime()-jan1.getTime())/(7*864e5))-1;})();
 
   const allItems=getWsItems(clients);
   const pool=allItems.filter((it:any)=>!it.plannerDate).sort((a:any,b:any)=>{
@@ -4094,9 +4082,9 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
     const bo=isOverdue(b.deadline)?0:isThisWeek(b.deadline)?1:2;
     return ao-bo;
   });
-  const itemsForDay=(dateStr: string)=>allItems.filter((it:any)=>it.plannerDate===dateStr);
+  const itemsForDay=(dateStr:string)=>allItems.filter((it:any)=>it.plannerDate===dateStr);
 
-  const assignDay=(itemId: string,dateStr: string|null)=>{
+  const assignDay=(itemId:string,dateStr:string|null)=>{
     const item=allItems.find((it:any)=>it.id===itemId);
     if(!item)return;
     setClients((prev:any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr:any)=>pr.id!==item.projectId?pr:{...pr,
@@ -4112,17 +4100,14 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
     })}));
   };
 
-  // deadline markers — one per project per day
   const deadlineMarkers=(dateStr:string)=>{
-    const marks: {name:string,color:string}[]=[];
+    const marks:{name:string,color:string}[]=[];
     clients.forEach((c:any)=>c.projects.filter((pr:any)=>pr.status==="production"&&pr.deliveryDate===dateStr).forEach((pr:any)=>{
-      const col=isOverdue(pr.deliveryDate)?C.red:isThisWeek(pr.deliveryDate)?C.amber:C.muted;
-      marks.push({name:c.name,color:col});
+      marks.push({name:c.name,color:isOverdue(pr.deliveryDate)?C.red:isThisWeek(pr.deliveryDate)?C.amber:C.muted});
     }));
     return marks;
   };
 
-  // card component
   const PlannerCard=({item,inPool,readOnly}:{item:any,inPool:boolean,readOnly:boolean})=>{
     const cs=wsCatPill(item.category);
     const catLbl=item.category==="Influencer"?"Collab":item.category;
@@ -4131,7 +4116,6 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
     const dlColor=isOverdue(item.deadline)?C.red:isThisWeek(item.deadline)?C.amber:C.muted;
     const isSelected=selectedId===item.id;
     const isOverlayOpen=overlayId===item.id;
-
     const chkFinished=["Finished","Reviewed","Delivered"].includes(item.status);
     const chkReviewed=["Reviewed","Delivered"].includes(item.status);
     const chkDelivered=item.status==="Delivered";
@@ -4142,39 +4126,18 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
       else next=chkDelivered?"Reviewed":"Delivered";
       setItemStatus(item,next);
     };
-    const cbBox=(checked:boolean,color:string)=>({
-      width:16,height:16,borderRadius:2,border:`1.5px solid ${checked?color:C.rule}`,
-      background:checked?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:readOnly?"default":"pointer",flexShrink:0,
-    });
-
+    const cbBox=(checked:boolean,color:string):any=>({width:16,height:16,borderRadius:2,border:`1.5px solid ${checked?color:C.rule}`,background:checked?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:readOnly?"default":"pointer",flexShrink:0});
     return(
       <div style={{position:"relative" as const}}>
-        <div
-          onClick={()=>{
-            if(inPool&&isMobile){setSelectedId(isSelected?null:item.id);return;}
-            if(!inPool&&!readOnly){setOverlayId(isOverlayOpen?null:item.id);}
-          }}
-          style={{
-            borderLeft:`3px solid ${borderCol}`,
-            border:`1px solid ${isSelected?C.amber:C.rule}`,
-            borderLeft:`3px solid ${borderCol}`,
-            borderRadius:2,padding:"7px 8px",background:C.bg,
-            opacity:isDelivered?0.55:1,
-            cursor:inPool?(isMobile?"pointer":"grab"):"pointer",
-            width:inPool?"160px":"100%",
-            boxSizing:"border-box" as const,
-            flexShrink:0,
-            outline:isSelected?`2px solid ${C.amber}`:"none",
-          }}>
+        <div onClick={e=>{e.stopPropagation();if(inPool&&isMobile){setSelectedId(isSelected?null:item.id);return;}if(!inPool&&!readOnly){setOverlayId(isOverlayOpen?null:item.id);}}}
+          style={{borderLeft:`3px solid ${borderCol}`,border:`1px solid ${isSelected?C.amber:C.rule}`,borderLeft:`3px solid ${borderCol}`,borderRadius:2,padding:"7px 8px",background:C.bg,opacity:isDelivered?0.55:1,cursor:inPool?(isMobile?"pointer":"grab"):"pointer",width:inPool?"160px":"100%",boxSizing:"border-box" as const,flexShrink:0,outline:isSelected?`2px solid ${C.amber}`:"none"}}>
           <div style={{fontSize:12,color:isDelivered?C.muted:C.black,textDecoration:isDelivered?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginBottom:3}}>{item.name}</div>
           <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
-            <span style={{fontSize:10,color:C.muted,letterSpacing:"0.04em",textTransform:"uppercase" as const}}>{item.clientName}</span>
+            <span style={{fontSize:10,color:C.muted,letterSpacing:"0.04em",textTransform:"uppercase" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.clientName}</span>
             <span style={{fontSize:9,padding:"1px 5px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{catLbl}</span>
           </div>
           {item.deadline&&<div style={{fontSize:10,color:dlColor}}>{fmtD(item.deadline)}</div>}
         </div>
-
-        {/* status overlay — only on scheduled cards */}
         {isOverlayOpen&&!inPool&&!readOnly&&(
           <div onClick={e=>e.stopPropagation()} style={{position:"absolute" as const,top:0,left:0,right:0,zIndex:20,background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"10px 10px 8px",boxShadow:"0 4px 16px rgba(0,0,0,0.12)"}}>
             <div style={{fontSize:12,fontWeight:"500",color:C.black,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.name}</div>
@@ -4194,7 +4157,7 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
                 );
               })}
             </div>
-            <button onClick={()=>{assignDay(item.id,null);setOverlayId(null);}} style={{fontSize:9,color:C.muted,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"3px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.04em",width:"100%"}}>Remove from day</button>
+            <button onClick={()=>{assignDay(item.id,null);setOverlayId(null);}} style={{fontSize:9,color:C.muted,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"3px 8px",cursor:"pointer",fontFamily:"sans-serif",letterSpacing:"0.04em",width:"100%"}}>Remove from day</button>
           </div>
         )}
       </div>
@@ -4203,7 +4166,7 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
 
   if(allItems.length===0)return(
     <div>
-      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 20px"}}>Planner</h2>
+      <h2 style={{fontFamily:"Georgia,serif",fontSize:24,fontWeight:"normal",margin:"0 0 20px"}}>Planner</h2>
       <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const}}>
         <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
         <p style={{fontSize:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
@@ -4213,21 +4176,18 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
 
   return(
     <div onClick={()=>{setOverlayId(null);if(!isMobile)setSelectedId(null);}}>
-
-      {/* header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Planner</h2>
+        <h2 style={{fontFamily:"Georgia,serif",fontSize:24,fontWeight:"normal",margin:0}}>Planner</h2>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <button onClick={()=>setWeekOffset(0)} style={{padding:"4px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const}}>Today</button>
+          <button onClick={()=>setWeekOffset(0)} style={{padding:"4px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:"sans-serif",fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const}}>Today</button>
           <button onClick={()=>setWeekOffset(w=>Math.max(minOffset,w-1))} disabled={weekOffset<=minOffset} style={{width:26,height:26,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:weekOffset<=minOffset?"default":"pointer",color:weekOffset<=minOffset?C.light:C.muted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-          <span style={{fontSize:11,color:C.muted,minWidth:isMobile?120:160,textAlign:"center" as const}}>{weekLabel}</span>
+          <span style={{fontSize:11,color:C.muted,minWidth:isMobile?100:160,textAlign:"center" as const}}>{weekLabel}</span>
           <button onClick={()=>setWeekOffset(w=>w+1)} style={{width:26,height:26,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
       </div>
 
-      {/* pool */}
       <div style={{marginBottom:14}}>
-        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Unscheduled {pool.length>0?`(${pool.length})`:""}</p>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Unscheduled{pool.length>0?` (${pool.length})`:""}</p>
         {pool.length===0
           ?<p style={{fontSize:11,color:C.light}}>All deliverables scheduled.</p>
           :<div style={{display:"flex",gap:8,overflowX:"auto" as const,paddingBottom:6}}>
@@ -4236,45 +4196,36 @@ function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients
         }
       </div>
 
-      {/* mobile instruction */}
-      {isMobile&&selectedId&&<p style={{fontSize:11,color:C.amber,margin:"0 0 8px",letterSpacing:"0.04em"}}>Tap a day to schedule</p>}
+      {isMobile&&selectedId&&<p style={{fontSize:11,color:C.amber,margin:"0 0 8px"}}>Tap a day to schedule</p>}
 
-      {/* calendar grid */}
       <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS.length},minmax(0,1fr))`,gap:1,background:C.rule,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
         {weekDays.map((col,i)=>{
           const dateStr=toDateStr(col.date);
           const dayItems=itemsForDay(dateStr);
           const marks=deadlineMarkers(dateStr);
-          const past=isPast(col.date)&&!isToday(col.date);
+          const past=isPast(col.date);
           return(
-            <div key={i}
-              onClick={e=>{e.stopPropagation();if(isMobile&&selectedId){assignDay(selectedId,dateStr);}}}
-              style={{background:C.bg,minHeight:isMobile?120:360,cursor:isMobile&&selectedId?"pointer":"default"}}>
-              {/* day header */}
-              <div style={{padding:"8px 8px 6px",borderBottom:`1px solid ${C.rule}`,textAlign:"center" as const,background:isToday(col.date)?"rgba(26,26,26,0.04)":C.bg}}>
+            <div key={i} onClick={e=>{e.stopPropagation();if(isMobile&&selectedId)assignDay(selectedId,dateStr);}}
+              style={{background:C.bg,minHeight:isMobile?100:360,cursor:isMobile&&selectedId?"pointer":"default"}}>
+              <div style={{padding:"8px 6px 6px",borderBottom:`1px solid ${C.rule}`,textAlign:"center" as const,background:isToday(col.date)?"rgba(26,26,26,0.04)":C.bg}}>
                 <p style={{fontSize:9,color:isToday(col.date)?C.black:past?C.light:C.muted,letterSpacing:"0.1em",textTransform:"uppercase" as const,margin:"0 0 2px",fontWeight:isToday(col.date)?"600":"400"}}>{col.label}</p>
-                <p style={{fontFamily:isToday(col.date)?SERIF:SANS,fontSize:isToday(col.date)?17:12,color:isToday(col.date)?C.black:past?C.light:C.muted,margin:0,fontWeight:"normal",lineHeight:1}}>{col.date.getDate()}</p>
+                <p style={{fontFamily:isToday(col.date)?"Georgia,serif":"sans-serif",fontSize:isToday(col.date)?17:12,color:isToday(col.date)?C.black:past?C.light:C.muted,margin:0,lineHeight:1}}>{col.date.getDate()}</p>
               </div>
-              {/* deadline markers */}
               {marks.map((m,mi)=>(
-                <div key={mi} style={{fontSize:9,color:m.color,padding:"3px 6px",borderBottom:`1px solid ${C.rule}`,letterSpacing:"0.04em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>⚑ {m.name}</div>
+                <div key={mi} style={{fontSize:9,color:m.color,padding:"3px 6px",borderBottom:`1px solid ${C.rule}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>⚑ {m.name}</div>
               ))}
-              {/* cards */}
               <div style={{padding:"6px 5px",display:"flex",flexDirection:"column" as const,gap:5}}>
                 {dayItems.map((item:any)=>(
                   <div key={item.id} onClick={e=>e.stopPropagation()}>
                     <PlannerCard item={item} inPool={false} readOnly={past}/>
                   </div>
                 ))}
-                {dayItems.length===0&&!isMobile&&(
-                  <div style={{textAlign:"center" as const,padding:"20px 0",color:C.light,fontSize:16}}>+</div>
-                )}
+                {dayItems.length===0&&!isMobile&&<div style={{textAlign:"center" as const,padding:"20px 0",color:C.light,fontSize:16}}>+</div>}
               </div>
             </div>
           );
         })}
       </div>
-
     </div>
   );
 }
@@ -4864,7 +4815,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
         )}
       </div>
       {/* ── CONTENT ── */}
-      <div style={{maxWidth:(nav===1&&creatorClientSel||nav===2)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:(nav===1&&creatorClientSel||nav===2||nav===3)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile} clients={clients}/>}
         {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
         {nav===2&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
