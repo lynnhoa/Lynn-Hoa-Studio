@@ -3619,37 +3619,369 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
 }
 
 // ─── CREATOR WORKSPACE ────────────────────────────────────
-function CreatorWorkspace({isMobile}: {isMobile:boolean}) {
-  const LANES=[
-    {key:"film",label:"To Film",color:C.amber},
-    {key:"edit",label:"To Edit",color:C.black},
-    {key:"done",label:"Finished",color:C.green},
-  ];
+const WS_STATUSES=["Not Started","In Production","In Review","Done"];
+
+function getWsCategory(lineName: string): string {
+  const n=(lineName||"").toLowerCase();
+  if(n.includes("hero")||n.includes("editorial")||n.includes("photo story")||n.includes("mini set")||n.includes("hero image"))return"Editorial";
+  if(n.includes("ugc")||n.includes("campaign video"))return"UGC";
+  return"Influencer";
+}
+
+function wsStatusIcon(st: string){
+  if(st==="Not Started")return{icon:"○",color:C.light};
+  if(st==="In Production")return{icon:"▶",color:C.amber};
+  if(st==="In Review")return{icon:"⚙",color:C.black};
+  return{icon:"✓",color:C.green};
+}
+
+function wsCatPill(cat: string){
+  if(cat==="UGC")return{bg:"#fdf5ee",border:"#e8d8c8",color:C.amber};
+  if(cat==="Editorial")return{bg:"#f0f5f0",border:"#b8d4b8",color:C.green};
+  return{bg:"#f0f0f5",border:"#c8c8e0",color:"#6a6aaa"};
+}
+
+function getWsItems(clients: any[]): any[] {
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+  const items: any[]=[];
+  clients.forEach((c: any)=>{
+    c.projects.filter((pr: any)=>pr.status==="production").forEach((pr: any)=>{
+      (pr.qd?.lines||[]).forEach((ln: any,li: number)=>{
+        if(!ln.name)return;
+        if(skip.some(s=>ln.name.toLowerCase().includes(s)))return;
+        const qty=parseInt(ln.qty)||1;
+        for(let q=0;q<qty;q++){
+          const id=`${pr.id}_ln${li}_q${q}`;
+          items.push({
+            id,
+            name:(pr.workspaceNames||{})[id]||ln.name+(qty>1?` ${q+1}`:""),
+            defaultName:ln.name+(qty>1?` ${q+1}`:""),
+            clientId:c.id,
+            clientName:c.name,
+            projectId:pr.id,
+            projectName:pr.name,
+            deadline:pr.deliveryDate||null,
+            category:getWsCategory(ln.name),
+            status:(pr.workspaceStatus||{})[id]||"Not Started",
+            plannerDate:(pr.workspacePlanner||{})[id]||null,
+            notes:(pr.workspaceNotes||{})[id]||"",
+          });
+        }
+      });
+    });
+  });
+  return items;
+}
+
+function isThisWeek(d: string|null): boolean {
+  if(!d)return false;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const day=now.getDay();
+  const mon=new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1));
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const dt=new Date(d); dt.setHours(0,0,0,0);
+  return dt>=mon&&dt<=sun;
+}
+
+function isOverdue(d: string|null): boolean {
+  if(!d)return false;
+  const now=new Date(); now.setHours(0,0,0,0);
+  return new Date(d)<now;
+}
+
+function fmtDeadline(d: string|null): string {
+  if(!d)return"No deadline";
+  return fmtD(d);
+}
+
+function plannerDayLabel(d: string|null): string|null {
+  if(!d)return null;
+  const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  return days[new Date(d).getDay()];
+}
+
+function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clients:any[],setClients:any}) {
+  const [group,setGroup]=useState<"Urgency"|"Client"|"Category"|"Status">("Urgency");
+  const [search,setSearch]=useState("");
+  const [collapsed,setCollapsed]=useState<Record<string,boolean>>({});
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [editingVal,setEditingVal]=useState("");
+  const [noteId,setNoteId]=useState<string|null>(null);
+  const [noteVal,setNoteVal]=useState("");
+  const [confirmInvoice,setConfirmInvoice]=useState<{cid:string,pid:string,pname:string,cname:string}|null>(null);
+  const [confirmDelete,setConfirmDelete]=useState<{id:string,clientId:string,projectId:string}|null>(null);
+
+  const allItems=getWsItems(clients);
+
+  const filtered=search
+    ?allItems.filter(it=>it.name.toLowerCase().includes(search.toLowerCase())||it.clientName.toLowerCase().includes(search.toLowerCase()))
+    :allItems;
+
+  // ── mutators ──
+  const advanceStatus=(item: any)=>{
+    if(item.status==="Done")return;
+    const next=WS_STATUSES[WS_STATUSES.indexOf(item.status)+1];
+    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceStatus:{...(pr.workspaceStatus||{}),[item.id]:next},
+      workspaceStatusHistory:{...(pr.workspaceStatusHistory||{}),[item.id]:[...((pr.workspaceStatusHistory||{})[item.id]||[]),{status:next,date:today()}]}
+    })}));
+  };
+
+  const saveName=(item: any,val: string)=>{
+    const trimmed=val.trim();
+    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceNames:{...(pr.workspaceNames||{}),[item.id]:trimmed||item.defaultName}
+    })}));
+    setEditingId(null);
+  };
+
+  const saveNote=(item: any,val: string)=>{
+    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceNotes:{...(pr.workspaceNotes||{}),[item.id]:val.trim()}
+    })}));
+    setNoteId(null);
+  };
+
+  const deleteItem=(item: any)=>{
+    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceDeleted:[...((pr.workspaceDeleted||[])),item.id]
+    })}));
+    setConfirmDelete(null);
+  };
+
+  const confirmReadyToInvoice=(cid: string,pid: string)=>{
+    setClients((prev: any[])=>prev.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,readyToInvoice:true,readyToInvoiceAt:new Date().toISOString()})}));
+    setConfirmInvoice(null);
+  };
+
+  // Filter out deleted items
+  const activeItems=filtered.filter(it=>{
+    const cl=clients.find((c: any)=>c.id===it.clientId);
+    const pr=cl?.projects.find((p: any)=>p.id===it.projectId);
+    return!(pr?.workspaceDeleted||[]).includes(it.id);
+  });
+
+  // ── grouping ──
+  type GroupDef={key:string,label:string,items:any[]};
+  let groups: GroupDef[]=[];
+
+  if(group==="Urgency"){
+    const overdue=activeItems.filter(it=>it.status!=="Done"&&isOverdue(it.deadline));
+    const week=activeItems.filter(it=>it.status!=="Done"&&!isOverdue(it.deadline)&&isThisWeek(it.deadline));
+    const later=activeItems.filter(it=>it.status!=="Done"&&!isOverdue(it.deadline)&&!isThisWeek(it.deadline));
+    const done=activeItems.filter(it=>it.status==="Done");
+    groups=[
+      {key:"overdue",label:`OVERDUE`,items:overdue},
+      {key:"week",label:`DUE THIS WEEK`,items:week},
+      {key:"later",label:`LATER`,items:later},
+      {key:"done",label:`DONE`,items:done},
+    ];
+  } else if(group==="Client"){
+    const byClient: Record<string,any[]>={};
+    activeItems.forEach(it=>{
+      const k=`${it.clientName}|${it.projectId}|${it.projectName}`;
+      if(!byClient[k])byClient[k]=[];
+      byClient[k].push(it);
+    });
+    groups=Object.entries(byClient).map(([k,items])=>{
+      const [cn,,pn]=k.split("|");
+      return{key:k,label:`${cn.toUpperCase()} — ${pn}`,items};
+    });
+  } else if(group==="Category"){
+    ["Influencer","UGC","Editorial"].forEach(cat=>{
+      const items=activeItems.filter(it=>it.category===cat);
+      groups.push({key:cat,label:cat.toUpperCase(),items});
+    });
+  } else {
+    WS_STATUSES.forEach(st=>{
+      const items=activeItems.filter(it=>it.status===st);
+      groups.push({key:st,label:st.toUpperCase(),items});
+    });
+  }
+
+  const toggleGroup=(key: string)=>setCollapsed(p=>({...p,[key]:!p[key]}));
+
+  // Ready to Invoice — per project, only in Client group or always show at bottom
+  const readyProjects: {cid:string,pid:string,pname:string,cname:string}[]=[];
+  clients.forEach((c: any)=>c.projects.filter((pr: any)=>pr.status==="production"&&!pr.readyToInvoice).forEach((pr: any)=>{
+    const items=getWsItems([{...c,projects:[pr]}]);
+    if(items.length>0&&items.every(it=>it.status==="Done"))readyProjects.push({cid:c.id,pid:pr.id,pname:pr.name,cname:c.name});
+  }));
+
+  const deadlineColor=(item: any)=>{
+    if(isOverdue(item.deadline))return C.red;
+    if(isThisWeek(item.deadline))return C.amber;
+    return C.muted;
+  };
 
   return(
     <div>
       {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Workspace</h2>
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 14px"}}>Workspace</h2>
+        {/* Group toggles */}
+        <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:12}}>
+          {(["Urgency","Client","Category","Status"] as const).map(g=>(
+            <button key={g} onClick={()=>setGroup(g)}
+              style={{padding:"5px 14px",border:`1px solid ${group===g?C.black:C.rule}`,borderRadius:2,background:group===g?C.black:"none",color:group===g?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:10,letterSpacing:"0.08em"}}>
+              {g}
+            </button>
+          ))}
+        </div>
+        {/* Search */}
+        <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}
+          style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}/>
       </div>
 
-      {/* 3 Lanes */}
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:10,alignItems:"start"}}>
-        {LANES.map(lane=>(
-          <div key={lane.key} style={{border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
-            {/* Lane header */}
-            <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",gap:8}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:lane.color,flexShrink:0}}/>
-              <span style={{fontSize:10,color:C.black,letterSpacing:"0.1em",textTransform:"uppercase" as const,fontWeight:"600"}}>{lane.label}</span>
-              <span style={{fontSize:10,color:C.light,marginLeft:"auto"}}>0</span>
+      {/* Empty state */}
+      {allItems.length===0&&(
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const,marginTop:20}}>
+          <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
+          <p style={{fontSize:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
+        </div>
+      )}
+
+      {/* Groups */}
+      {groups.filter(g=>g.items.length>0||(g.key==="overdue"&&group==="Urgency")).map(g=>{
+        const isOpen=!collapsed[g.key];
+        const isOverdueGroup=g.key==="overdue";
+        const isDoneGroup=g.key==="done";
+        return(
+          <div key={g.key} style={{marginBottom:20}}>
+            {/* Group header */}
+            <div onClick={()=>toggleGroup(g.key)}
+              style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,cursor:"pointer",userSelect:"none" as const}}>
+              <span style={{fontSize:9,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.muted,fontWeight:"600"}}>{g.label}</span>
+              <span style={{fontSize:9,color:isOverdueGroup&&g.items.length>0?C.red:C.light}}>{g.items.length}</span>
+              <span style={{fontSize:9,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
             </div>
-            {/* Empty drop zone */}
-            <div style={{minHeight:480,padding:"10px 8px"}}>
-              <p style={{fontSize:10,color:C.light,textAlign:"center" as const,marginTop:40,letterSpacing:"0.04em"}}>No items</p>
+            <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
+
+            {isOpen&&g.items.map(item=>{
+              const {icon,color:stColor}=wsStatusIcon(item.status);
+              const catStyle=wsCatPill(item.category);
+              const isEditing=editingId===item.id;
+              const isNoting=noteId===item.id;
+              const dlColor=deadlineColor(item);
+              const dayTag=plannerDayLabel(item.plannerDate);
+              const isDone=item.status==="Done";
+
+              return(
+                <div key={item.id}
+                  style={{display:"flex",alignItems:"center",gap:isMobile?6:10,padding:"9px 0",borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
+
+                  {/* Status icon */}
+                  <button onClick={()=>advanceStatus(item)}
+                    style={{width:22,height:22,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:isDone?"default":"pointer",color:stColor,fontSize:14,padding:0,lineHeight:1}}>
+                    {icon}
+                  </button>
+
+                  {/* Category pill */}
+                  <span style={{fontSize:9,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
+                    {item.category}
+                  </span>
+
+                  {/* Name — editable */}
+                  <div style={{flex:1,minWidth:0}}>
+                    {isEditing?(
+                      <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
+                        onBlur={()=>saveName(item,editingVal)}
+                        onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
+                        style={{width:"100%",fontFamily:SANS,fontSize:12,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
+                    ):(
+                      <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
+                        style={{fontSize:12,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                        {item.name}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right side */}
+                  <div style={{display:"flex",alignItems:"center",gap:isMobile?4:8,flexShrink:0}}>
+                    {/* Client */}
+                    {!isMobile&&<span style={{fontSize:10,color:C.muted,letterSpacing:"0.04em"}}>{item.clientName.toUpperCase()}</span>}
+
+                    {/* Deadline */}
+                    <span style={{fontSize:10,color:dlColor,fontWeight:dlColor===C.red?"600":"400",minWidth:isMobile?undefined:54,textAlign:"right" as const}}>
+                      {isDone?`Done ${fmtD(item.deadline)||""}`:`${fmtDeadline(item.deadline)}`}
+                    </span>
+
+                    {/* Planned day tag */}
+                    {dayTag&&<span style={{fontSize:9,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white}}>{dayTag}</span>}
+
+                    {/* Notes icon */}
+                    {!isNoting&&(
+                      <button onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}}
+                        style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:item.notes?C.amber:C.light,padding:0,lineHeight:1,flexShrink:0}}>
+                        {item.notes?"💬":"○"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Note inline input */}
+            {isOpen&&g.items.map(item=>noteId===item.id&&(
+              <div key={`note-${item.id}`} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 0 8px 32px",borderBottom:`1px solid ${C.rule}`}}>
+                <input autoFocus placeholder="Add a note…" value={noteVal} onChange={e=>setNoteVal(e.target.value)}
+                  onBlur={()=>saveNote(item,noteVal)}
+                  onKeyDown={e=>{if(e.key==="Enter")saveNote(item,noteVal);if(e.key==="Escape"){setNoteId(null);}}}
+                  maxLength={120}
+                  style={{flex:1,fontFamily:SANS,fontSize:11,color:C.black,border:"none",borderBottom:`1px solid ${C.rule}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
+                <button onClick={()=>saveNote(item,noteVal)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:"0.06em",padding:0}}>Save</button>
+                <button onClick={()=>setNoteId(null)} style={{fontSize:9,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0}}>✕</button>
+              </div>
+            ))}
+
+          </div>
+        );
+      })}
+
+      {/* Ready to Invoice banners */}
+      {readyProjects.map(rp=>(
+        <div key={rp.pid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.greenBorder}`,background:C.greenBg,borderRadius:2,padding:"12px 16px",marginTop:12}}>
+          <span style={{fontSize:11,color:C.green}}>✓ {rp.cname} — {rp.pname} · all done</span>
+          <button onClick={()=>setConfirmInvoice(rp)}
+            style={{padding:"6px 16px",border:`1px solid ${C.green}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,color:C.green,letterSpacing:"0.1em",textTransform:"uppercase" as const,fontWeight:"600"}}>
+            Ready to Invoice
+          </button>
+        </div>
+      ))}
+
+      {/* Confirm Invoice Dialog */}
+      {confirmInvoice&&createPortal(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setConfirmInvoice(null)}>
+          <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",maxWidth:340,width:"90%",boxShadow:"0 4px 24px rgba(0,0,0,0.15)"}}
+            onClick={e=>e.stopPropagation()}>
+            <p style={{fontSize:13,color:C.black,margin:"0 0 8px",fontFamily:SERIF}}>Signal ready to invoice?</p>
+            <p style={{fontSize:11,color:C.muted,margin:"0 0 20px"}}>This will mark {confirmInvoice.cname} — {confirmInvoice.pname} as production complete and lock it read-only.</p>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setConfirmInvoice(null)} style={{padding:"6px 16px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.muted}}>Cancel</button>
+              <button onClick={()=>confirmReadyToInvoice(confirmInvoice.cid,confirmInvoice.pid)}
+                style={{padding:"6px 16px",border:`1px solid ${C.green}`,borderRadius:2,background:C.green,cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.white,letterSpacing:"0.06em"}}>Confirm</button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>,document.body
+      )}
+
+      {/* Confirm Delete Dialog */}
+      {confirmDelete&&createPortal(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setConfirmDelete(null)}>
+          <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",maxWidth:320,width:"90%",boxShadow:"0 4px 24px rgba(0,0,0,0.15)"}}
+            onClick={e=>e.stopPropagation()}>
+            <p style={{fontSize:13,color:C.black,margin:"0 0 8px",fontFamily:SERIF}}>Delete this deliverable?</p>
+            <p style={{fontSize:11,color:C.muted,margin:"0 0 20px"}}>Use only if this item was dropped from the contract informally. This cannot be undone.</p>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setConfirmDelete(null)} style={{padding:"6px 16px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.muted}}>Cancel</button>
+              <button onClick={()=>deleteItem(confirmDelete)}
+                style={{padding:"6px 16px",border:`1px solid ${C.red}`,borderRadius:2,background:C.red,cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.white}}>Delete</button>
+            </div>
+          </div>
+        </div>,document.body
+      )}
     </div>
   );
 }
@@ -4145,7 +4477,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
       <div style={{maxWidth:(nav===1||nav===2||nav===3)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile}/>}
         {nav===1&&<CreatorClients clients={clients} setClients={setClients} isMobile={isMobile}/>}
-        {nav===2&&<CreatorWorkspace isMobile={isMobile}/>}
+        {nav===2&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
         {nav===3&&<CreatorPlanner isMobile={isMobile}/>}
       </div>
     </div>
