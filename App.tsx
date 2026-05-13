@@ -4614,8 +4614,8 @@ function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) 
             return(
               <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 7px",marginBottom:4,background:dlBg(it.deadline),border:`1px solid ${dlBorder(it.deadline)}`,borderRadius:2}}>
                 <div style={{minWidth:0,flex:1}}>
-                  <span style={{fontSize:11,fontWeight:"500",color:dlColor(it.deadline),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
-                  <span style={{fontSize:10,color:dlColor(it.deadline),opacity:0.8}}>{it.clientName}</span>
+                  <span style={{fontSize:13,fontWeight:"500",color:dlColor(it.deadline),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
+                  <span style={{fontSize:11,color:dlColor(it.deadline),opacity:0.8}}>{it.clientName}</span>
                 </div>
                 <div style={{textAlign:"right" as const,flexShrink:0,marginLeft:8}}>
                   <span style={{fontSize:11,fontWeight:"600",color:dlColor(it.deadline)}}>{d!==null?(d<0?`${Math.abs(d)}d overdue`:`${d}d`):"—"}</span>
@@ -4632,8 +4632,8 @@ function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) 
           {recentDelivered.map((it:any,i:number)=>(
             <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<recentDelivered.length-1?`1px solid ${C.rule}`:"none"}}>
               <div style={{minWidth:0,flex:1}}>
-                <span style={{fontSize:11,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
-                <span style={{fontSize:10,color:C.muted}}>{it.clientName}</span>
+                <span style={{fontSize:13,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
+                <span style={{fontSize:11,color:C.muted}}>{it.clientName}</span>
               </div>
               <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:8}}>{fmtD(it.deliveredDate)}</span>
             </div>
