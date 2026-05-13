@@ -1884,7 +1884,10 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               ))}
               {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
               {(pr.renewals||[]).map((r: any,ri: number)=>(
-                r.doc&&<B key={ri} v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px",color:r.paid?C.black:C.green,borderColor:r.paid?C.rule:C.greenBorder}} onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})}>Renewal {ri+1}</B>
+                r.doc&&<span key={ri} style={{display:"inline-flex",alignItems:"center",gap:2}}>
+                  <B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px",color:r.paid?C.black:C.green,borderColor:r.paid?C.rule:C.greenBorder}} onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})}>Renewal {ri+1}</B>
+                  {!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.filter((_: any,i: number)=>i!==ri).map((rn: any,newRi: number)=>({...rn}))})}))} style={{width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:12,padding:0,lineHeight:1,flexShrink:0}} title="Delete renewal">✕</button>}
+                </span>
               ))}
             </div>
 
