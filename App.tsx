@@ -2207,6 +2207,18 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     </div>
   );
 
+  // ── Shared drill layout helpers ──
+  const DrillBack=({onClick}: {onClick:()=>void})=>(
+    <button onClick={onClick} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+  );
+  const DrillHeader=({title,count,sub}: {title:string,count?:any,sub?:string})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:sub?4:20,flexWrap:"wrap" as const,gap:8}}>
+      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>{title}</h2>
+      {count!==undefined&&<span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{count}</span>}
+      {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 16px",width:"100%"}}>{sub}</p>}
+    </div>
+  );
+
   // ── Active Projects drill ──
   if(drill==="projects"){
     const FILTERS=[["all","All"],["production","Production"],["contracted","Contracted"],["invoiced","Invoiced"],["quoted","Quoted"]];
@@ -2247,21 +2259,15 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
 
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4,flexWrap:"wrap",gap:8}}>
-          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Active Projects</h2>
-          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(totalActive)}</span>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:6}}>
-          <p style={{fontSize:10.5,color:C.muted,margin:0}}>{filteredProjects.length} of {activeProjects.length} project{activeProjects.length!==1?"s":""}</p>
-          <div style={{display:"flex",gap:5}}>
-            <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
-              {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-            </S>
-            <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
-              {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-            </S>
-          </div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Active Projects" count={fmt(totalActive)} sub={`${filteredProjects.length} of ${activeProjects.length} project${activeProjects.length!==1?"s":""} in progress`}/>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:5,marginBottom:16}}>
+          <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+            {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </S>
+          <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+            {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </S>
         </div>
 
         {filteredProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No projects match this filter.</p>}
@@ -2278,15 +2284,11 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       </div>
     );
   }
-  if(drill==="year"){
+  if(drill==="revenue"){
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:18}}>
-          <p style={{fontSize:10.5,color:C.muted,margin:0}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
-          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(rev)}</span>
-        </div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Revenue" count={fmt(rev)} sub={`${allYears.length} year${allYears.length!==1?"s":""} with paid projects`}/>
         {allYears.map((y: number)=>{
           const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
           const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
@@ -2312,12 +2314,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   if(drill==="month"){
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:18}}>
-          <p style={{fontSize:10.5,color:C.muted,margin:0}}>{nowY} · Jan — {MO[nowM]}</p>
-          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(thisYearRev)}</span>
-        </div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Revenue by Month" count={fmt(thisYearRev)} sub={`${nowY} · Jan — ${MO[nowM]}`}/>
         {[...monthsToShow].reverse().map((m: number)=>{
           const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
           const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
@@ -2405,7 +2403,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     };
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+        <DrillBack onClick={()=>setDrill(null)}/>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>License Tracker</h2>
           <div style={{display:"flex"}}>
@@ -2548,7 +2546,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     return(
       <div>
         {/* back */}
-        <button onClick={()=>{setDrill(null);setInvSel(new Set());}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+        <DrillBack onClick={()=>{setDrill(null);setInvSel(new Set());}}/>
 
         {/* title + tabs top right */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:8,flexWrap:"wrap"}}>
@@ -2694,11 +2692,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     const totalQ=openQ.reduce((s: number,pr: any)=>s+pr.amount,0);
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:20}}>
-          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Open Quotes</h2>
-          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(totalQ)}</span>
-        </div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Open Quotes" count={fmt(totalQ)}/>
         {sorted.length===0&&<p style={{fontSize:11,color:C.muted}}>No open quotes.</p>}
         {sorted.map((pr: any,i: number)=>{
           const daysSent=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
@@ -2748,11 +2743,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     const daysColor=(d: number)=>d>=14?C.red:d>=7?C.amber:C.muted;
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
-          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Unsigned Contracts</h2>
-          <span style={{fontFamily:SERIF,fontSize:20,color:hasUrgent?C.amber:C.black}}>{fmt(totalC)}</span>
-        </div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Unsigned Contracts" count={<span style={{color:hasUrgent?C.amber:C.black}}>{fmt(totalC)}</span>}/>
         {hasUrgent&&<p style={{fontSize:10,color:C.red,marginBottom:16,letterSpacing:"0.03em"}}>One or more contracts waiting 14+ days — follow up now.</p>}
         {!hasUrgent&&<div style={{marginBottom:16}}/>}
         {sorted.length===0&&<p style={{fontSize:11,color:C.muted}}>No unsigned contracts.</p>}
@@ -2788,7 +2780,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
 
         {/* 1 — Revenue */}
-        <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("year")}
+        <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("revenue")}
           sub={<>
             <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
               <span style={{fontSize:10,color:C.muted}}>{nowY}</span>
@@ -3160,7 +3152,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   const [pendingClientName,setPendingClientName]=useState<string|null>(null);
   const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
   const [fromDrill,setFromDrill]=useState<string|null>(null);
-  const [dashDrill,setDashDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
+  const [dashDrill,setDashDrill]=useState<null|"revenue"|"month"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
