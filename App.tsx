@@ -4352,65 +4352,108 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
 
 
 // ─── CREATOR DASHBOARD ────────────────────────────────────
-function CreatorDashboard({isMobile}: {isMobile:boolean}) {
-  const today=new Date();
+function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) {
+  const todayDate=new Date();
+  const todayStr=todayDate.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
 
-  // ── Daily Creation List
-  const dailyList=[
-    {label:"Film unboxing reel · Sephora",done:false},
-    {label:"Edit BTS clip · Vogue shoot",done:true},
-    {label:"Caption review · ŌURA campaign",done:false},
-    {label:"Upload story set · Zalando",done:false},
-  ];
-  const dailyDone=dailyList.filter(t=>t.done).length;
+  // ── source of truth: same as Workspace
+  const allItems=getWsItems(clients);
 
-  // ── Editing Queue
-  const editingQueue=[
-    {title:"Spring Reel",client:"Sephora",format:"Reel",due:"2026-05-15"},
-    {title:"Hero video v2",client:"Vogue",format:"Hero Video",due:"2026-05-18"},
-    {title:"BTS cutdown",client:"Vogue",format:"Short Video",due:"2026-05-20"},
-  ];
+  // ── derived counts
+  const open=allItems.filter((it:any)=>it.status!=="Delivered");
+  const overdue=open.filter((it:any)=>isOverdue(it.deadline));
+  const dueThisWeek=open.filter((it:any)=>!isOverdue(it.deadline)&&isThisWeek(it.deadline));
 
-  // ── Production Category Split
-  const catSplit=[
-    {cat:"UGC",count:4},
-    {cat:"Brand Collab",count:3},
-    {cat:"Editorial",count:2},
-  ];
-  const catTotal=catSplit.reduce((s,c)=>s+c.count,0);
+  // delivered this month — from workspaceStatusHistory
+  const nowY=todayDate.getFullYear();
+  const nowM=todayDate.getMonth();
+  const deliveredThisMonth=(()=>{
+    const out: any[]=[];
+    clients.forEach((c:any)=>c.projects.forEach((pr:any)=>{
+      const hist=pr.workspaceStatusHistory||{};
+      Object.entries(hist).forEach(([id,entries]:any)=>{
+        const lastDelivered=[...(entries||[])].reverse().find((e:any)=>e.status==="Delivered");
+        if(lastDelivered){
+          const d=new Date(lastDelivered.date);
+          if(d.getFullYear()===nowY&&d.getMonth()===nowM){
+            const item=allItems.find((it:any)=>it.id===id);
+            if(item)out.push({...item,deliveredDate:lastDelivered.date});
+          }
+        }
+      });
+    }));
+    return out;
+  })();
 
-  // ── Format Count
-  const formats=[
-    {fmt:"Reel / TikTok",count:5},
-    {fmt:"Story Set",count:3},
-    {fmt:"Photo Set",count:2},
-    {fmt:"Hero Video",count:2},
-  ];
-  const fmtTotal=formats.reduce((s,f)=>s+f.count,0);
+  // velocity — delivered per week last 4 weeks
+  const velocity=(()=>{
+    const weeks=[0,1,2,3].map(w=>{
+      const mon=new Date(todayDate);
+      const day=mon.getDay();
+      mon.setDate(mon.getDate()-(day===0?6:day-1)-w*7);
+      mon.setHours(0,0,0,0);
+      const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+      return{label:`Wk ${4-w}`,from:mon,to:sun,count:0};
+    }).reverse();
+    clients.forEach((c:any)=>c.projects.forEach((pr:any)=>{
+      const hist=pr.workspaceStatusHistory||{};
+      Object.values(hist).forEach((entries:any)=>{
+        (entries||[]).forEach((e:any)=>{
+          if(e.status==="Delivered"){
+            const d=new Date(e.date);
+            weeks.forEach(w=>{if(d>=w.from&&d<=w.to)w.count++;});
+          }
+        });
+      });
+    }));
+    return weeks;
+  })();
+  const velMax=Math.max(...velocity.map(w=>w.count),1);
 
-  // ── Deadlines
-  const deadlines=[
-    {title:"Spring Reel",client:"Sephora",due:"2026-05-15"},
-    {title:"Hero video v2",client:"Vogue",due:"2026-05-18"},
-    {title:"Campaign photo set",client:"ŌURA",due:"2026-05-22"},
-  ];
-  const daysUntil=(d:string)=>Math.ceil((new Date(d).getTime()-Date.now())/864e5);
-  const dueCol=(d:number)=>d<=3?C.red:d<=7?C.amber:C.black;
-  const dueBg=(d:number)=>d<=3?C.redBg:d<=7?C.amberBg:"transparent";
-  const dueBd=(d:number)=>d<=3?C.redBorder:d<=7?C.amberBorder:C.rule;
+  // by category
+  const cats=["Influencer","UGC","Editorial"];
+  const catCounts=cats.map(cat=>({cat,count:open.filter((it:any)=>it.category===cat).length}));
+  const catMax=Math.max(...catCounts.map(c=>c.count),1);
+  const catLabel=(cat:string)=>cat==="Influencer"?"Collab":cat;
 
-  // ── Production Velocity
-  const velocity=[
-    {week:"Wk 1",count:2},
-    {week:"Wk 2",count:4},
-    {week:"Wk 3",count:3},
-    {week:"Wk 4",count:5},
-  ];
-  const velTotal=velocity.reduce((s,v)=>s+v.count,0);
-  const velMax=Math.max(...velocity.map(v=>v.count));
+  // by client
+  const clientNames=[...new Set(open.map((it:any)=>it.clientName))] as string[];
+  const clientCounts=clientNames.map(n=>({name:n,count:open.filter((it:any)=>it.clientName===n).length}))
+    .sort((a,b)=>b.count-a.count).slice(0,5);
+  const clientMax=Math.max(...clientCounts.map(c=>c.count),1);
 
-  const Card=({label,children}: {label:string,children:any})=>(
-    <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px"}}>
+  // upcoming deadlines — next 5 non-delivered sorted by deadline
+  const upcomingDeadlines=[...open]
+    .filter((it:any)=>it.deadline)
+    .sort((a:any,b:any)=>new Date(a.deadline).getTime()-new Date(b.deadline).getTime())
+    .slice(0,5);
+
+  // recent delivered — last 5 from history sorted by date
+  const recentDelivered=[...deliveredThisMonth]
+    .sort((a:any,b:any)=>new Date(b.deliveredDate).getTime()-new Date(a.deliveredDate).getTime())
+    .slice(0,5);
+
+  const dlColor=(d:string|null)=>{
+    if(!d)return C.muted;
+    if(isOverdue(d))return C.red;
+    if(isThisWeek(d))return C.amber;
+    return C.muted;
+  };
+  const dlBg=(d:string|null)=>{
+    if(!d)return"transparent";
+    if(isOverdue(d))return C.redBg;
+    if(isThisWeek(d))return C.amberBg;
+    return"transparent";
+  };
+  const dlBorder=(d:string|null)=>{
+    if(!d)return C.rule;
+    if(isOverdue(d))return C.redBorder;
+    if(isThisWeek(d))return C.amberBorder;
+    return C.rule;
+  };
+
+  const Card=({label,children}:{label:string,children:any})=>(
+    <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg}}>
       <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 10px"}}>{label}</p>
       {children}
     </div>
@@ -4418,122 +4461,146 @@ function CreatorDashboard({isMobile}: {isMobile:boolean}) {
 
   const cols=isMobile?"1fr":"1fr 1fr";
 
+  if(allItems.length===0)return(
+    <div>
+      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Dashboard</h2>
+      <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:"0 0 32px"}}>{todayStr}</p>
+      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const}}>
+        <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active projects yet.</p>
+        <p style={{fontSize:11,color:C.light,margin:0}}>Waiting for your first contract to be signed.</p>
+      </div>
+    </div>
+  );
+
   return(
     <div>
       <div style={{marginBottom:20}}>
         <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Dashboard</h2>
-        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:0}}>{today.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</p>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:0}}>{todayStr}</p>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:cols,gap:10}}>
 
-        {/* 1 — Daily Creation List */}
-        <Card label="Daily Creation List">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-            <span style={{fontFamily:SERIF,fontSize:20,color:dailyDone===dailyList.length?C.green:C.black}}>{dailyDone}/{dailyList.length}</span>
-            <span style={{fontSize:10,color:C.muted}}>completed today</span>
-          </div>
-          {dailyList.map((t,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<dailyList.length-1?`1px solid ${C.rule}`:"none"}}>
-              <div style={{width:10,height:10,borderRadius:"50%",border:`1px solid ${t.done?C.green:C.light}`,background:t.done?C.green:"transparent",flexShrink:0}}/>
-              <span style={{fontSize:11,color:t.done?C.light:C.black,textDecoration:t.done?"line-through":"none"}}>{t.label}</span>
-            </div>
-          ))}
-        </Card>
+      {/* overdue banner */}
+      {overdue.length>0&&(
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:2,marginBottom:16}}>
+          <span style={{fontSize:12,fontWeight:"500",color:C.red,flexShrink:0}}>{overdue.length} overdue</span>
+          <span style={{fontSize:11,color:C.red,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+            {overdue.slice(0,3).map((it:any)=>`${it.name} · ${it.clientName} · was due ${fmtD(it.deadline)}`).join("  ·  ")}
+          </span>
+        </div>
+      )}
 
-        {/* 2 — Editing Queue */}
-        <Card label="Editing Queue">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-            <span style={{fontFamily:SERIF,fontSize:20,color:editingQueue.length>0?C.amber:C.light}}>{editingQueue.length}</span>
-            <span style={{fontSize:10,color:C.muted}}>pieces to edit</span>
-          </div>
-          {editingQueue.map((item,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<editingQueue.length-1?`1px solid ${C.rule}`:"none"}}>
-              <div>
-                <span style={{fontSize:11,color:C.black}}>{item.title}</span>
-                <span style={{fontSize:10,color:C.muted,display:"block"}}>{item.client} · {item.format}</span>
-              </div>
-              <span style={{fontSize:10,color:dueCol(daysUntil(item.due)),flexShrink:0,marginLeft:8}}>{daysUntil(item.due)}d</span>
-            </div>
-          ))}
-        </Card>
+      {/* 4 summary cards */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:10}}>
+        <div style={{border:`1px solid ${overdue.length>0?C.redBorder:C.rule}`,borderRadius:2,padding:"13px 15px",background:overdue.length>0?C.redBg:C.bg}}>
+          <p style={{fontSize:10,color:overdue.length>0?C.red:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Overdue</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:overdue.length>0?C.red:C.light,margin:"0 0 3px",lineHeight:1}}>{overdue.length}</p>
+          <p style={{fontSize:10,color:overdue.length>0?C.red:C.light}}>past deadline</p>
+        </div>
+        <div style={{border:`1px solid ${dueThisWeek.length>0?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",background:dueThisWeek.length>0?C.amberBg:C.bg}}>
+          <p style={{fontSize:10,color:dueThisWeek.length>0?C.amber:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Due this week</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:dueThisWeek.length>0?C.amber:C.light,margin:"0 0 3px",lineHeight:1}}>{dueThisWeek.length}</p>
+          <p style={{fontSize:10,color:dueThisWeek.length>0?C.amber:C.light}}>by Sunday</p>
+        </div>
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg}}>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Total open</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:C.black,margin:"0 0 3px",lineHeight:1}}>{open.length}</p>
+          <p style={{fontSize:10,color:C.muted}}>across {clientNames.length} client{clientNames.length!==1?"s":""}</p>
+        </div>
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg}}>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Delivered this month</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:deliveredThisMonth.length>0?C.green:C.light,margin:"0 0 3px",lineHeight:1}}>{deliveredThisMonth.length}</p>
+          <p style={{fontSize:10,color:deliveredThisMonth.length>0?C.green:C.light}}>{new Date().toLocaleString("en-GB",{month:"long"})}</p>
+        </div>
+      </div>
 
-        {/* 3 — Production Category Split */}
-        <Card label="Production Category Split">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-            <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{catTotal}</span>
-            <span style={{fontSize:10,color:C.muted}}>active pieces</span>
-          </div>
-          {catSplit.map((c,i)=>(
-            <div key={i} style={{marginBottom:i<catSplit.length-1?6:0}}>
+      {/* 4 visual cards */}
+      <div style={{display:"grid",gridTemplateColumns:cols,gap:10,marginBottom:10}}>
+
+        {/* by category */}
+        <Card label="By category">
+          {catCounts.map((c,i)=>(
+            <div key={c.cat} style={{marginBottom:i<catCounts.length-1?8:0}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontSize:11,color:C.black}}>{c.cat}</span>
+                <span style={{fontSize:11,color:C.black}}>{catLabel(c.cat)}</span>
                 <span style={{fontSize:11,color:C.muted}}>{c.count}</span>
               </div>
               <div style={{height:3,background:C.rule,borderRadius:2}}>
-                <div style={{height:3,width:`${(c.count/catTotal)*100}%`,background:C.black,borderRadius:2}}/>
+                <div style={{height:3,width:`${(c.count/catMax)*100}%`,background:c.cat==="Influencer"?"#185FA5":c.cat==="UGC"?C.amber:C.green,borderRadius:2}}/>
               </div>
             </div>
           ))}
         </Card>
 
-        {/* 4 — Format Count */}
-        <Card label="Format Count">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-            <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmtTotal}</span>
-            <span style={{fontSize:10,color:C.muted}}>total formats</span>
-          </div>
-          {formats.map((f,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:i<formats.length-1?`1px solid ${C.rule}`:"none"}}>
-              <span style={{fontSize:11,color:C.black}}>{f.fmt}</span>
-              <span style={{fontFamily:SERIF,fontSize:13,color:C.black}}>{f.count}</span>
+        {/* by client */}
+        <Card label="By client">
+          {clientCounts.length===0&&<p style={{fontSize:11,color:C.light}}>No open deliverables.</p>}
+          {clientCounts.map((c,i)=>(
+            <div key={c.name} style={{marginBottom:i<clientCounts.length-1?8:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <span style={{fontSize:11,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,maxWidth:"75%"}}>{c.name}</span>
+                <span style={{fontSize:11,color:C.muted}}>{c.count}</span>
+              </div>
+              <div style={{height:3,background:C.rule,borderRadius:2}}>
+                <div style={{height:3,width:`${(c.count/clientMax)*100}%`,background:C.black,borderRadius:2}}/>
+              </div>
             </div>
           ))}
         </Card>
 
-        {/* 5 — Deadlines */}
-        <Card label="Deadlines">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-            <span style={{fontFamily:SERIF,fontSize:20,color:deadlines.some(d=>daysUntil(d.due)<=3)?C.red:C.black}}>{deadlines.length}</span>
-            <span style={{fontSize:10,color:C.muted}}>upcoming</span>
-          </div>
-          {deadlines.map((d,i)=>{
-            const days=daysUntil(d.due);
+        {/* upcoming deadlines */}
+        <Card label="Upcoming deadlines">
+          {upcomingDeadlines.length===0&&<p style={{fontSize:11,color:C.light}}>No upcoming deadlines.</p>}
+          {upcomingDeadlines.map((it:any,i:number)=>{
+            const d=dLeft(it.deadline);
             return(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 7px",marginBottom:4,background:dueBg(days),border:`1px solid ${dueBd(days)}`,borderRadius:2}}>
-                <div>
-                  <span style={{fontSize:11,color:dueCol(days),fontWeight:"500"}}>{d.title}</span>
-                  <span style={{fontSize:10,color:dueCol(days),display:"block",opacity:0.8}}>{d.client}</span>
+              <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 7px",marginBottom:4,background:dlBg(it.deadline),border:`1px solid ${dlBorder(it.deadline)}`,borderRadius:2}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <span style={{fontSize:11,fontWeight:"500",color:dlColor(it.deadline),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
+                  <span style={{fontSize:10,color:dlColor(it.deadline),opacity:0.8}}>{it.clientName}</span>
                 </div>
-                <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
-                  <span style={{fontSize:11,color:dueCol(days),fontWeight:"600"}}>{days}d</span>
-                  <span style={{fontSize:9,color:dueCol(days),display:"block",opacity:0.7}}>{fmtD(d.due)}</span>
+                <div style={{textAlign:"right" as const,flexShrink:0,marginLeft:8}}>
+                  <span style={{fontSize:11,fontWeight:"600",color:dlColor(it.deadline)}}>{d!==null?(d<0?`${Math.abs(d)}d overdue`:`${d}d`):"—"}</span>
+                  <span style={{fontSize:9,color:dlColor(it.deadline),display:"block",opacity:0.7}}>{fmtD(it.deadline)}</span>
                 </div>
               </div>
             );
           })}
         </Card>
 
-        {/* 6 — Production Velocity */}
-        <Card label="Production Velocity">
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12}}>
-            <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{velTotal}</span>
-            <span style={{fontSize:10,color:C.muted}}>pieces · last 30 days</span>
-          </div>
-          <div style={{display:"flex",alignItems:"flex-end",gap:6,height:48}}>
-            {velocity.map((v,i)=>(
-              <div key={i} style={{flex:1,display:"flex",flexDirection:"column" as const,alignItems:"center",gap:4}}>
-                <span style={{fontSize:9,color:C.muted}}>{v.count}</span>
-                <div style={{width:"100%",background:C.black,borderRadius:2,height:`${Math.round((v.count/velMax)*36)}px`}}/>
-                <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>{v.week}</span>
+        {/* recently delivered */}
+        <Card label="Recently delivered">
+          {recentDelivered.length===0&&<p style={{fontSize:11,color:C.light}}>Nothing delivered this month yet.</p>}
+          {recentDelivered.map((it:any,i:number)=>(
+            <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<recentDelivered.length-1?`1px solid ${C.rule}`:"none"}}>
+              <div style={{minWidth:0,flex:1}}>
+                <span style={{fontSize:11,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
+                <span style={{fontSize:10,color:C.muted}}>{it.clientName}</span>
               </div>
-            ))}
-          </div>
+              <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:8}}>{fmtD(it.deliveredDate)}</span>
+            </div>
+          ))}
         </Card>
 
       </div>
+
+      {/* production velocity */}
+      <Card label="Production velocity — delivered per week">
+        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:60,marginTop:4}}>
+          {velocity.map((w,i)=>(
+            <div key={i} style={{flex:1,display:"flex",flexDirection:"column" as const,alignItems:"center",gap:4}}>
+              <span style={{fontSize:9,color:C.muted}}>{w.count}</span>
+              <div style={{width:"100%",background:C.black,borderRadius:2,height:`${Math.max(3,Math.round((w.count/velMax)*44))}px`}}/>
+              <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>{w.label}</span>
+            </div>
+          ))}
+        </div>
+        {velocity.every(w=>w.count===0)&&<p style={{fontSize:11,color:C.light,marginTop:8}}>No deliveries recorded yet.</p>}
+      </Card>
+
     </div>
   );
 }
+
 
 // ─── CREATOR PAGE ─────────────────────────────────────────
 function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout:()=>void,clients:any[],setClients:any}) {
@@ -4596,7 +4663,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
       </div>
       {/* ── CONTENT ── */}
       <div style={{maxWidth:(nav===1&&creatorClientSel||nav===2||nav===3)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<CreatorDashboard isMobile={isMobile}/>}
+        {nav===0&&<CreatorDashboard isMobile={isMobile} clients={clients}/>}
         {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
         {nav===2&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
         {nav===3&&<CreatorPlanner isMobile={isMobile}/>}
