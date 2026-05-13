@@ -2270,16 +2270,12 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("year")}
           sub={<>
             <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>This month</span>
-              <span style={{fontSize:10,color:C.black}}>{fmt(thisMonthRev)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
               <span style={{fontSize:10,color:C.muted}}>{nowY}</span>
               <span style={{fontSize:10,color:C.black}}>{fmt(thisYearRev)}</span>
             </div>
             <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>All time</span>
-              <span style={{fontSize:10,color:C.black}}>{fmt(rev)}</span>
+              <span style={{fontSize:10,color:C.muted}}>{MO[nowM]} {nowY}</span>
+              <span style={{fontSize:10,color:C.black}}>{fmt(thisMonthRev)}</span>
             </div>
           </>}
         />
