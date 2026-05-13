@@ -1898,9 +1898,10 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 <B v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                 <B v="sec" s={{fontSize:FS.actionBtn,color:C.amber,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
               </>}
-              {(pr.renewals||[]).filter((r: any)=>!r.paid).map((r: any,ri: number)=>(
-                <B key={ri} v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any)=>rn.id===r.id?{...rn,paid:true}:rn)})}))}>Mark Renewal {(pr.renewals||[]).indexOf(r)+1} Paid</B>
-              ))}
+              {(pr.renewals||[]).map((r: any,ri: number)=><span key={r.id||ri} style={{display:"contents"}}>
+                {!r.paid&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any)=>rn.id===r.id?{...rn,paid:true}:rn)})}))}>Mark Renewal {ri+1} Paid</B>}
+                {r.paid&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.amber,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any)=>rn.id===r.id?{...rn,paid:false}:rn)})}))}>Undo Renewal {ri+1}</B>}
+              </span>)}
               {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.muted,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
             </div>
           </div>
