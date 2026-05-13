@@ -1,7 +1,40 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { C, SERIF, SANS, AppLogo, useGetData, useSaveData } from "./shared";
-import CreatorPage from "./CreatorPage";
+
+// ─── DATA PERSISTENCE (localStorage replaces Replit backend) ──────────────
+function useGetData() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lynnhoa_data");
+      setData(stored ? JSON.parse(stored) : {});
+    } catch {
+      setData({});
+    }
+    setIsLoading(false);
+  }, []);
+  return { data, isLoading };
+}
+function useSaveData() {
+  return {
+    mutate: ({ data }: { data: any }) => {
+      try {
+        localStorage.setItem("lynnhoa_data", JSON.stringify(data));
+      } catch(e) { console.error("Save failed", e); }
+    }
+  };
+}
+
+// ─── THEME ────────────────────────────────────────────────
+const C = {
+  bg:"#faf9f7", black:"#1a1a1a", muted:"#888", light:"#b8b3ad",
+  rule:"#e8e4df", white:"#fff", amber:"#c0956a", amberBg:"#fdf5ee",
+  amberBorder:"#e8d8c8", red:"#c0857a", redBg:"#fdf0ee",
+  redBorder:"#e8d8d5", green:"#6a9a6a", greenBg:"#f0f5f0", greenBorder:"#b8d4b8"
+};
+const SERIF = "'Georgia','Times New Roman',serif";
+const SANS  = "'Helvetica Neue',Arial,sans-serif";
 
 // ─── HELPERS ──────────────────────────────────────────────
 const fmt   = (n: number | null | undefined) => `€ ${Number(n||0).toLocaleString("de-DE")}`;
@@ -877,7 +910,16 @@ function PDFModal({data,type,onClose,onSave,onSaveClose,settings,isNew}: any) {
 }
 
 // ─── AUTH ─────────────────────────────────────────────────
-
+function AppLogo({size="nav"}: {size?: "nav"|"auth"|"web"}) {
+  const big=size==="auth";
+  const web=size==="web";
+  return(
+    <div style={{textAlign:"center",lineHeight:1,display:"inline-block"}}>
+      <span style={{fontFamily:"'Playfair Display',Georgia,serif",fontSize:big?26:web?24:18,letterSpacing:"0.02em",color:C.black,display:"block"}}>Lynn Hoa</span>
+      <span style={{fontFamily:SANS,fontSize:big?8:web?7:6.5,letterSpacing:"0.26em",textTransform:"uppercase" as const,color:C.muted,display:"block",marginTop:big?4:2}}>Studio</span>
+    </div>
+  );
+}
 
 function Auth({onAuth,currentPass}: {onAuth: (role:"manager"|"creator")=>void,currentPass: string}) {
   const [role,setRole]=useState<"manager"|"creator"|null>("manager");
@@ -3576,7 +3618,99 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
+// ─── CREATOR PAGE ─────────────────────────────────────────
+function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
+  const [menuOpen,setMenuOpen]=useState(false);
+  const [nav,setNav]=useState(0);
+  const [winW,setWinW]=useState(()=>window.innerWidth);
+  useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
+  const isMobile=winW<700;
+  const goToDash=()=>setNav(0);
+  const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
+  const NAV=["Dashboard","Clients","Workspace","Planner"];
 
+  const Menu=({dropLeft=false}:{dropLeft?:boolean})=>(
+    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+      {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
+      <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:200,flexShrink:0}}>{initials}</button>
+      {menuOpen&&<div style={{position:"absolute",...(dropLeft?{left:0}:{right:0}),top:"calc(100% + 13px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
+        <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
+          <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
+          <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>Creator · Private</p>
+        </div>
+        <div style={{borderTop:`1px solid ${C.rule}`}}/>
+        <button onClick={()=>{setMenuOpen(false);logout();}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
+      </div>}
+    </div>
+  );
+
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
+      {/* ── NAV ── */}
+      <div style={{borderBottom:`1px solid ${C.rule}`,position:"sticky",top:0,background:C.bg,zIndex:100}}>
+        {isMobile?(
+          <>
+            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={goToDash}>
+              <AppLogo/>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
+              <div style={{display:"flex"}}>
+                {NAV.map((n,i)=>(
+                  <button key={i} onClick={()=>setNav(i)} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>
+                ))}
+              </div>
+              <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
+                <Menu dropLeft={false}/>
+              </div>
+            </div>
+          </>
+        ):(
+          <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 28px",height:56}}>
+            <div style={{display:"flex",alignItems:"center"}}>
+              <Menu dropLeft={true}/>
+            </div>
+            <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}>
+              <AppLogo size="web"/>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              {NAV.map((n,i)=>(
+                <button key={i} onClick={()=>setNav(i)} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── CONTENT ── */}
+      <div style={{maxWidth:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px"}}>
+        {nav===0&&(
+          <div style={{textAlign:"center",padding:"80px 20px"}}>
+            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Dashboard</p>
+            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
+          </div>
+        )}
+        {nav===1&&(
+          <div style={{textAlign:"center",padding:"80px 20px"}}>
+            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Clients</p>
+            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
+          </div>
+        )}
+        {nav===2&&(
+          <div style={{textAlign:"center",padding:"80px 20px"}}>
+            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Workspace</p>
+            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
+          </div>
+        )}
+        {nav===3&&(
+          <div style={{textAlign:"center",padding:"80px 20px"}}>
+            <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Planner</p>
+            <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── APP ROOT ─────────────────────────────────────────────
 export default function App() {
