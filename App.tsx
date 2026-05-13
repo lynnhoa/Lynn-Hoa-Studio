@@ -1512,7 +1512,18 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
     const ctype=cats.length>1?"Content Creator":cats[0]==="ugc"?"UGC Creator":cats[0]==="editorial"?"Editorial Content Creator":"Content Creator (Influencer)";
-    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
+    const ctab=cats.length===1?cats[0]:(cats.length>1?"complete":"influencer");
+    // derive usage months from selected usage option on items
+    const usageItem=items.find(it=>it.usageLabel);
+    let mo=3; // default organic 3 months
+    if(usageItem?.usageLabel){
+      const cardKey=usageItem.cat||ctab;
+      const cardRef=(rc&&rc[cardKey])||Object.values(rc||{})[0]||{usage:[]};
+      const found=(cardRef.usage||[]).find((u: any)=>u.l===usageItem.usageLabel);
+      if(found&&found.mo)mo=found.mo;
+      else{const m=usageItem.usageLabel.match(/(\d+)\s*month/i);if(m)mo=parseInt(m[1]);}
+    }
+    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,mo,ctab,
       lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
@@ -1918,7 +1929,13 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const setStatus=(cid: string,pid: string,st: string)=>upP(cid,pid,{status:st,paid:st==="paid"});
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
-  const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
+  const uEnd=(pr: any)=>{
+    if(pr.usageEndOverride)return pr.usageEndOverride;
+    if(!pr.deliveryDate)return null;
+    const mo=pr.qd?.mo||(()=>{const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);if(!ul?.usageLabel)return null;const m=ul.usageLabel.match(/(\d+)\s*month/i);return m?parseInt(m[1]):3;})();
+    if(!mo)return null;
+    return addM(pr.deliveryDate,mo);
+  };
   const fin=(c: any)=>{const paid=c.projects.filter((pr: any)=>pr.paid);const tot=paid.reduce((s: number,pr: any)=>s+pr.amount,0);const last=[...paid].sort((a: any,b: any)=>b.date.localeCompare(a.date))[0];return{total:tot,last:last?.amount||0,lastDate:last?.date||null,avg:paid.length?Math.round(tot/paid.length):0,count:paid.length,out:c.projects.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0)};};
   const flagged=clients.filter((c: any)=>{if(!c.projects.length)return false;if(c.projects.some((pr: any)=>pr.status==="invoiced"||pr.status==="paid"))return false;const lat=c.projects.reduce((a: any,b: any)=>a.date>b.date?a:b);return(new Date().getTime()-new Date(lat.date).getTime())/864e5>90;});
 
@@ -2094,7 +2111,18 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
 
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-  const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
+  const uEnd=(pr: any)=>{
+    if(pr.usageEndOverride)return pr.usageEndOverride;
+    if(!pr.deliveryDate)return null;
+    const mo=pr.qd?.mo||(()=>{
+      const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);
+      if(!ul?.usageLabel)return null;
+      const m=ul.usageLabel.match(/(\d+)\s*month/i);
+      return m?parseInt(m[1]):3;
+    })();
+    if(!mo)return null;
+    return addM(pr.deliveryDate,mo);
+  };
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
     const items: {cName:string,cId:string,prName:string,end:string,label:string,type:"usage"|"excl",key:string}[]=[];
     const ue=uEnd(pr);
