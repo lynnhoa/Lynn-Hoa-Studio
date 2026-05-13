@@ -2519,6 +2519,115 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     );
   }
 
+  // ── Open Quotes drill-down ─────────────────────────────
+  if(drill==="quotes"){
+    const daysColor=(d: number)=>d>=14?C.red:d>=7?C.amber:C.muted;
+    // sort by expiry: expired first, then soonest expiry, then no expiry
+    const sorted=[...openQ].sort((a: any,b: any)=>{
+      const aExp=a.qd?.validUntil?new Date(a.qd.validUntil).getTime():Infinity;
+      const bExp=b.qd?.validUntil?new Date(b.qd.validUntil).getTime():Infinity;
+      return aExp-bExp;
+    });
+    const totalQ=openQ.reduce((s: number,pr: any)=>s+pr.amount,0);
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:20}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Open Quotes</h2>
+          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(totalQ)}</span>
+        </div>
+        {sorted.length===0&&<p style={{fontSize:11,color:C.muted}}>No open quotes.</p>}
+        {sorted.map((pr: any,i: number)=>{
+          const daysSent=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+          const expiry=pr.qd?.validUntil;
+          const daysLeft=expiry?Math.ceil((new Date(expiry).getTime()-Date.now())/86400000):null;
+          const expired=daysLeft!==null&&daysLeft<0;
+          const isRev=pr.status==="revised";
+          const expiryCol=expired?C.red:daysLeft!==null&&daysLeft<=7?C.amber:C.green;
+          return(
+            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
+              {/* days since sent */}
+              <span style={{fontSize:10,color:daysSent!==null?daysColor(daysSent):C.light,flexShrink:0,minWidth:28,fontWeight:"500"}}>{daysSent!==null?`${daysSent}d`:"—"}</span>
+              {/* info */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                  <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
+                  {isRev&&<span style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em"}}>Revised</span>}
+                </div>
+                {expiry&&<div style={{marginTop:3}}>
+                  <span style={{fontSize:9,color:expiryCol}}>{expired?`Expired ${Math.abs(daysLeft!)}d ago`:`Expires in ${daysLeft}d · ${fmtD(expiry)}`}</span>
+                </div>}
+              </div>
+              {/* amount */}
+              <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+              <span style={{fontSize:9,color:C.light}}>→</span>
+            </div>
+          );
+        })}
+        {/* pipeline total */}
+        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginTop:4}}>
+          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Potential pipeline</span>
+          <span style={{fontFamily:SERIF,fontSize:13,color:C.muted}}>{fmt(totalQ)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Unsigned Contracts drill-down ───────────────────────
+  if(drill==="contracts"){
+    const unsignedAll=all.filter((pr: any)=>pr.status==="contracted");
+    const sorted=[...unsignedAll].sort((a: any,b: any)=>{
+      const ad=a.date?new Date(a.date).getTime():0;
+      const bd=b.date?new Date(b.date).getTime():0;
+      return ad-bd;
+    });
+    const totalC=unsignedAll.reduce((s: number,pr: any)=>s+pr.amount,0);
+    const hasUrgent=unsignedAll.some((pr: any)=>{
+      const d=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):0;
+      return d>=14;
+    });
+    const daysColor=(d: number)=>d>=14?C.red:d>=7?C.amber:C.muted;
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Unsigned Contracts</h2>
+          <span style={{fontFamily:SERIF,fontSize:20,color:hasUrgent?C.amber:C.black}}>{fmt(totalC)}</span>
+        </div>
+        {hasUrgent&&<p style={{fontSize:10,color:C.red,marginBottom:16,letterSpacing:"0.03em"}}>One or more contracts waiting 14+ days — follow up now.</p>}
+        {!hasUrgent&&<div style={{marginBottom:16}}/>}
+        {sorted.length===0&&<p style={{fontSize:11,color:C.muted}}>No unsigned contracts.</p>}
+        {sorted.map((pr: any,i: number)=>{
+          const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+          const col=days!==null?daysColor(days):C.muted;
+          return(
+            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer",background:days!==null&&days>=14?"rgba(192,133,122,0.04)":undefined}}>
+              {/* days waiting */}
+              <span style={{fontSize:10,color:col,flexShrink:0,minWidth:28,fontWeight:"500"}}>{days!==null?`${days}d`:"—"}</span>
+              {/* info */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                  <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
+                </div>
+                <span style={{fontSize:9,color:col,marginTop:2,display:"block"}}>{days!==null&&days>=14?"Overdue for signature":days!==null&&days>=7?"Waiting a while":"Sent "+fmtD(pr.date)}</span>
+              </div>
+              {/* amount */}
+              <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+              <span style={{fontSize:9,color:C.light}}>→</span>
+            </div>
+          );
+        })}
+        {/* confirmed pipeline total */}
+        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0",marginTop:4}}>
+          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Confirmed pipeline</span>
+          <span style={{fontFamily:SERIF,fontSize:13,color:C.muted}}>{fmt(totalC)}</span>
+        </div>
+      </div>
+    );
+  }
+
   const unsignedC=all.filter((pr: any)=>pr.status==="contracted");
   return(
     <div>
@@ -2557,15 +2666,17 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
 
         {/* 3 — Open Quotes */}
-        <Card label="Open Quotes" count={openQ.length} warm={openQ.length>0} onClick={()=>setDrill("quotes")}
+        <Card label="Open Quotes" count={fmt(openQ.reduce((s: number,pr: any)=>s+pr.amount,0))} warm={openQ.length>0} onClick={()=>setDrill("quotes")}
           sub={<>
-            {openQ.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>—</p>}
-            {openQ.slice(0,3).map((pr: any,i: number)=>{
+            {openQ.length===0&&<p style={{fontSize:10,color:C.light,margin:0}}>—</p>}
+            <p style={{fontSize:9.5,color:C.muted,margin:"0 0 4px"}}>{openQ.length} quote{openQ.length!==1?"s":""}</p>
+            {[...openQ].sort((a: any,b: any)=>{const ae=a.qd?.validUntil?new Date(a.qd.validUntil).getTime():Infinity;const be=b.qd?.validUntil?new Date(b.qd.validUntil).getTime():Infinity;return ae-be;}).slice(0,3).map((pr: any,i: number)=>{
               const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+              const col=days!==null&&days>=14?C.red:days!==null&&days>=7?C.amber:C.light;
               return(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
-                  {days!==null&&<span style={{fontSize:9.5,color:days>=7?C.amber:C.light}}>{days}d</span>}
+                  <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{pr.cName}</span>
+                  {days!==null&&<span style={{fontSize:9.5,color:col,fontWeight:days>=7?"500":"normal"}}>{days}d</span>}
                 </div>
               );
             })}
@@ -2574,21 +2685,31 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         />
 
         {/* 4 — Unsigned Contracts */}
-        <Card label="Unsigned Contracts" count={unsignedC.length} warm={unsignedC.length>0} onClick={()=>setDrill("contracts")}
-          sub={<>
-            {unsignedC.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>—</p>}
-            {unsignedC.slice(0,3).map((pr: any,i: number)=>{
-              const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
-              return(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
-                  {days!==null&&<span style={{fontSize:9.5,color:days>=7?C.amber:C.light}}>{days}d</span>}
-                </div>
-              );
-            })}
-            {unsignedC.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{unsignedC.length-3} more</p>}
-          </>}
-        />
+        {(()=>{
+          const hasUrgentC=unsignedC.some((pr: any)=>pr.date&&Math.floor((Date.now()-new Date(pr.date).getTime())/86400000)>=14);
+          const totalUC=unsignedC.reduce((s: number,pr: any)=>s+pr.amount,0);
+          return(
+            <div onClick={()=>setDrill("contracts")} style={{border:`1px solid ${hasUrgentC?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",cursor:"pointer",background:hasUrgentC?C.amberBg:undefined}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Unsigned Contracts</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:unsignedC.length>0?C.black:C.light}}>{fmt(totalUC)}</span>
+              </div>
+              {unsignedC.length===0&&<p style={{fontSize:10,color:C.light,margin:0}}>—</p>}
+              <p style={{fontSize:9.5,color:C.muted,margin:"0 0 4px"}}>{unsignedC.length} contract{unsignedC.length!==1?"s":""}</p>
+              {[...unsignedC].sort((a: any,b: any)=>(a.date||"").localeCompare(b.date||"")).slice(0,3).map((pr: any,i: number)=>{
+                const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+                const col=days!==null&&days>=14?C.red:days!==null&&days>=7?C.amber:C.light;
+                return(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                    <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{pr.cName}</span>
+                    {days!==null&&<span style={{fontSize:9.5,color:col,fontWeight:days>=7?"500":"normal"}}>{days}d</span>}
+                  </div>
+                );
+              })}
+              {unsignedC.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{unsignedC.length-3} more</p>}
+            </div>
+          );
+        })()}
 
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
