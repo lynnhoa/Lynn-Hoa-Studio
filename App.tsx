@@ -360,47 +360,49 @@ function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}
 }
 
 // ─── LICENSE TRACKER ROW (per project) ───────────────────
-function LicenseRow({label,end,note}: {label:string,end:string,note?:string}) {
+function LicenseLine({label,end,note}: {label:string,end:string,note?:string}) {
   const d=dLeft(end);
-  const expired=d!==null&&d<0;
-  const expiring=d!==null&&d>=0&&d<=7;
-  const active=d!==null&&d>7;
+  if(d===null)return null;
+  const expired=d<0;
+  const expiring=d>=0&&d<=7;
   const col=expired?C.red:expiring?C.amber:C.green;
   const bg=expired?C.redBg:expiring?C.amberBg:C.greenBg;
   const bd=expired?C.redBorder:expiring?C.amberBorder:C.greenBorder;
-  const daysText=expired?`+${Math.abs(d!)}d expired`:expiring?`${d}d left`:`${d}d`;
+  const txt=expired?`+${Math.abs(d)}d expired`:expiring?`${d}d left`:`${d}d`;
   return(
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 8px",background:bg,border:`1px solid ${bd}`,borderRadius:2,marginBottom:3}}>
-      <div style={{display:"flex",alignItems:"center",gap:6}}>
-        <span style={{fontSize:9,color:col,fontWeight:"600",minWidth:6,height:6,width:6,borderRadius:"50%",background:col,flexShrink:0,display:"inline-block"}}/>
-        <span style={{fontSize:9.5,color:col,fontWeight:"500"}}>{label}</span>
-        {note&&<span style={{fontSize:9,color:col,opacity:0.8}}>· {note}</span>}
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-        <span style={{fontSize:9,color:col}}>{fmtD(end)}</span>
-        <span style={{fontSize:9.5,color:col,fontWeight:"600"}}>{daysText}</span>
-      </div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",background:bg,border:`1px solid ${bd}`,borderRadius:2,marginBottom:3}}>
+      <span style={{fontSize:9.5,color:col,fontWeight:"500"}}>{label}{note?` · ${note}`:""}</span>
+      <span style={{fontSize:9.5,color:col,fontWeight:"600"}}>{fmtD(end)} · {txt}</span>
     </div>
   );
 }
 
-function ProjectLicenseTracker({pr,uEnd}: {pr:any,uEnd:(p:any)=>string|null}) {
-  const usageEnd=uEnd(pr);
+function ProjectLicenseTracker({pr}: {pr:any}) {
+  // compute usage end directly — no prop needed
+  const usageEnd=(()=>{
+    if(pr.usageEndOverride)return pr.usageEndOverride;
+    if(!pr.deliveryDate||!pr.qd)return null;
+    const mo=pr.qd.mo||(()=>{
+      const ul=(pr.qd.lines||[]).find((l: any)=>l.usageLabel);
+      if(!ul?.usageLabel)return 3;
+      const m=ul.usageLabel.match(/(\d+)\s*month/i);
+      return m?parseInt(m[1]):3;
+    })();
+    return addM(pr.deliveryDate,mo);
+  })();
   const exclRenewals=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate);
-  const hasQuote=!!pr.qd;
-  // show if: has usage end, has excl, or has quote (to show "set delivery date" hint)
-  if(!usageEnd&&exclRenewals.length===0&&!hasQuote)return null;
+  if(!pr.qd)return null;
   return(
     <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
-      {usageEnd&&<LicenseRow label="Usage Rights" end={usageEnd}/>}
-      {!usageEnd&&hasQuote&&(
-        <div style={{padding:"4px 8px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:3}}>
-          <span style={{fontSize:9,color:C.light}}>{pr.deliveryDate?"Usage rights tracked once delivery date is confirmed":"Set delivery date to track usage rights"}</span>
+      {usageEnd
+        ?<LicenseLine label="Usage Rights" end={usageEnd}/>
+        :<div style={{padding:"4px 8px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:3}}>
+          <span style={{fontSize:9,color:C.light}}>Set delivery date to track usage rights expiry</span>
         </div>
-      )}
+      }
       {exclRenewals.map((r: any,i: number)=>(
-        <LicenseRow key={i} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
+        <LicenseLine key={i} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
       ))}
     </div>
   );
@@ -1868,7 +1870,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             ))}
 
             {/* ── LICENSE TRACKER ── */}
-            <ProjectLicenseTracker pr={pr} uEnd={uEnd}/>
+            <ProjectLicenseTracker pr={pr}/>
 
             {pr.notes&&<p style={{fontSize:isMobile?12:9,color:C.muted,margin:`0 0 ${isMobile?10:7}px`,lineHeight:1.6}}>{pr.notes}</p>}
 
