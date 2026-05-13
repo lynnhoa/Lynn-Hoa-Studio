@@ -1579,8 +1579,21 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
       if(found&&found.mo)mo=found.mo;
       else{const m=usageItem.usageLabel.match(/(\d+)\s*month/i);if(m)mo=parseInt(m[1]);}
     }
+    // Merge same name+cat — sum qty and amt, keep all other fields from first occurrence
+    const mergedMap=new Map<string,any>();
+    items.forEach(it=>{
+      const key=`${it.cat}__${it.name}`;
+      if(mergedMap.has(key)){
+        const ex=mergedMap.get(key);
+        ex.qty=(ex.qty||1)+(it.qty||1);
+        ex.amt=(ex.amt||0)+(it.amt||0);
+      } else {
+        mergedMap.set(key,{id:it.id,name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]});
+      }
+    });
+    const mergedLines=Array.from(mergedMap.values());
     setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,mo,ctab,
-      lines:items.map(it=>({id:it.id,name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
+      lines:mergedLines,
       total:grand,ctype,footer:"Looking forward to working together."});
   };
 
