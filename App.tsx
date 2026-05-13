@@ -3618,6 +3618,42 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
+// ─── CREATOR WORKSPACE ────────────────────────────────────
+function CreatorWorkspace({isMobile}: {isMobile:boolean}) {
+  const LANES=[
+    {key:"film",label:"To Film",color:C.amber},
+    {key:"edit",label:"To Edit",color:C.black},
+    {key:"done",label:"Finished",color:C.green},
+  ];
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Workspace</h2>
+      </div>
+
+      {/* 3 Lanes */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:10,alignItems:"start"}}>
+        {LANES.map(lane=>(
+          <div key={lane.key} style={{border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+            {/* Lane header */}
+            <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.rule}`,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:lane.color,flexShrink:0}}/>
+              <span style={{fontSize:10,color:C.black,letterSpacing:"0.1em",textTransform:"uppercase" as const,fontWeight:"600"}}>{lane.label}</span>
+              <span style={{fontSize:10,color:C.light,marginLeft:"auto"}}>0</span>
+            </div>
+            {/* Empty drop zone */}
+            <div style={{minHeight:480,padding:"10px 8px"}}>
+              <p style={{fontSize:10,color:C.light,textAlign:"center" as const,marginTop:40,letterSpacing:"0.04em"}}>No items</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── CREATOR PLANNER ──────────────────────────────────────
 function CreatorPlanner({isMobile}: {isMobile:boolean}) {
   const [weekOffset,setWeekOffset]=useState(0);
@@ -4106,10 +4142,10 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
         )}
       </div>
       {/* ── CONTENT ── */}
-      <div style={{maxWidth:nav===1&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:(nav===1||nav===2||nav===3)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile}/>}
         {nav===1&&<CreatorClients clients={clients} setClients={setClients} isMobile={isMobile}/>}
-        {nav===2&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Workspace</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
+        {nav===2&&<CreatorWorkspace isMobile={isMobile}/>}
         {nav===3&&<CreatorPlanner isMobile={isMobile}/>}
       </div>
     </div>
