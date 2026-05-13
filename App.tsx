@@ -4815,7 +4815,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
         )}
       </div>
       {/* ── CONTENT ── */}
-      <div style={{maxWidth:(nav===1&&creatorClientSel||nav===2||nav===3)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:(nav===1&&creatorClientSel)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile} clients={clients}/>}
         {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
         {nav===2&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
