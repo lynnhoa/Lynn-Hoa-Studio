@@ -2477,13 +2477,13 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
 
   // ── Shared drill layout helpers ──
   const DrillBack=({onClick}: {onClick:()=>void})=>(
-    <button onClick={onClick} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+    <button onClick={onClick} style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
   );
   const DrillHeader=({title,count,sub}: {title:string,count?:any,sub?:string})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:sub?4:20,flexWrap:"wrap" as const,gap:8}}>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>{title}</h2>
       {count!==undefined&&<span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{count}</span>}
-      {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 16px",width:"100%"}}>{sub}</p>}
+      {sub&&<p style={{fontSize:12,color:C.muted,margin:"0 0 16px",width:"100%"}}>{sub}</p>}
     </div>
   );
 
@@ -2506,21 +2506,21 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
       return(
         <div onClick={()=>goToProject(pr.cName,pr.qd?.qNo,"projects")} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
-          <span style={{fontSize:10,color:dCol(d),flexShrink:0,minWidth:28,fontWeight:"500"}}>{d!==null?`${d}d`:"—"}</span>
+          <span style={{fontSize:12,color:dCol(d),flexShrink:0,minWidth:32,fontWeight:"500"}}>{d!==null?`${d}d`:"—"}</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
-              <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
-              <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
-              <span style={{fontSize:8,color:col,border:`1px solid ${col}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase" as const,flexShrink:0}}>{pr.status}</span>
+              <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+              <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+              <span style={{fontSize:10,color:col,border:`1px solid ${col}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase" as const,flexShrink:0}}>{pr.status}</span>
             </div>
             <div style={{display:"flex",gap:8,marginTop:3,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:9,color:C.light}}>{next}</span>
-              {pr.deliveryDate&&<span style={{fontSize:9,color:C.light}}>· Due {fmtD(pr.deliveryDate)}</span>}
-              {unsignedAmends>0&&<span style={{fontSize:9,color:C.amber}}>· {unsignedAmends} unsigned amend</span>}
+              <span style={{fontSize:11,color:C.light}}>{next}</span>
+              {pr.deliveryDate&&<span style={{fontSize:11,color:C.light}}>· Due {fmtD(pr.deliveryDate)}</span>}
+              {unsignedAmends>0&&<span style={{fontSize:11,color:C.amber}}>· {unsignedAmends} unsigned amend</span>}
             </div>
           </div>
-          <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
-          <span style={{fontSize:9,color:C.light}}>→</span>
+          <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+          <span style={{fontSize:11,color:C.light}}>→</span>
         </div>
       );
     };
@@ -2530,23 +2530,23 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         <DrillBack onClick={()=>setDrill(null)}/>
         <DrillHeader title="Active Projects" count={fmt(totalActive)} sub={`${filteredProjects.length} of ${activeProjects.length} project${activeProjects.length!==1?"s":""} in progress`}/>
         <div style={{display:"flex",justifyContent:"flex-end",gap:5,marginBottom:16}}>
-          <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+          <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
             {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
           </S>
-          <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
+          <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
             {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
           </S>
         </div>
 
-        {filteredProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No projects match this filter.</p>}
+        {filteredProjects.length===0&&<p style={{fontSize:12,color:C.muted}}>No projects match this filter.</p>}
 
         {needsAction.length>0&&<>
-          <p style={{fontSize:9,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 4px",fontWeight:"600"}}>Needs your action</p>
+          <p style={{fontSize:11,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 6px",fontWeight:"600"}}>Needs your action</p>
           {needsAction.map((pr: any,i: number)=><Row key={i} pr={pr}/>)}
         </>}
 
         {inProgress.length>0&&<>
-          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${needsAction.length>0?"20px":"0"} 0 4px`,fontWeight:"600"}}>In progress</p>
+          <p style={{fontSize:11,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${needsAction.length>0?"20px":"0"} 0 6px`,fontWeight:"600"}}>In progress</p>
           {inProgress.map((pr: any,i: number)=><Row key={i} pr={pr}/>)}
         </>}
       </div>
@@ -2563,16 +2563,16 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           return(
             <div key={y} style={{borderBottom:`1px solid ${C.rule}`,paddingBottom:10,marginBottom:10}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 0 6px"}}>
-                <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:13,color:C.black}}>{fmt(yRev)}</span>
+                <span style={{fontSize:13,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
+                <span style={{fontFamily:SERIF,fontSize:15,color:C.black}}>{fmt(yRev)}</span>
               </div>
               {yPaid.slice(0,3).map((pr: any,i: number)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
-                  <span style={{fontSize:10,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10,color:C.muted}}>{fmt(pr.amount)}</span>
+                  <span style={{fontSize:12,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:12,color:C.muted}}>{fmt(pr.amount)}</span>
                 </div>
               ))}
-              {yPaid.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
+              {yPaid.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
             </div>
           );
         })}
@@ -2590,17 +2590,17 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           return(
             <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
-                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
+                <span style={{fontSize:13,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
                 <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
               </div>
               {mPaid.slice(0,3).map((pr: any,i: number)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                  <span style={{fontSize:12,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:12}}>{fmt(pr.amount)}</span>
                 </div>
               ))}
-              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
-              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
+              {mPaid.length===0&&<p style={{fontSize:12,color:C.light,margin:0}}>No paid projects</p>}
+              {mPaid.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
             </div>
           );
         })}
@@ -2609,7 +2609,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   }
   if(drill==="license"){
     const setAction=(key: string,val: string)=>setLicenseActions(prev=>({...prev,[key]:val}));
-    const tabPillLS=(active: boolean):any=>({padding:"5px 13px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase" as const,outline:"none"});
+    const tabPillLS=(active: boolean):any=>({padding:"6px 15px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase" as const,outline:"none"});
     const usageLics=allLicenses.filter((r: any)=>r.type==="usage");
     const exclLics=allLicenses.filter((r: any)=>r.type==="excl");
     const tabLics=licTab==="usage"?usageLics:exclLics;
@@ -2640,30 +2640,30 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         <div style={{padding:"10px 0",borderBottom:`1px solid ${C.rule}`,opacity:isActioned?0.5:1}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             {/* days indicator */}
-            <span style={{fontSize:10,color:dCol,fontWeight:"500",flexShrink:0,minWidth:72}}>{daysText}</span>
+            <span style={{fontSize:12,color:dCol,fontWeight:"500",flexShrink:0,minWidth:88}}>{daysText}</span>
             {/* info */}
             <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>goToProject(r.cName)}>
               <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
-                <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.cName}</span>
-                <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{r.prName}</span>
+                <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{r.cName}</span>
+                <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{r.prName}</span>
               </div>
-              <span style={{fontSize:9,color:C.light}}>{licTab==="excl"?(isExpired?"Free to work again":"Blocked until"):("Expires")} {fmtD(r.end)}</span>
+              <span style={{fontSize:11,color:C.light}}>{licTab==="excl"?(isExpired?"Free to work again":"Blocked until"):("Expires")} {fmtD(r.end)}</span>
             </div>
             {/* status badge if actioned */}
-            {isActioned&&<span style={{fontSize:9,color:C.muted,border:`1px solid ${C.rule}`,padding:"1px 6px",borderRadius:2,flexShrink:0}}>{STATUS_LABELS[act]}</span>}
+            {isActioned&&<span style={{fontSize:11,color:C.muted,border:`1px solid ${C.rule}`,padding:"2px 8px",borderRadius:2,flexShrink:0}}>{STATUS_LABELS[act]}</span>}
             {/* action buttons — only when not yet actioned and expired/expiring */}
             {!isActioned&&(isExpired||isExpiring)&&licTab==="usage"&&(
               <div style={{display:"flex",gap:4,flexShrink:0}}>
                 {ACTION_OPTS.map(o=>(
                   <button key={o.val} onClick={()=>setAction(r.key,o.val)} disabled={o.disabled}
-                    style={{fontSize:8.5,padding:"3px 7px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:o.disabled?"not-allowed":"pointer",color:o.disabled?C.light:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap",opacity:o.disabled?0.5:1}}
+                    style={{fontSize:11,padding:"5px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:o.disabled?"not-allowed":"pointer",color:o.disabled?C.light:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap",opacity:o.disabled?0.5:1}}
                   >{o.label}</button>
                 ))}
               </div>
             )}
             {/* for excl expired — just a note, no action needed */}
             {!isActioned&&isExpired&&licTab==="excl"&&(
-              <button onClick={()=>setAction(r.key,"ignored")} style={{fontSize:8.5,padding:"3px 7px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>Mark noted</button>
+              <button onClick={()=>setAction(r.key,"ignored")} style={{fontSize:11,padding:"5px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>Mark noted</button>
             )}
           </div>
         </div>
@@ -2675,28 +2675,28 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>License Tracker</h2>
           <div style={{display:"flex"}}>
-            <button onClick={()=>setLicTab("usage")} style={{...tabPillLS(licTab==="usage"),borderRadius:"2px 0 0 2px"}}>Usage Rights <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{usageLics.length}</span></button>
-            <button onClick={()=>setLicTab("excl")} style={{...tabPillLS(licTab==="excl"),borderRadius:"0 2px 2px 0",borderLeft:"none"}}>Exclusivity <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{exclLics.length}</span></button>
+            <button onClick={()=>setLicTab("usage")} style={{...tabPillLS(licTab==="usage"),borderRadius:"2px 0 0 2px"}}>Usage Rights <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{usageLics.length}</span></button>
+            <button onClick={()=>setLicTab("excl")} style={{...tabPillLS(licTab==="excl"),borderRadius:"0 2px 2px 0",borderLeft:"none"}}>Exclusivity <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{exclLics.length}</span></button>
           </div>
         </div>
-        {licTab==="usage"&&<p style={{fontSize:10,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track when brands' usage rights expire. Expired = they may still be running your content. Mark as ignored, taken down, or flag for renewal.</p>}
-        {licTab==="excl"&&<p style={{fontSize:10,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track exclusivity periods. Active = you cannot work with competing brands. Expired = you are free to work again.</p>}
-        {tabLics.length===0&&<p style={{fontSize:11,color:C.muted}}>No {licTab==="usage"?"usage rights":"exclusivity periods"} tracked.</p>}
+        {licTab==="usage"&&<p style={{fontSize:12,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track when brands' usage rights expire. Expired = they may still be running your content. Mark as ignored, taken down, or flag for renewal.</p>}
+        {licTab==="excl"&&<p style={{fontSize:12,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track exclusivity periods. Active = you cannot work with competing brands. Expired = you are free to work again.</p>}
+        {tabLics.length===0&&<p style={{fontSize:12,color:C.muted}}>No {licTab==="usage"?"usage rights":"exclusivity periods"} tracked.</p>}
         {urgentRows.length>0&&(
           <div style={{marginBottom:16}}>
-            <p style={{fontSize:9,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4,fontWeight:"600"}}>Needs attention</p>
+            <p style={{fontSize:11,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6,fontWeight:"600"}}>Needs attention</p>
             {urgentRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
           </div>
         )}
         {activeRows.length>0&&(
           <div style={{marginBottom:16}}>
-            {urgentRows.length>0&&<p style={{fontSize:9,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4,fontWeight:"600",marginTop:20}}>Active</p>}
+            {urgentRows.length>0&&<p style={{fontSize:11,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6,fontWeight:"600",marginTop:20}}>Active</p>}
             {activeRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
           </div>
         )}
         {actionedRows.length>0&&(
           <div style={{marginTop:20}}>
-            <p style={{fontSize:9,color:C.light,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4,fontWeight:"600"}}>Handled</p>
+            <p style={{fontSize:11,color:C.light,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6,fontWeight:"600"}}>Handled</p>
             {actionedRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
           </div>
         )}
@@ -2794,8 +2794,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       URL.revokeObjectURL(url);
     };
 
-    const selBtnS: any={height:26,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.07em",color:C.muted,whiteSpace:"nowrap"};
-    const filterS: any={height:28,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,outline:"none"};
+    const selBtnS: any={height:26,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.07em",color:C.muted,whiteSpace:"nowrap"};
+    const filterS: any={height:28,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,fontFamily:SANS,fontSize:11,color:C.black,outline:"none"};
     const allChecked=filteredInvRows.length>0&&filteredInvRows.every((r: any)=>invSel.has(r.iNo));
     const someChecked=!allChecked&&filteredInvRows.some((r: any)=>invSel.has(r.iNo));
     const toggleAll=()=>{
@@ -2806,8 +2806,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     if(invPdfData)return<PDFModal data={invPdfData.data} type={invPdfData.type} onClose={()=>setInvPdfData(null)} settings={settings}/>;
 
     const tabPillS=(active: boolean):any=>({
-      padding:"5px 13px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",
-      color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",
+      padding:"6px 15px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",
+      color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.1em",
       textTransform:"uppercase" as const,outline:"none"
     });
 
@@ -2821,10 +2821,10 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
           <div style={{display:"flex"}}>
             <button onClick={()=>{setInvTab("unpaid");setInvSel(new Set());}} style={{...tabPillS(invTab==="unpaid"),borderRadius:"2px 0 0 2px"}}>
-              Unpaid <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{allInvRows.filter((r: any)=>!r.pr.paid).length}</span>
+              Unpaid <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{allInvRows.filter((r: any)=>!r.pr.paid).length}</span>
             </button>
             <button onClick={()=>{setInvTab("paid");setInvSel(new Set());}} style={{...tabPillS(invTab==="paid"),borderRadius:"0 2px 2px 0",borderLeft:"none"}}>
-              Paid <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{allInvRows.filter((r: any)=>r.pr.paid).length}</span>
+              Paid <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{allInvRows.filter((r: any)=>r.pr.paid).length}</span>
             </button>
           </div>
         </div>
@@ -2841,27 +2841,27 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           <button
             onClick={()=>exportMonthCsv(filteredInvRows,invYear==="all"?"all_invoices":invYear.replace(/[:\s]/g,"_"))}
             title="Export current view as CSV"
-            style={{height:28,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:SANS,fontSize:9,color:C.muted,letterSpacing:"0.07em"}}
+            style={{height:28,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:SANS,fontSize:11,color:C.muted,letterSpacing:"0.07em"}}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="4" x2="9" y2="4" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="6" x2="9" y2="6" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="8" x2="7" y2="8" stroke={C.muted} strokeWidth="1.1"/></svg>
             Export CSV
           </button>
         </div>
 
-        {filteredInvRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices match this filter.</p>}
+        {filteredInvRows.length===0&&<p style={{fontSize:12,color:C.muted}}>No invoices match this filter.</p>}
 
         {invGrouped.map((yg,yi)=>(
           <div key={yg.year}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${yi===0?"0":"20px"} 0 10px`,fontWeight:"600"}}>{yg.year}</p>
+            <p style={{fontSize:12,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${yi===0?"0":"20px"} 0 10px`,fontWeight:"600"}}>{yg.year}</p>
             {yg.months.map(mg=>(
               <div key={mg.month} style={{marginBottom:20}}>
                 {/* month header — no border, just spacing */}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
-                  <span style={{fontSize:10,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase"}}>{MO_LONG[mg.month]} {yg.year} · {mg.rows.length}</span>
+                  <span style={{fontSize:12,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase"}}>{MO_LONG[mg.month]} {yg.year} · {mg.rows.length}</span>
                   <button
                     onClick={()=>exportMonthCsv(mg.rows,`${MO_SHORT[mg.month]}_${yg.year}`)}
                     title={`Download ${MO_LONG[mg.month]} ${yg.year} as CSV`}
-                    style={{height:22,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:4,fontFamily:SANS,fontSize:9,color:C.muted,letterSpacing:"0.06em"}}
+                    style={{height:22,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:4,fontFamily:SANS,fontSize:11,color:C.muted,letterSpacing:"0.06em"}}
                   >
                     <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="4" x2="9" y2="4" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="6" x2="9" y2="6" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="8" x2="7" y2="8" stroke={C.muted} strokeWidth="1.1"/></svg>
                     CSV
@@ -2871,7 +2871,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
                 {/* select all — right-aligned, directly above checkboxes, no line */}
                 {mg.rows.length>0&&(
                   <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:6,padding:"4px 0 2px"}}>
-                    <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>select all</span>
+                    <span style={{fontSize:11,color:C.light,letterSpacing:"0.04em"}}>select all</span>
                     <input type="checkbox"
                       checked={mg.rows.every((r: any)=>invSel.has(r.iNo))}
                       ref={(el)=>{if(el)el.indeterminate=!mg.rows.every((r: any)=>invSel.has(r.iNo))&&mg.rows.some((r: any)=>invSel.has(r.iNo));}}
@@ -2907,18 +2907,18 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
                       {/* main info — clickable to preview */}
                       <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>openInvPreview(r)}>
                         <div style={{display:"flex",alignItems:"baseline",gap:7,flexWrap:"wrap"}}>
-                          <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.iNo}</span>
-                          <span style={{fontSize:10,color:C.muted}}>{r.cName}</span>
-                          <span style={{fontSize:10,color:C.light}}>·</span>
-                          <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+                          <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{r.iNo}</span>
+                          <span style={{fontSize:12,color:C.muted}}>{r.cName}</span>
+                          <span style={{fontSize:12,color:C.light}}>·</span>
+                          <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
                         </div>
                         <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
-                          <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em"}}>{fmtD(pr.date)}</span>
-                          <span style={{fontSize:9,color:pr.paid?C.green:C.amber,border:`1px solid ${pr.paid?C.greenBorder:C.amberBorder}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em"}}>{pr.paid?"Paid":"Invoiced"}</span>
+                          <span style={{fontSize:11,color:C.light,letterSpacing:"0.07em"}}>{fmtD(pr.date)}</span>
+                          <span style={{fontSize:11,color:pr.paid?C.green:C.amber,border:`1px solid ${pr.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em"}}>{pr.paid?"Paid":"Invoiced"}</span>
                         </div>
                       </div>
                       {/* amount */}
-                      <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+                      <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
                       {/* checkbox right */}
                       <input type="checkbox" checked={isChecked} onChange={()=>toggleSel(r.iNo)}
                         style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
@@ -2935,7 +2935,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         {/* bulk bar — bottom, appears when rows selected */}
         {invSel.size>0&&(
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,marginTop:12}}>
-            <span style={{fontSize:10,color:C.amber}}>{invSel.size} selected</span>
+            <span style={{fontSize:12,color:C.amber}}>{invSel.size} selected</span>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>setInvSel(new Set())} style={{...selBtnS,color:C.amber,border:`1px solid ${C.amberBorder}`}}>Clear</button>
               <button onClick={()=>doInvBulk(selRows)} disabled={!!invBulkStatus} style={{...selBtnS,background:C.black,color:C.white,border:"none",opacity:invBulkStatus?0.5:1}}>
@@ -2962,7 +2962,7 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div>
         <DrillBack onClick={()=>setDrill(null)}/>
         <DrillHeader title="Open Quotes" count={fmt(totalQ)}/>
-        {sorted.length===0&&<p style={{fontSize:11,color:C.muted}}>No open quotes.</p>}
+        {sorted.length===0&&<p style={{fontSize:12,color:C.muted}}>No open quotes.</p>}
         {sorted.map((pr: any,i: number)=>{
           const daysSent=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
           const expiry=pr.qd?.validUntil;
@@ -2973,21 +2973,21 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           return(
             <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
               {/* days since sent */}
-              <span style={{fontSize:10,color:daysSent!==null?daysColor(daysSent):C.light,flexShrink:0,minWidth:28,fontWeight:"500"}}>{daysSent!==null?`${daysSent}d`:"—"}</span>
+              <span style={{fontSize:12,color:daysSent!==null?daysColor(daysSent):C.light,flexShrink:0,minWidth:32,fontWeight:"500"}}>{daysSent!==null?`${daysSent}d`:"—"}</span>
               {/* info */}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
-                  <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
-                  <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
-                  {isRev&&<span style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em"}}>Revised</span>}
+                  <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                  <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
+                  {isRev&&<span style={{fontSize:10,color:C.amber,border:`1px solid ${C.amberBorder}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em"}}>Revised</span>}
                 </div>
                 {expiry&&<div style={{marginTop:3}}>
-                  <span style={{fontSize:9,color:expiryCol}}>{expired?`Expired ${Math.abs(daysLeft!)}d ago`:`Expires in ${daysLeft}d · ${fmtD(expiry)}`}</span>
+                  <span style={{fontSize:11,color:expiryCol}}>{expired?`Expired ${Math.abs(daysLeft!)}d ago`:`Expires in ${daysLeft}d · ${fmtD(expiry)}`}</span>
                 </div>}
               </div>
               {/* amount */}
-              <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
-              <span style={{fontSize:9,color:C.light}}>→</span>
+              <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+              <span style={{fontSize:11,color:C.light}}>→</span>
             </div>
           );
         })}
@@ -3013,27 +3013,27 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       <div>
         <DrillBack onClick={()=>setDrill(null)}/>
         <DrillHeader title="Unsigned Contracts" count={<span style={{color:hasUrgent?C.amber:C.black}}>{fmt(totalC)}</span>}/>
-        {hasUrgent&&<p style={{fontSize:10,color:C.red,marginBottom:16,letterSpacing:"0.03em"}}>One or more contracts waiting 14+ days — follow up now.</p>}
+        {hasUrgent&&<p style={{fontSize:12,color:C.red,marginBottom:16,letterSpacing:"0.03em"}}>One or more contracts waiting 14+ days — follow up now.</p>}
         {!hasUrgent&&<div style={{marginBottom:16}}/>}
-        {sorted.length===0&&<p style={{fontSize:11,color:C.muted}}>No unsigned contracts.</p>}
+        {sorted.length===0&&<p style={{fontSize:12,color:C.muted}}>No unsigned contracts.</p>}
         {sorted.map((pr: any,i: number)=>{
           const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
           const col=days!==null?daysColor(days):C.muted;
           return(
             <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer",background:days!==null&&days>=14?"rgba(192,133,122,0.04)":undefined}}>
               {/* days waiting */}
-              <span style={{fontSize:10,color:col,flexShrink:0,minWidth:28,fontWeight:"500"}}>{days!==null?`${days}d`:"—"}</span>
+              <span style={{fontSize:12,color:col,flexShrink:0,minWidth:32,fontWeight:"500"}}>{days!==null?`${days}d`:"—"}</span>
               {/* info */}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
-                  <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
-                  <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
+                  <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                  <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
                 </div>
-                <span style={{fontSize:9,color:col,marginTop:2,display:"block"}}>{days!==null&&days>=14?"Overdue for signature":days!==null&&days>=7?"Waiting a while":"Sent "+fmtD(pr.date)}</span>
+                <span style={{fontSize:11,color:col,marginTop:2,display:"block"}}>{days!==null&&days>=14?"Overdue for signature":days!==null&&days>=7?"Waiting a while":"Sent "+fmtD(pr.date)}</span>
               </div>
               {/* amount */}
-              <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
-              <span style={{fontSize:9,color:C.light}}>→</span>
+              <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+              <span style={{fontSize:11,color:C.light}}>→</span>
             </div>
           );
         })}
