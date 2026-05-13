@@ -359,6 +359,46 @@ function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}
   </span>;
 }
 
+// ─── LICENSE TRACKER ROW (per project) ───────────────────
+function LicenseRow({label,end,note}: {label:string,end:string,note?:string}) {
+  const d=dLeft(end);
+  const expired=d!==null&&d<0;
+  const expiring=d!==null&&d>=0&&d<=7;
+  const active=d!==null&&d>7;
+  const col=expired?C.red:expiring?C.amber:C.green;
+  const bg=expired?C.redBg:expiring?C.amberBg:C.greenBg;
+  const bd=expired?C.redBorder:expiring?C.amberBorder:C.greenBorder;
+  const daysText=expired?`+${Math.abs(d!)}d expired`:expiring?`${d}d left`:`${d}d`;
+  return(
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 8px",background:bg,border:`1px solid ${bd}`,borderRadius:2,marginBottom:3}}>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <span style={{fontSize:9,color:col,fontWeight:"600",minWidth:6,height:6,width:6,borderRadius:"50%",background:col,flexShrink:0,display:"inline-block"}}/>
+        <span style={{fontSize:9.5,color:col,fontWeight:"500"}}>{label}</span>
+        {note&&<span style={{fontSize:9,color:col,opacity:0.8}}>· {note}</span>}
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+        <span style={{fontSize:9,color:col}}>{fmtD(end)}</span>
+        <span style={{fontSize:9.5,color:col,fontWeight:"600"}}>{daysText}</span>
+      </div>
+    </div>
+  );
+}
+
+function ProjectLicenseTracker({pr,uEnd}: {pr:any,uEnd:(p:any)=>string|null}) {
+  const usageEnd=uEnd(pr);
+  const exclRenewals=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate);
+  if(!usageEnd&&exclRenewals.length===0)return null;
+  return(
+    <div style={{marginBottom:8}}>
+      <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
+      {usageEnd&&<LicenseRow label="Usage Rights" end={usageEnd}/>}
+      {exclRenewals.map((r: any,i: number)=>(
+        <LicenseRow key={i} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
+      ))}
+    </div>
+  );
+}
+
 // ─── PDF ENGINE ────────────────────────────────────────────
 function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) {
   const s={...SETTINGS_DEFAULT,...(settings||{})};
@@ -1779,7 +1819,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 <p style={{fontSize:FS.projectDate,color:C.muted,margin:`0 0 ${isMobile?8:6}px`}}>{fmtD(pr.date)}</p>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
                   <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:isMobile?"4px 10px":"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
-                  {end&&<UBadge end={end}/>}
+
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0,marginLeft:isMobile?14:8}}>
@@ -1819,6 +1859,9 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 </div>
               </div>
             ))}
+
+            {/* ── LICENSE TRACKER ── */}
+            <ProjectLicenseTracker pr={pr} uEnd={uEnd}/>
 
             {pr.notes&&<p style={{fontSize:isMobile?12:9,color:C.muted,margin:`0 0 ${isMobile?10:7}px`,lineHeight:1.6}}>{pr.notes}</p>}
 
