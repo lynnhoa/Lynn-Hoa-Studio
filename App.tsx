@@ -4275,7 +4275,7 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
                       const stColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.light;
                       return(
                         <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:`1px solid ${C.rule}`}}>
-                          <span style={{fontSize:12,color:C.black,flex:1}}>{it.name}</span>
+                          <span style={{fontSize:13,color:C.black,flex:1}}>{it.name}</span>
                           <span style={{fontSize:11,color:stColor}}>{it.status}</span>
                         </div>
                       );
@@ -4291,7 +4291,7 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
           <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"20px 0 10px"}}>Past Projects</p>
           {pastProjects.map((p: any)=>(
             <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:12,color:C.muted}}>{p.name}</span>
+              <span style={{fontSize:13,color:C.muted}}>{p.name}</span>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <span style={{fontSize:10,padding:"2px 8px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted}}>Paid</span>
                 <span style={{fontSize:12,color:C.light}}>›</span>
