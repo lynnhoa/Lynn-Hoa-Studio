@@ -1583,7 +1583,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
       else{const m=usageItem.usageLabel.match(/(\d+)\s*month/i);if(m)mo=parseInt(m[1]);}
     }
     setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,mo,ctab,
-      lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
+      lines:items.map(it=>({id:it.id,name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
       total:grand,ctype,footer:"Looking forward to working together."});
   };
 
@@ -1943,10 +1943,15 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
   const allLines=[...origLines,...amendLines].filter((l: any)=>l.amt>0);
   const catLabel=CAT_FROM_ID;
 
-  // 01 deliverables
-  const [selIds,setSelIds]=useState<string[]>([]);
-  const toggleItem=(id: string)=>setSelIds(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
-  const base=selIds.reduce((s,id)=>{const l=allLines.find((x: any)=>x.id===id||(x.name+x._src)===id);return s+(parseFloat(l?.amt)||0);},0);
+  // 01 deliverables — qty stepper (0 = not selected, max = qty in quote)
+  const [selQty,setSelQty]=useState<Record<string,number>>({});
+  const setQty=(key: string,max: number,val: number)=>setSelQty(p=>({...p,[key]:Math.max(0,Math.min(max,val))}));
+  const selIds=Object.keys(selQty).filter(k=>selQty[k]>0);
+  const base=allLines.reduce((s: number,l: any,i: number)=>{
+    const key=l.id||`line_${i}`;
+    const qty=selQty[key]||0;
+    return s+(parseFloat(l.up||0)*qty);
+  },0);
 
   // 02 usage rights
   const [uMode,setUMode]=useState<"predefined"|"custom"|"none">("none");
@@ -1982,13 +1987,13 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
 
   const totalFee=uFee+eFee;
   const rNo=`RNW-${(q?.qNo||"").replace("QUO","").trim()||"001"}-${String((p.renewals||[]).length+1).padStart(2,"0")}`;
-  const canPreview=selIds.length>0&&(uMode!=="none"||eMode!=="none")&&totalFee>0;
+  const canPreview=base>0&&(uMode!=="none"||eMode!=="none")&&totalFee>0;
 
   const [showPreview,setShowPreview]=useState(false);
 
   const buildDoc=()=>{
     const lines=[];
-    const selLines=allLines.filter((l: any)=>selIds.includes(l.id||(l.name+l._src)));
+    const selLines=allLines.filter((_l: any,i: number)=>{const key=_l.id||`line_${i}`;return (selQty[key]||0)>0;});
     if(uMode!=="none"&&uFee>0){
       const label=uMode==="predefined"?uOpt.l:`Usage Rights — Custom (${uCustomDays} ${uCustomUnit})`;
       lines.push({name:`Usage Rights Renewal — ${label}`,note:`${fmtD(startD)}${uEnd?` → ${fmtD(uEnd)}`:""}`,qty:1,up:uFee,amt:uFee});
@@ -2043,18 +2048,28 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
           <SectionHead n="01" title="Which Deliverables"/>
           <p style={{fontSize:9.5,color:C.muted,margin:"0 0 8px"}}>Select items the renewal fee applies to. Their prices are the base for % calculation.</p>
           {allLines.map((l: any,i: number)=>{
-            const key=l.id||(l.name+l._src);
-            const on=selIds.includes(key);
+            const key=l.id||`line_${i}`;
+            const max=l.qty||1;
+            const qty=selQty[key]||0;
             const cat=catLabel(l.id||"");
             return(
-              <label key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:10.5,cursor:"pointer",marginBottom:5,padding:"4px 0",borderBottom:`1px solid ${C.rule}`}}>
-                <input type="checkbox" checked={on} onChange={()=>toggleItem(key)} style={{accentColor:C.black,flexShrink:0}}/>
-                <span style={{flex:1}}>{l.name}{cat?<span style={{fontSize:9,color:C.light,marginLeft:5}}>— {cat}</span>:null}{l._src!=="quote"?<span style={{fontSize:9,color:C.amber,marginLeft:5}}>{l._src}</span>:null}</span>
-                <span style={{fontFamily:SERIF,fontSize:10,color:C.muted,flexShrink:0}}>{fmt(l.amt)}</span>
-              </label>
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.rule}`}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <span style={{fontSize:10.5,color:C.black}}>{l.name}</span>
+                  {cat&&<span style={{fontSize:9,color:C.light,marginLeft:5}}>— {cat}</span>}
+                  {l._src!=="quote"&&<span style={{fontSize:9,color:C.amber,marginLeft:5}}>{l._src}</span>}
+                  <span style={{fontSize:9,color:C.light,marginLeft:5}}>· €{l.up} each · max {max}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                  <button onClick={()=>setQty(key,max,qty-1)} style={{width:22,height:22,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:13,color:qty>0?C.black:C.light,lineHeight:1}}>−</button>
+                  <span style={{fontSize:11,fontFamily:SERIF,minWidth:16,textAlign:"center",color:qty>0?C.black:C.light}}>{qty}</span>
+                  <button onClick={()=>setQty(key,max,qty+1)} style={{width:22,height:22,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:13,color:qty<max?C.black:C.light,lineHeight:1}}>+</button>
+                </div>
+                <span style={{fontFamily:SERIF,fontSize:10,color:qty>0?C.black:C.muted,flexShrink:0,minWidth:52,textAlign:"right"}}>{qty>0?fmt(parseFloat(l.up||0)*qty):"—"}</span>
+              </div>
             );
           })}
-          {selIds.length>0&&<p style={{fontSize:10,color:C.muted,margin:"8px 0 0",textAlign:"right"}}>Base: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(base)}</strong></p>}
+          {base>0&&<p style={{fontSize:10,color:C.muted,margin:"8px 0 0",textAlign:"right"}}>Base: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(base)}</strong></p>}
         </div>
 
         {/* 02 — Usage Rights */}
