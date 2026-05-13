@@ -2059,7 +2059,15 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
+  const [invTab,setInvTab]=useState<"unpaid"|"paid">("unpaid");
+  const [invYear,setInvYear]=useState<string>("all");
+  const [invType,setInvType]=useState<string>("all");
+  const [invClient,setInvClient]=useState<string>("all");
+  const [invSel,setInvSel]=useState<Set<string>>(new Set());
+  const [invBulkStatus,setInvBulkStatus]=useState<string|null>(null);
+  const [invPdfData,setInvPdfData]=useState<any>(null);
   useEffect(()=>{setDrill(null);},[resetKey]);
+
   const goToProject=(cName: string,qNo?: string)=>{setPendingClientName(cName);if(qNo&&setPendingProjectQNo)setPendingProjectQNo(qNo);goTo(1);};
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
@@ -2266,6 +2274,208 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       </div>
     );
   }
+  // ── Invoices drill-down ──────────────────────────────────
+  if(drill==="invoices"){
+    const allInvRows=buildInvoiceRows(clients);
+    const tabRows=invTab==="unpaid"?allInvRows.filter((r: any)=>!r.pr.paid):allInvRows.filter((r: any)=>r.pr.paid);
+    const allInvYears=Array.from(new Set(allInvRows.map((r: any)=>r.year))).sort((a: any,b: any)=>b-a) as number[];
+    const allInvClients=Array.from(new Set(allInvRows.map((r: any)=>r.cName))).sort() as string[];
+    const filteredInvRows=tabRows.filter((r: any)=>{
+      if(invYear!=="all"&&String(r.year)!==invYear)return false;
+      if(invType!=="all"&&getTypeOfWork(r.pr)!==invType)return false;
+      if(invClient!=="all"&&r.cName!==invClient)return false;
+      return true;
+    });
+    // group by year→month, newest first
+    const invGrouped: {year:number,months:{month:number,rows:any[]}[]}[]=[];
+    filteredInvRows.forEach((r: any)=>{
+      let yg=invGrouped.find(g=>g.year===r.year);
+      if(!yg){yg={year:r.year,months:[]};invGrouped.push(yg);}
+      let mg=yg.months.find(m=>m.month===r.month);
+      if(!mg){mg={month:r.month,rows:[]};yg.months.push(mg);}
+      mg.rows.push(r);
+    });
+    invGrouped.sort((a,b)=>b.year-a.year);
+    invGrouped.forEach(yg=>yg.months.sort((a,b)=>b.month-a.month));
+
+    const toggleSel=(key: string)=>setInvSel(prev=>{const n=new Set(prev);n.has(key)?n.delete(key):n.add(key);return n;});
+    const selRows=filteredInvRows.filter((r: any)=>invSel.has(r.iNo));
+
+    const openInvPreview=(r: any)=>{
+      const pr=r.pr;const q=pr.qd;
+      setInvPdfData({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo:r.iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});
+    };
+
+    const doInvBulk=async(rows: any[])=>{
+      if(!rows.length||invBulkStatus)return;
+      setInvBulkStatus(`Preparing ${rows.length} invoice${rows.length>1?"s":""}…`);
+      const [{default:html2canvas},{default:jsPDF}]=await Promise.all([import("html2canvas"),import("jspdf")]);
+      for(let i=0;i<rows.length;i++){
+        const r=rows[i];const pr=r.pr;const q=pr.qd;
+        const d={brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo:r.iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."};
+        setInvBulkStatus(`Saving ${i+1}/${rows.length} — ${r.iNo}`);
+        const wrap=document.createElement("div");
+        wrap.style.cssText="position:fixed;left:-9999px;top:0;width:595px;z-index:-1;background:#faf9f7;";
+        document.body.appendChild(wrap);
+        const {createRoot:cr}=await import("react-dom/client");
+        const root=cr(wrap);
+        await new Promise<void>(res=>{root.render(<A4 d={d} type="invoice" lang="en" settings={settings} extraSigMargin={0} clauseGuards={[]} tRowGuards={[]}/>);setTimeout(res,600);});
+        try{
+          const pages=Array.from(wrap.querySelectorAll("[data-pdf-page]")) as HTMLElement[];
+          const pdf=new (jsPDF as any)({orientation:"portrait",unit:"mm",format:"a4"});
+          const pw=pdf.internal.pageSize.getWidth();const ph=pdf.internal.pageSize.getHeight();
+          for(let p=0;p<pages.length;p++){
+            if(p>0)pdf.addPage();
+            const canvas=await (html2canvas as any)(pages[p],{scale:2,useCORS:true,backgroundColor:"#faf9f7"});
+            pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pw,ph);
+          }
+          pdf.save(`${(pr.date||"").replace(/-/g,"_")} ${r.iNo}.pdf`);
+        }finally{root.unmount();document.body.removeChild(wrap);}
+        if(i<rows.length-1)await new Promise(res=>setTimeout(res,400));
+      }
+      setInvBulkStatus(null);setInvSel(new Set());
+    };
+
+    const exportMonthCsv=(rows: any[],label: string)=>{
+      const headers=["Month","Invoice No.","Client","Project","Type of Work","Collab","TikToks","Reels","Posts","Stories","Income","Expenses","Delivery Date","Payment Status"];
+      const lines=[headers];
+      rows.forEach(r=>{
+        const pr=r.pr;const q=pr.qd;
+        const mo=r.dateStr?`${MO_SHORT[r.month]} ${String(r.year).slice(2)}`:"";
+        const typeOfWork=getTypeOfWork(pr);
+        const isCollab=q?.ctab==="influencer";
+        const ls=q?.lines||[];
+        const collab=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("photo")||l.name?.toLowerCase().includes("carousel")||l.name?.toLowerCase().includes("set")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const tiktoks=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("tiktok")||(l.platforms||[]).includes("TikTok")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const reels=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("reel")||(l.platforms||[]).includes("Instagram")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const stories=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("story")||l.name?.toLowerCase().includes("storie")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const income=pr.amount?`€ ${Number(pr.amount).toFixed(2).replace(".",",")}` :"€ 0,00";
+        lines.push([mo,r.iNo,r.cName,pr.name,typeOfWork,collab,tiktoks,reels,"",stories,income,"€ 0,00",pr.deliveryDate||"",pr.paid?"paid":"invoiced"]);
+      });
+      const csv=lines.map(row=>row.map((v:string)=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+      const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");a.href=url;a.download=`${label.replace(/\s/g,"_")}.csv`;a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    const selBtnS: any={height:26,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.07em",color:C.muted,whiteSpace:"nowrap"};
+    const filterS: any={height:28,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,fontFamily:SANS,fontSize:9,color:C.black,outline:"none"};
+
+    if(invPdfData)return<PDFModal data={invPdfData.data} type={invPdfData.type} onClose={()=>setInvPdfData(null)} settings={settings}/>;
+
+    return(
+      <div>
+        {/* back */}
+        <button onClick={()=>{setDrill(null);setInvSel(new Set());}} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
+
+        {/* header row */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
+          <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
+            {/* filters */}
+            <select value={invYear} onChange={(e: any)=>setInvYear(e.target.value)} style={filterS}>
+              <option value="all">All years</option>
+              {allInvYears.map(y=><option key={y} value={String(y)}>{y}</option>)}
+            </select>
+            <select value={invType} onChange={(e: any)=>setInvType(e.target.value)} style={filterS}>
+              <option value="all">All types</option>
+              {["Collab","UGC","Editorial","Combination"].map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={invClient} onChange={(e: any)=>setInvClient(e.target.value)} style={filterS}>
+              <option value="all">All clients</option>
+              {allInvClients.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* tabs */}
+        <div style={{display:"flex",gap:0,borderBottom:`1px solid ${C.rule}`,marginBottom:16}}>
+          {(["unpaid","paid"] as const).map(tab=>(
+            <button key={tab} onClick={()=>{setInvTab(tab);setInvSel(new Set());}} style={{padding:"7px 16px",background:"none",border:"none",borderBottom:invTab===tab?`2px solid ${C.black}`:"2px solid transparent",cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.1em",textTransform:"uppercase",color:invTab===tab?C.black:C.muted,marginBottom:-1}}>
+              {tab==="unpaid"?"Unpaid":"Paid"}
+              <span style={{marginLeft:6,fontSize:9,color:invTab===tab?C.black:C.light}}>
+                {tab==="unpaid"?allInvRows.filter((r: any)=>!r.pr.paid).length:allInvRows.filter((r: any)=>r.pr.paid).length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* bulk action bar */}
+        {invSel.size>0&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,marginBottom:12}}>
+            <span style={{fontSize:10,color:C.amber}}>{invSel.size} selected</span>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>setInvSel(new Set())} style={{...selBtnS,fontSize:9}}>Clear</button>
+              <button onClick={()=>doInvBulk(selRows)} disabled={!!invBulkStatus} style={{...selBtnS,background:C.black,color:C.white,border:"none",opacity:invBulkStatus?0.5:1}}>
+                {invBulkStatus||`↓ Download ${invSel.size} PDF${invSel.size>1?"s":""}`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {filteredInvRows.length===0&&<p style={{fontSize:11,color:C.muted}}>No invoices match this filter.</p>}
+
+        {invGrouped.map(yg=>(
+          <div key={yg.year}>
+            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:"18px 0 8px",fontWeight:"600"}}>{yg.year}</p>
+            {yg.months.map(mg=>(
+              <div key={mg.month} style={{marginBottom:18}}>
+                {/* month header */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
+                  <span style={{fontSize:10,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase"}}>{MO_LONG[mg.month]} {yg.year} · {mg.rows.length}</span>
+                  <button
+                    onClick={()=>exportMonthCsv(mg.rows,`${MO_SHORT[mg.month]}_${yg.year}`)}
+                    title={`Download ${MO_LONG[mg.month]} ${yg.year} as CSV`}
+                    style={{background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:"pointer",padding:"2px 7px",fontSize:10,color:C.muted,lineHeight:1.2}}
+                  >↓</button>
+                </div>
+                {mg.rows.map((r: any,i: number)=>{
+                  const pr=r.pr;
+                  const isChecked=invSel.has(r.iNo);
+                  const typeOfWork=getTypeOfWork(pr);
+                  return(
+                    <div key={r.iNo+i} style={{display:"flex",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.rule}`,gap:8,background:isChecked?"rgba(0,0,0,0.02)":undefined}}>
+                      {/* checkbox */}
+                      <input type="checkbox" checked={isChecked} onChange={()=>toggleSel(r.iNo)}
+                        style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
+                        onClick={(e: any)=>e.stopPropagation()}
+                      />
+                      {/* main info — clickable to preview */}
+                      <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>openInvPreview(r)}>
+                        <div style={{display:"flex",alignItems:"baseline",gap:7,flexWrap:"wrap"}}>
+                          <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.iNo}</span>
+                          <span style={{fontSize:10,color:C.muted}}>{r.cName}</span>
+                          <span style={{fontSize:10,color:C.light}}>·</span>
+                          <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+                        </div>
+                        <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                          <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em"}}>{fmtD(pr.date)}</span>
+                          <span style={{fontSize:9,color:C.light}}>·</span>
+                          <span style={{fontSize:9,color:C.muted}}>{typeOfWork}</span>
+                          <span style={{fontSize:9,color:pr.paid?C.green:C.amber,border:`1px solid ${pr.paid?C.greenBorder:C.amberBorder}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em"}}>{pr.paid?"Paid":"Invoiced"}</span>
+                        </div>
+                      </div>
+                      {/* amount */}
+                      <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+                      {/* per-row PDF download */}
+                      <button
+                        onClick={(e: any)=>{e.stopPropagation();doInvBulk([r]);}}
+                        disabled={!!invBulkStatus}
+                        title="Download PDF"
+                        style={{flexShrink:0,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,cursor:invBulkStatus?"not-allowed":"pointer",padding:"4px 8px",fontSize:10,color:C.muted,fontFamily:SANS,opacity:invBulkStatus?0.4:1}}
+                      >↓</button>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const unsignedC=all.filter((pr: any)=>pr.status==="contracted");
   return(
     <div>
