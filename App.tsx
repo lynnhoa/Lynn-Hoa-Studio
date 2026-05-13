@@ -2083,13 +2083,26 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
             {base>0&&<p style={{fontSize:10,color:C.muted,margin:0}}>Fee: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(uFee)}</strong> ({uOpt.pct}% of {fmt(base)})</p>}
           </>}
           {uMode==="custom"&&<>
+            <Lbl>Reference rate <span style={{fontWeight:"normal",color:C.light}}>(for pro-rata calculation)</span></Lbl>
+            <S value={uIdx} onChange={(e: any)=>setUIdx(parseInt(e.target.value))} s={{marginBottom:8,opacity:0.6}}>
+              {RENEWAL_OPTS.usage.map((o,i)=><option key={i} value={i}>{o.l}{o.pct>0?` (+${o.pct}%)`:""}</option>)}
+            </S>
             <div style={{display:"flex",gap:7,marginBottom:6}}>
-              <I type="number" placeholder="Duration" value={uCustomDays} onChange={(e: any)=>setUCustomDays(e.target.value)} s={{flex:1}}/>
+              <I type="number" placeholder="Duration" value={uCustomDays} onChange={(e: any)=>{
+                const d=parseInt(e.target.value)||0;
+                setUCustomDays(e.target.value);
+                if(d>0&&uOpt.pct>0&&uOpt.mo>0&&base>0){
+                  const refDays=uOpt.mo*30;
+                  const proRataPct=(d/refDays)*uOpt.pct;
+                  setUCustomFee(String(Math.round(base*proRataPct/100)));
+                }
+              }} s={{flex:1}}/>
               <S value={uCustomUnit} onChange={(e: any)=>setUCustomUnit(e.target.value)} s={{flex:1}}>
                 <option value="days">Days</option>
                 <option value="months">Months</option>
               </S>
             </div>
+            {uCustomDays&&uOpt.pct>0&&base>0&&<p style={{fontSize:9.5,color:C.muted,margin:"0 0 6px"}}>Pro-rata: {parseInt(uCustomDays)||0}d / {uOpt.mo*30}d × {uOpt.pct}% = {Math.round(((parseInt(uCustomDays)||0)/(uOpt.mo*30))*uOpt.pct)}% of {fmt(base)}</p>}
             <I type="number" placeholder="Fee (€)" value={uCustomFee} onChange={(e: any)=>setUCustomFee(e.target.value)}/>
           </>}
         </div>
@@ -2105,13 +2118,26 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
             {base>0&&<p style={{fontSize:10,color:C.muted,margin:0}}>Fee: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(eFee)}</strong> ({eOpt.pct}% of {fmt(base)})</p>}
           </>}
           {eMode==="custom"&&<>
+            <Lbl>Reference rate <span style={{fontWeight:"normal",color:C.light}}>(for pro-rata calculation)</span></Lbl>
+            <S value={eIdx} onChange={(e: any)=>setEIdx(parseInt(e.target.value))} s={{marginBottom:8,opacity:0.6}}>
+              {RENEWAL_OPTS.excl.map((o,i)=><option key={i} value={i}>{o.l}{o.pct>0?` (+${o.pct}%)`:""}</option>)}
+            </S>
             <div style={{display:"flex",gap:7,marginBottom:6}}>
-              <I type="number" placeholder="Duration" value={eCustomDays} onChange={(e: any)=>setECustomDays(e.target.value)} s={{flex:1}}/>
+              <I type="number" placeholder="Duration" value={eCustomDays} onChange={(e: any)=>{
+                const d=parseInt(e.target.value)||0;
+                setECustomDays(e.target.value);
+                if(d>0&&eOpt.pct>0&&eOpt.mo>0&&base>0){
+                  const refDays=eOpt.mo*30;
+                  const proRataPct=(d/refDays)*eOpt.pct;
+                  setECustomFee(String(Math.round(base*proRataPct/100)));
+                }
+              }} s={{flex:1}}/>
               <S value={eCustomUnit} onChange={(e: any)=>setECustomUnit(e.target.value)} s={{flex:1}}>
                 <option value="days">Days</option>
                 <option value="months">Months</option>
               </S>
             </div>
+            {eCustomDays&&eOpt.pct>0&&base>0&&<p style={{fontSize:9.5,color:C.muted,margin:"0 0 6px"}}>Pro-rata: {parseInt(eCustomDays)||0}d / {eOpt.mo*30}d × {eOpt.pct}% = {Math.round(((parseInt(eCustomDays)||0)/(eOpt.mo*30))*eOpt.pct)}% of {fmt(base)}</p>}
             <I type="number" placeholder="Fee (€)" value={eCustomFee} onChange={(e: any)=>setECustomFee(e.target.value)}/>
           </>}
         </div>
