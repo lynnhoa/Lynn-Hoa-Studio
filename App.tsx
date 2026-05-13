@@ -3852,9 +3852,9 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
             {/* Group header */}
             <div onClick={()=>toggleGroup(g.key)}
               style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,cursor:"pointer",userSelect:"none" as const}}>
-              <span style={{fontSize:9,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.muted,fontWeight:"600"}}>{g.label}</span>
-              <span style={{fontSize:9,color:isOverdueGroup&&g.items.length>0?C.red:C.light}}>{g.items.length}</span>
-              <span style={{fontSize:9,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
+              <span style={{fontSize:11,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.muted,fontWeight:"600"}}>{g.label}</span>
+              <span style={{fontSize:11,color:isOverdueGroup&&g.items.length>0?C.red:C.light}}>{g.items.length}</span>
+              <span style={{fontSize:11,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
             </div>
             <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
 
@@ -3880,7 +3880,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                   </button>
 
                   {/* Category pill */}
-                  <span style={{fontSize:9,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em",marginTop:2}}>
+                  <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em",marginTop:2}}>
                     {item.category}
                   </span>
 
@@ -3891,14 +3891,14 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                         onBlur={()=>saveName(item,editingVal)}
                         onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
                         placeholder={item.defaultName}
-                        style={{width:"100%",fontFamily:SANS,fontSize:12,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",marginBottom:3}}/>
+                        style={{width:"100%",fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",marginBottom:3}}/>
                     ):(
                       <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
-                        style={{fontSize:12,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                        style={{fontSize:13,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
                         {item.name}
                       </span>
                     )}
-                    <span style={{fontSize:9.5,color:C.light,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                    <span style={{fontSize:11,color:C.light,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
                       {descriptor}
                     </span>
                   </div>
@@ -3906,15 +3906,15 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                   {/* Right side */}
                   <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?4:8,flexShrink:0,marginTop:2}}>
                     {/* Client */}
-                    {!isMobile&&<span style={{fontSize:10,color:C.muted,letterSpacing:"0.04em"}}>{item.clientName.toUpperCase()}</span>}
+                    {!isMobile&&<span style={{fontSize:11,color:C.muted,letterSpacing:"0.04em"}}>{item.clientName.toUpperCase()}</span>}
 
                     {/* Deadline */}
-                    <span style={{fontSize:10,color:dlColor,fontWeight:dlColor===C.red?"600":"400",minWidth:isMobile?undefined:54,textAlign:"right" as const}}>
+                    <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400",minWidth:isMobile?undefined:54,textAlign:"right" as const}}>
                       {isDone?`Done ${fmtD(item.deadline)||""}`:`${fmtDeadline(item.deadline)}`}
                     </span>
 
                     {/* Planned day tag */}
-                    {dayTag&&<span style={{fontSize:9,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white}}>{dayTag}</span>}
+                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white}}>{dayTag}</span>}
 
                     {/* Notes icon */}
                     {!isNoting&&(
