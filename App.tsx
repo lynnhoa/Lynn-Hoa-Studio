@@ -1,40 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-
-// ─── DATA PERSISTENCE (localStorage replaces Replit backend) ──────────────
-function useGetData() {
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("lynnhoa_data");
-      setData(stored ? JSON.parse(stored) : {});
-    } catch {
-      setData({});
-    }
-    setIsLoading(false);
-  }, []);
-  return { data, isLoading };
-}
-function useSaveData() {
-  return {
-    mutate: ({ data }: { data: any }) => {
-      try {
-        localStorage.setItem("lynnhoa_data", JSON.stringify(data));
-      } catch(e) { console.error("Save failed", e); }
-    }
-  };
-}
-
-// ─── THEME ────────────────────────────────────────────────
-const C = {
-  bg:"#faf9f7", black:"#1a1a1a", muted:"#888", light:"#b8b3ad",
-  rule:"#e8e4df", white:"#fff", amber:"#c0956a", amberBg:"#fdf5ee",
-  amberBorder:"#e8d8c8", red:"#c0857a", redBg:"#fdf0ee",
-  redBorder:"#e8d8d5", green:"#6a9a6a", greenBg:"#f0f5f0", greenBorder:"#b8d4b8"
-};
-const SERIF = "'Georgia','Times New Roman',serif";
-const SANS  = "'Helvetica Neue',Arial,sans-serif";
+import { C, SERIF, SANS, AppLogo, useGetData, useSaveData } from "./shared";
+import CreatorPage from "./CreatorPage";
 
 // ─── HELPERS ──────────────────────────────────────────────
 const fmt   = (n: number | null | undefined) => `€ ${Number(n||0).toLocaleString("de-DE")}`;
@@ -910,16 +877,7 @@ function PDFModal({data,type,onClose,onSave,onSaveClose,settings,isNew}: any) {
 }
 
 // ─── AUTH ─────────────────────────────────────────────────
-function AppLogo({size="nav"}: {size?: "nav"|"auth"|"web"}) {
-  const big=size==="auth";
-  const web=size==="web";
-  return(
-    <div style={{textAlign:"center",lineHeight:1,display:"inline-block"}}>
-      <span style={{fontFamily:"'Playfair Display',Georgia,serif",fontSize:big?26:web?24:18,letterSpacing:"0.02em",color:C.black,display:"block"}}>Lynn Hoa</span>
-      <span style={{fontFamily:SANS,fontSize:big?8:web?7:6.5,letterSpacing:"0.26em",textTransform:"uppercase" as const,color:C.muted,display:"block",marginTop:big?4:2}}>Studio</span>
-    </div>
-  );
-}
+
 
 function Auth({onAuth,currentPass}: {onAuth: (role:"manager"|"creator")=>void,currentPass: string}) {
   const [role,setRole]=useState<"manager"|"creator"|null>("manager");
@@ -3618,36 +3576,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
-// ─── CREATOR PAGE (placeholder) ───────────────────────────
-function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
-  const [menuOpen,setMenuOpen]=useState(false);
-  const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
-  return(
-    <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
-      <div style={{borderBottom:`1px solid ${C.rule}`,padding:"0 20px",display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",minHeight:56,position:"sticky",top:0,background:C.bg,zIndex:100}}>
-        <div/>
-        <AppLogo/>
-        <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <div style={{position:"relative",display:"flex",alignItems:"center"}}>
-            {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
-            <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",flexShrink:0,position:"relative",zIndex:200}}>{initials}</button>
-            {menuOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
-              <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
-                <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
-                <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>Creator · Private</p>
-              </div>
-              <button onClick={()=>{setMenuOpen(false);logout();}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
-            </div>}
-          </div>
-        </div>
-      </div>
-      <div style={{maxWidth:840,margin:"0 auto",padding:"80px 20px",textAlign:"center"}}>
-        <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Creator View</p>
-        <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>This space is being built.<br/>Check back soon.</p>
-      </div>
-    </div>
-  );
-}
+
 
 // ─── APP ROOT ─────────────────────────────────────────────
 export default function App() {
