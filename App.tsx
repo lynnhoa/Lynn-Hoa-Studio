@@ -1859,26 +1859,6 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
             </div>}
 
-            {/* renewals — desktop only */}
-            {!isMobile&&(pr.renewals||[]).map((r: any,ri: number)=>(
-              <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div>
-                    <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p>
-                    <p style={{fontSize:10,color:C.muted,margin:"0 0 5px"}}>{fmtD(r.startDate)} → {fmtD(r.endDate)}</p>
-                  </div>
-                  <p style={{fontSize:11,fontFamily:SERIF,margin:0,flexShrink:0,marginLeft:8}}>{fmt(r.fee)}</p>
-                </div>
-                <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                  <span style={{fontSize:9,color:r.paid?C.green:r.signed?C.muted:C.amber,border:`1px solid ${r.paid?C.greenBorder:r.signed?C.rule:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase"}}>{r.paid?"Renewal Paid":r.signed?"Signed — awaiting payment":"Unsigned"}</span>
-                  {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
-                  {!r.signed&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,signed:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Signed</button>}
-                  {r.signed&&!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Renewal Paid</button>}
-                  {r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:false})})}))} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.amber,fontFamily:SANS}}>Undo</button>}
-                </div>
-              </div>
-            ))}
-
             {/* ── LICENSE TRACKER ── */}
             <ProjectLicenseTracker pr={pr}/>
 
@@ -1893,6 +1873,9 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" · unsigned":""}</B>
               ))}
               {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
+              {(pr.renewals||[]).map((r: any,ri: number)=>(
+                r.doc&&<B key={ri} v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px",color:r.paid?C.black:C.green,borderColor:r.paid?C.rule:C.greenBorder}} onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})}>Renewal {ri+1}</B>
+              ))}
             </div>
 
             {/* ── ACTIONS ── */}
@@ -1915,6 +1898,9 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
                 <B v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
                 <B v="sec" s={{fontSize:FS.actionBtn,color:C.amber,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
               </>}
+              {(pr.renewals||[]).filter((r: any)=>!r.paid).map((r: any,ri: number)=>(
+                <B key={ri} v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any)=>rn.id===r.id?{...rn,paid:true}:rn)})}))}>Mark Renewal {(pr.renewals||[]).indexOf(r)+1} Paid</B>
+              ))}
               {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.muted,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
             </div>
           </div>
