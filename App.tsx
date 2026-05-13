@@ -364,7 +364,7 @@ function LicenseLine({label,end,note}: {label:string,end:string,note?:string}) {
   const d=dLeft(end);
   if(d===null)return null;
   const expired=d<0;
-  const expiring=d>=0&&d<=7;
+  const expiring=!expired&&d<=7;
   const col=expired?C.red:expiring?C.amber:C.green;
   const bg=expired?C.redBg:expiring?C.amberBg:C.greenBg;
   const bd=expired?C.redBorder:expiring?C.amberBorder:C.greenBorder;
@@ -377,28 +377,34 @@ function LicenseLine({label,end,note}: {label:string,end:string,note?:string}) {
   );
 }
 
+function getUsageMo(qd: any): number {
+  if(!qd)return 3;
+  if(qd.mo&&qd.mo>0)return qd.mo;
+  const lines=qd.lines||[];
+  for(const l of lines){
+    if(l.usageLabel){
+      const m=String(l.usageLabel).match(/([0-9]+)\s*month/i);
+      if(m)return parseInt(m[1]);
+    }
+    if(l.name&&String(l.name).toLowerCase().includes("usage")){
+      const m=String(l.name).match(/([0-9]+)\s*month/i);
+      if(m)return parseInt(m[1]);
+    }
+  }
+  return 3;
+}
+
 function ProjectLicenseTracker({pr}: {pr:any}) {
-  // compute usage end directly — no prop needed
-  const usageEnd=(()=>{
-    if(pr.usageEndOverride)return pr.usageEndOverride;
-    if(!pr.deliveryDate||!pr.qd)return null;
-    const mo=pr.qd.mo||(()=>{
-      const ul=(pr.qd.lines||[]).find((l: any)=>l.usageLabel);
-      if(!ul?.usageLabel)return 3;
-      const m=ul.usageLabel.match(/(\d+)\s*month/i);
-      return m?parseInt(m[1]):3;
-    })();
-    return addM(pr.deliveryDate,mo);
-  })();
-  const exclRenewals=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate);
-  if(!pr.qd)return null;
+  if(!pr||!pr.qd)return null;
+  const usageEnd=pr.usageEndOverride||(pr.deliveryDate?addM(pr.deliveryDate,getUsageMo(pr.qd)):null);
+  const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
   return(
     <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
       {usageEnd
         ?<LicenseLine label="Usage Rights" end={usageEnd}/>
         :<div style={{padding:"4px 8px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:3}}>
-          <span style={{fontSize:9,color:C.light}}>Set delivery date to track usage rights expiry</span>
+          <span style={{fontSize:9,color:C.light}}>Set delivery date to activate usage rights tracking</span>
         </div>
       }
       {exclRenewals.map((r: any,i: number)=>(
