@@ -4123,8 +4123,9 @@ function getLineGroups(c: any, pr: any): any[] {
   return groups;
 }
 
-function CreatorClients({clients,isMobile}: {clients:any[],isMobile:boolean}) {
+function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:boolean,onSelChange?:(id:string|null)=>void}) {
   const [sel,setSel]=useState<string|null>(null);
+  const setSel_=(v: string|null)=>{setSel(v);if(onSelChange)onSelChange(v);};
   const [collapsed,setCollapsed]=useState<Record<string,boolean>>({});
 
   const activeClients=clients.filter((c: any)=>c.projects.some((pr: any)=>pr.status==="production"));
@@ -4182,7 +4183,7 @@ function CreatorClients({clients,isMobile}: {clients:any[],isMobile:boolean}) {
             <h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 4px"}}>{c.name}</h2>
             <p style={{fontSize:10.5,color:C.muted,margin:0}}>{[c.contact,c.email].filter(Boolean).join(" · ")}</p>
           </div>
-          <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px"}}>✕</button>
+          <button onClick={()=>setSel_(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px"}}>✕</button>
         </div>
 
         {pr&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,padding:"10px 14px",border:`1px solid ${C.rule}`,borderRadius:2}}>
@@ -4254,7 +4255,7 @@ function CreatorClients({clients,isMobile}: {clients:any[],isMobile:boolean}) {
     const pr=c.projects.find((p: any)=>p.status==="production");
     const dl=dLeft(pr?.deliveryDate);
     return(
-      <div onClick={()=>setSel(c.id)}
+      <div onClick={()=>setSel_(c.id)}
         style={{border:`1px solid ${sel===c.id?C.light:C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?"rgba(26,26,26,0.03)":undefined,opacity:isActive?1:0.6}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}}>
           <span style={{fontSize:13,fontWeight:"500",color:C.black}}>{c.name}</span>
@@ -4483,6 +4484,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
   const [menuOpen,setMenuOpen]=useState(false);
   const [nav,setNav]=useState(0);
   const [winW,setWinW]=useState(()=>window.innerWidth);
+  const [creatorClientSel,setCreatorClientSel]=useState<string|null>(null);
   useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   const isMobile=winW<700;
   const goToDash=()=>setNav(0);
@@ -4537,9 +4539,9 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
         )}
       </div>
       {/* ── CONTENT ── */}
-      <div style={{maxWidth:(nav===1||nav===2||nav===3)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:(nav===1&&creatorClientSel||nav===2||nav===3)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile}/>}
-        {nav===1&&<CreatorClients clients={clients} isMobile={isMobile}/>}
+        {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
         {nav===2&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
         {nav===3&&<CreatorPlanner isMobile={isMobile}/>}
       </div>
