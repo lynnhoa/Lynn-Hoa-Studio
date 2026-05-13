@@ -2293,18 +2293,18 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
           const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
           const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
           return(
-            <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yPaid.length?8:0}}>
+            <div key={y} style={{borderBottom:`1px solid ${C.rule}`,paddingBottom:10,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 0 6px"}}>
                 <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
+                <span style={{fontFamily:SERIF,fontSize:13,color:C.black}}>{fmt(yRev)}</span>
               </div>
               {yPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
+                  <span style={{fontSize:10,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:10,color:C.muted}}>{fmt(pr.amount)}</span>
                 </div>
               ))}
-              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
+              {yPaid.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
             </div>
           );
         })}
