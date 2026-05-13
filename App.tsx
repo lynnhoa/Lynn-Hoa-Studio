@@ -2173,57 +2173,77 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
       </div>
     );
   }
-  if(drill==="year"){
+  if(drill==="revenue"||drill==="year"||drill==="month"){
+    // expandedYears: current year open by default
+    const [expY,setExpY]=useState<Record<number,boolean>>(()=>({[nowY]:true}));
     return(
       <div>
         <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
+
+        {/* summary header — mirrors the card */}
+        <div style={{marginBottom:20}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 10px"}}>Revenue</h2>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9}}>
+            {[["This month",fmt(thisMonthRev)],[`${nowY}`,fmt(thisYearRev)]].map(([lbl,val])=>(
+              <div key={lbl} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"10px 13px"}}>
+                <p style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 4px"}}>{lbl}</p>
+                <p style={{fontFamily:SERIF,fontSize:16,color:C.black,margin:0}}>{val}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* year blocks */}
+        {allYears.length===0&&<p style={{fontSize:11,color:C.muted}}>No paid projects yet.</p>}
         {allYears.map((y: number)=>{
           const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
           const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+          const months=Array.from(new Set(yPaid.map((pr: any)=>monthOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
+          const open=expY[y]??false;
           return(
-            <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yPaid.length?8:0}}>
-                <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
-              </div>
-              {yPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+            <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:9,overflow:"hidden"}}>
+
+              {/* year header — click to expand/collapse */}
+              <div onClick={()=>setExpY(p=>({...p,[y]:!open}))} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 15px",cursor:"pointer",userSelect:"none"}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                  <span style={{fontFamily:SERIF,fontSize:18,color:C.black}}>{y}</span>
+                  {y===nowY&&<span style={{fontSize:9,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>Current</span>}
                 </div>
-              ))}
-              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-  if(drill==="month"){
-    return(
-      <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
-        {[...monthsToShow].reverse().map((m: number)=>{
-          const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
-          const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-          return(
-            <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
-                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
-              </div>
-              {mPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                <div style={{display:"flex",alignItems:"baseline",gap:12}}>
+                  <span style={{fontFamily:SERIF,fontSize:18,color:C.black}}>{fmt(yRev)}</span>
+                  <span style={{fontSize:10,color:C.light}}>{open?"▲":"▼"}</span>
                 </div>
-              ))}
-              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
-              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
+              </div>
+
+              {/* months — only when expanded */}
+              {open&&months.map((m: number)=>{
+                const mPaid=yPaid.filter((pr: any)=>monthOf(pr)===m);
+                const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
+                return(
+                  <div key={m} style={{borderTop:`1px solid ${C.rule}`}}>
+
+                    {/* month header */}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"9px 15px 7px",background:"rgba(26,26,26,0.02)"}}>
+                      <span style={{fontSize:11,color:y===nowY&&m===nowM?C.black:C.muted,fontWeight:y===nowY&&m===nowM?"500":"normal",letterSpacing:"0.04em"}}>
+                        {MO[m]}{y===nowY&&m===nowM?" · This month":""}
+                      </span>
+                      <span style={{fontFamily:SERIF,fontSize:14,color:C.black}}>{fmt(mRev)}</span>
+                    </div>
+
+                    {/* projects in this month */}
+                    {mPaid.map((pr: any,pi: number)=>(
+                      <div key={pi} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 15px",borderTop:`1px solid ${C.rule}`}}>
+                        <div style={{minWidth:0}}>
+                          <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>{pr.cName}</p>
+                          <p style={{fontSize:10,color:C.muted,margin:0}}>{pr.name}</p>
+                        </div>
+                        <span style={{fontFamily:SERIF,fontSize:13,color:C.black,flexShrink:0,marginLeft:12}}>{fmt(pr.amount)}</span>
+                      </div>
+                    ))}
+
+                  </div>
+                );
+              })}
             </div>
           );
         })}
