@@ -1755,7 +1755,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
           {editMode
             ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}} s={isMobile?{fontSize:11,padding:"9px 16px"}:{}}>Save</B><B v="sec" onClick={()=>setEditMode(false)} s={isMobile?{fontSize:11,padding:"9px 16px"}:{}}>Cancel</B></>
             :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}} s={isMobile?{fontSize:11,padding:"9px 16px"}:{}}>Edit</B>
-              {!isMobile&&<button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button>}</>}
+              <button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
           <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:isMobile?22:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
         </div>
       </div>
@@ -1809,7 +1809,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               <span style={{fontSize:FS.bodyText}}>{pr.name}</span>
               <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
                 <UBadge end={uEnd(pr)}/>
-                {!isMobile&&(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
+                {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
               </div>
             </div>
           ))}
@@ -1853,8 +1853,8 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               </div>
               <div style={{textAlign:"right",flexShrink:0,marginLeft:isMobile?14:8}}>
                 <p style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,margin:`0 0 ${isMobile?4:3}px`}}>{fmt(pr.amount)}</p>
-                {!isMobile&&(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:"0 0 2px"}}>incl. {pr.amendments.length} amend.</p>}
-                {!isMobile&&(pr.renewals||[]).length>0&&<p style={{fontSize:10,color:C.green,margin:0}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</p>}
+                {(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:"0 0 2px"}}>incl. {pr.amendments.length} amend.</p>}
+                {(pr.renewals||[]).length>0&&<p style={{fontSize:10,color:C.green,margin:0}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</p>}
                 <div style={{marginTop:4}}>
                   {delConfirm===pr.id
                     ?<span style={{fontSize:isMobile?11:8,color:C.red}}>Delete? <button onClick={()=>{setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.filter((proj: any)=>proj.id!==pr.id)}));setDelConfirm(null);}} style={{color:C.red,background:"none",border:"none",cursor:"pointer",fontSize:isMobile?11:8,padding:"0 3px"}}>Yes</button> <button onClick={()=>setDelConfirm(null)} style={{color:C.muted,background:"none",border:"none",cursor:"pointer",fontSize:isMobile?11:8,padding:"0 3px"}}>No</button></span>
@@ -1891,11 +1891,11 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             {/* ── ACTIONS ── */}
             <div style={{display:"flex",gap:isMobile?8:5,flexWrap:"wrap",alignItems:"center",paddingTop:isMobile?10:7,borderTop:`1px solid ${C.rule}`}}>
               {["quoted","revised"].includes(pr.status)&&<>
-                {!isMobile&&<B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>}
+                <B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
                 <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
               </>}
               {pr.status==="contracted"&&<>
-                {!isMobile&&<B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>}
+                <B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
                 <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
               </>}
               {pr.status==="production"&&<>
