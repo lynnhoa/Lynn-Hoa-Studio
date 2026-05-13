@@ -594,7 +594,8 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const docRef=useRef<HTMLDivElement>(null);
   const [docHeight,setDocHeight]=useState(841);
   const PAGE_H=841;
-  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
+  const CHROME_H=136; // header (~49px) + footer (~87px) — only add a page if real body content overflows
+  const numPages=docHeight>PAGE_H+CHROME_H?Math.ceil(docHeight/PAGE_H):1;
   const s={...SETTINGS_DEFAULT,...(settings||{})};
   const isDE=lang==="de";
   const _dc=s.company||s.name||(isDE?"Der/Die Auftragnehmer/in":"The creator");
@@ -1124,7 +1125,8 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
   const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
-  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
+  const CHROME_H=136; // header (~49px) + footer (~87px) — only add a page if real body content overflows
+  const numPages=docHeight>PAGE_H+CHROME_H?Math.ceil(docHeight/PAGE_H):1;
   const pageScale=winW<700?Math.min(1,(winW-32)/595):1;
   const sett={...SETTINGS_DEFAULT,...(settings||{})};
   const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
