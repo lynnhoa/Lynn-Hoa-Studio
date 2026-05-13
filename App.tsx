@@ -2066,6 +2066,8 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const [invSel,setInvSel]=useState<Set<string>>(new Set());
   const [invBulkStatus,setInvBulkStatus]=useState<string|null>(null);
   const [invPdfData,setInvPdfData]=useState<any>(null);
+  const [licenseActions,setLicenseActions]=useState<Record<string,string>>({});
+  const [licTab,setLicTab]=useState<"usage"|"excl">("usage");
   useEffect(()=>{setDrill(null);},[resetKey]);
 
   const goToProject=(cName: string,qNo?: string)=>{setPendingClientName(cName);if(qNo&&setPendingProjectQNo)setPendingProjectQNo(qNo);goTo(1);};
@@ -2094,10 +2096,10 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
-    const items: {cName:string,cId:string,prName:string,end:string,label:string}[]=[];
+    const items: {cName:string,cId:string,prName:string,end:string,label:string,type:"usage"|"excl",key:string}[]=[];
     const ue=uEnd(pr);
-    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage"});
-    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl."});});
+    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
+    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any,ri: number)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}_${ri}`});});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
@@ -2245,32 +2247,98 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     );
   }
   if(drill==="license"){
+    const setAction=(key: string,val: string)=>setLicenseActions(prev=>({...prev,[key]:val}));
+    const tabPillLS=(active: boolean):any=>({padding:"5px 13px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.1em",textTransform:"uppercase" as const,outline:"none"});
+    const usageLics=allLicenses.filter((r: any)=>r.type==="usage");
+    const exclLics=allLicenses.filter((r: any)=>r.type==="excl");
+    const tabLics=licTab==="usage"?usageLics:exclLics;
+    // for dashboard card: only show items needing attention (not ignored/taken down)
+    const actionedStatuses=["ignored","takendown","renewal"];
+    const needsAttention=(r: any)=>!actionedStatuses.includes(licenseActions[r.key]||"");
+    // group rows: expiring (≤7d) + expired-unactioned → active → actioned
+    const expired=(r: any)=>{const d=dLeft(r.end);return d!==null&&d<0;};
+    const expiring=(r: any)=>{const d=dLeft(r.end);return d!==null&&d>=0&&d<=7;};
+    const urgentRows=tabLics.filter((r: any)=>(expired(r)||expiring(r))&&needsAttention(r));
+    const activeRows=tabLics.filter((r: any)=>!expired(r)&&!expiring(r)&&needsAttention(r));
+    const actionedRows=tabLics.filter((r: any)=>!needsAttention(r));
+    const STATUS_LABELS: Record<string,string>={ignored:"Ignored",takendown:"Taken down",renewal:"Renewal pending"};
+    const ACTION_OPTS=[
+      {val:"ignored",label:"Ignore"},
+      {val:"takendown",label:"Mark taken down"},
+      {val:"renewal",label:"Renewal (coming soon)",disabled:true},
+    ];
+    const LicRow=({r}: {r: any})=>{
+      const d=dLeft(r.end);
+      const isExpired=d!==null&&d<0;
+      const isExpiring=d!==null&&d>=0&&d<=7;
+      const act=licenseActions[r.key]||"";
+      const isActioned=actionedStatuses.includes(act);
+      const daysText=isExpired?`+${Math.abs(d!)}d expired`:isExpiring?`${d}d left`:`${d}d`;
+      const dCol=isExpired?C.red:isExpiring?C.amber:C.green;
+      return(
+        <div style={{padding:"10px 0",borderBottom:`1px solid ${C.rule}`,opacity:isActioned?0.5:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {/* days indicator */}
+            <span style={{fontSize:10,color:dCol,fontWeight:"500",flexShrink:0,minWidth:72}}>{daysText}</span>
+            {/* info */}
+            <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>goToProject(r.cName)}>
+              <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:C.black,fontWeight:"500"}}>{r.cName}</span>
+                <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{r.prName}</span>
+              </div>
+              <span style={{fontSize:9,color:C.light}}>{licTab==="excl"?(isExpired?"Free to work again":"Blocked until"):("Expires")} {fmtD(r.end)}</span>
+            </div>
+            {/* status badge if actioned */}
+            {isActioned&&<span style={{fontSize:9,color:C.muted,border:`1px solid ${C.rule}`,padding:"1px 6px",borderRadius:2,flexShrink:0}}>{STATUS_LABELS[act]}</span>}
+            {/* action buttons — only when not yet actioned and expired/expiring */}
+            {!isActioned&&(isExpired||isExpiring)&&licTab==="usage"&&(
+              <div style={{display:"flex",gap:4,flexShrink:0}}>
+                {ACTION_OPTS.map(o=>(
+                  <button key={o.val} onClick={()=>setAction(r.key,o.val)} disabled={o.disabled}
+                    style={{fontSize:8.5,padding:"3px 7px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:o.disabled?"not-allowed":"pointer",color:o.disabled?C.light:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap",opacity:o.disabled?0.5:1}}
+                  >{o.label}</button>
+                ))}
+              </div>
+            )}
+            {/* for excl expired — just a note, no action needed */}
+            {!isActioned&&isExpired&&licTab==="excl"&&(
+              <button onClick={()=>setAction(r.key,"ignored")} style={{fontSize:8.5,padding:"3px 7px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>Mark noted</button>
+            )}
+          </div>
+        </div>
+      );
+    };
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>License Tracker</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allLicenses.length} active license{allLicenses.length!==1?"s":""} · sorted by expiry</p>
-        {allLicenses.length===0&&<p style={{fontSize:11,color:C.muted}}>No active licenses tracked.</p>}
-        {allLicenses.map((r: any,i: number)=>{
-          const d=dLeft(r.end);
-          const urgent=d!==null&&d<=14;
-          const soon=d!==null&&d>14&&d<=30;
-          return(
-            <div key={i} onClick={()=>goTo(1)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                <div style={{minWidth:0}}>
-                  <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
-                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{r.prName}</p>
-                </div>
-                <UBadge end={r.end} label={r.label}/>
-              </div>
-              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{r.label} expires</span>
-                <span style={{fontSize:11,color:urgent?C.red:soon?C.amber:C.muted}}>{fmtD(r.end)}</span>
-              </div>
-            </div>
-          );
-        })}
+        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>License Tracker</h2>
+          <div style={{display:"flex"}}>
+            <button onClick={()=>setLicTab("usage")} style={{...tabPillLS(licTab==="usage"),borderRadius:"2px 0 0 2px"}}>Usage Rights <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{usageLics.length}</span></button>
+            <button onClick={()=>setLicTab("excl")} style={{...tabPillLS(licTab==="excl"),borderRadius:"0 2px 2px 0",borderLeft:"none"}}>Exclusivity <span style={{marginLeft:4,fontSize:8,opacity:0.7}}>{exclLics.length}</span></button>
+          </div>
+        </div>
+        {licTab==="usage"&&<p style={{fontSize:10,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track when brands' usage rights expire. Expired = they may still be running your content. Mark as ignored, taken down, or flag for renewal.</p>}
+        {licTab==="excl"&&<p style={{fontSize:10,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track exclusivity periods. Active = you cannot work with competing brands. Expired = you are free to work again.</p>}
+        {tabLics.length===0&&<p style={{fontSize:11,color:C.muted}}>No {licTab==="usage"?"usage rights":"exclusivity periods"} tracked.</p>}
+        {urgentRows.length>0&&(
+          <div style={{marginBottom:16}}>
+            <p style={{fontSize:9,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4,fontWeight:"600"}}>Needs attention</p>
+            {urgentRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
+          </div>
+        )}
+        {activeRows.length>0&&(
+          <div style={{marginBottom:16}}>
+            {urgentRows.length>0&&<p style={{fontSize:9,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4,fontWeight:"600",marginTop:20}}>Active</p>}
+            {activeRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
+          </div>
+        )}
+        {actionedRows.length>0&&(
+          <div style={{marginTop:20}}>
+            <p style={{fontSize:9,color:C.light,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4,fontWeight:"600"}}>Handled</p>
+            {actionedRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
+          </div>
+        )}
       </div>
     );
   }
@@ -2732,23 +2800,48 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
         />
 
         {/* 6 — License Tracker */}
-        <Card label="License Tracker" count={allLicenses.length} onClick={()=>setDrill("license")}
-          sub={<>
-            {allLicenses.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>—</p>}
-            {allLicenses.slice(0,3).map((r: any,i: number)=>{
-              const d=dLeft(r.end);
-              const urgent=d!==null&&d<=14;
-              const soon=d!==null&&d>14&&d<=30;
-              return(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{r.cName}</span>
-                  <span style={{fontSize:9.5,color:urgent?C.red:soon?C.amber:C.green}}>{d!==null?`${d}d`:"—"}</span>
-                </div>
-              );
-            })}
-            {allLicenses.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{allLicenses.length-3} more</p>}
-          </>}
-        />
+        {(()=>{
+          const actionedStatuses=["ignored","takendown","renewal"];
+          const needsAtt=(r: any)=>!actionedStatuses.includes(licenseActions[r.key]||"");
+          const attLics=allLicenses.filter((r: any)=>needsAtt(r));
+          const urgentCard=attLics.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<=7;});
+          const expiredCard=urgentCard.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<0;});
+          const allClear=attLics.length===0;
+          const hasRed=expiredCard.length>0;
+          const hasAmber=!hasRed&&urgentCard.length>0;
+          const cardBorder=hasRed?C.redBorder:hasAmber?C.amberBorder:C.rule;
+          const cardBg=hasRed?C.redBg:hasAmber?C.amberBg:undefined;
+          // show top 3 needing attention sorted soonest first
+          const toShow=[...attLics].sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999)).slice(0,3);
+          return(
+            <div onClick={()=>setDrill("license")} style={{border:`1px solid ${cardBorder}`,borderRadius:2,padding:"13px 15px",cursor:"pointer",background:cardBg}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>License Tracker</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:allClear?C.green:hasRed?C.red:hasAmber?C.amber:C.black}}>{allClear?"All clear":attLics.length}</span>
+              </div>
+              {allClear&&<p style={{fontSize:10,color:C.green,margin:0}}>No action needed</p>}
+              {!allClear&&<>
+                {toShow.map((r: any,i: number)=>{
+                  const d=dLeft(r.end);
+                  const isExp=d!==null&&d<0;
+                  const isSoon=d!==null&&d>=0&&d<=7;
+                  const col=isExp?C.red:isSoon?C.amber:C.muted;
+                  const txt=isExp?`+${Math.abs(d!)}d`:d!==null?`${d}d`:"—";
+                  return(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                      <div style={{minWidth:0,flex:1}}>
+                        <span style={{fontSize:10,color:C.muted}}>{r.cName}</span>
+                        <span style={{fontSize:9,color:C.light,marginLeft:5}}>{r.type==="excl"?"Excl.":"Usage"}</span>
+                      </div>
+                      <span style={{fontSize:9.5,color:col,fontWeight:isExp||isSoon?"500":"normal",flexShrink:0}}>{txt}</span>
+                    </div>
+                  );
+                })}
+                {attLics.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{attLics.length-3} more</p>}
+              </>}
+            </div>
+          );
+        })()}
 
       </div>
     </div>
