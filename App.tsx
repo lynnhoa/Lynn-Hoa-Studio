@@ -3493,7 +3493,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   },[rc,clients,settings]);
 
   if(!authed)return<Auth onAuth={(r)=>doAuth(r)} currentPass={settings.password||PASS}/>;
-  if(role==="creator")return<CreatorPage settings={settings} logout={()=>{doLogout();}}/>;
+  if(role==="creator")return<CreatorPage settings={settings} logout={()=>{doLogout();}} clients={clients} setClients={setClients}/>;
 
   const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string,isAmend?: boolean,amendN?: number,origLines?: any[])=>{
     const ex=clients.find((c: any)=>c.name.toLowerCase()===brand.toLowerCase());
@@ -3614,6 +3614,160 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
       </div>
+    </div>
+  );
+}
+
+// ─── CREATOR CLIENTS ──────────────────────────────────────
+const PROD_STATUSES=["production","invoiced","paid"];
+const DEL_STATUSES=["Not Started","Filming","Editing","Review","Done"];
+const DEL_COL: Record<string,string>={"Not Started":C.light,"Filming":C.amber,"Editing":C.amber,"Review":C.black,"Done":C.green};
+
+function getDelivItems(pr: any):{id:string,name:string,note:string}[] {
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+  const items: {id:string,name:string,note:string}[]=[];
+  (pr.qd?.lines||[]).forEach((ln: any,li: number)=>{
+    if(!ln.name)return;
+    if(skip.some(s=>ln.name.toLowerCase().includes(s)))return;
+    const qty=parseInt(ln.qty)||1;
+    for(let q=0;q<qty;q++)items.push({id:`${pr.id}_ln${li}_q${q}`,name:ln.name,note:ln.note||""});
+  });
+  return items;
+}
+
+function CreatorClients({clients,setClients,isMobile}: {clients:any[],setClients:any,isMobile:boolean}) {
+  const [search,setSearch]=useState("");
+  const [sel,setSel]=useState<string|null>(null);
+
+  const qualified=clients.filter((c: any)=>c.projects.some((pr: any)=>PROD_STATUSES.includes(pr.status)));
+  const filtered=qualified.filter((c: any)=>!search||c.name.toLowerCase().includes(search.toLowerCase()));
+  const sorted=[...filtered].sort((a: any,b: any)=>{
+    const aA=a.projects.some((pr: any)=>pr.status==="production");
+    const bA=b.projects.some((pr: any)=>pr.status==="production");
+    return aA===bA?0:aA?-1:1;
+  });
+
+  const cl=sel?clients.find((c: any)=>c.id===sel):null;
+
+  const getDelSt=(pr: any,id: string)=>(pr.deliverableStatus||{})[id]||"Not Started";
+  const cycleSt=(cid: string,pid: string,id: string,cur: string)=>{
+    const next=DEL_STATUSES[Math.min(DEL_STATUSES.indexOf(cur)+1,DEL_STATUSES.length-1)];
+    setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,deliverableStatus:{...(pr.deliverableStatus||{}),[id]:next}})}));
+  };
+  const setReady=(cid: string,pid: string)=>{
+    setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,readyToInvoice:true,readyToInvoiceAt:new Date().toISOString()})}));
+  };
+  const progOf=(pr: any)=>{
+    const items=getDelivItems(pr);
+    if(!items.length)return null;
+    return{done:items.filter(it=>getDelSt(pr,it.id)==="Done").length,total:items.length};
+  };
+
+  const showList=isMobile?!sel:true;
+  const showDetail=isMobile?!!sel:true;
+
+  return(
+    <div style={{display:isMobile?"block":"grid",gridTemplateColumns:isMobile?undefined:"320px 1fr",gap:isMobile?0:20,alignItems:"start"}}>
+
+      {/* ── LEFT ── */}
+      {showList&&<div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Clients</h2>
+        </div>
+        <input placeholder="Search clients…" value={search} onChange={e=>setSearch(e.target.value)}
+          style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const,marginBottom:10}}/>
+        {sorted.length===0&&<p style={{fontSize:11,color:C.muted}}>No active projects yet.</p>}
+        {sorted.map((c: any)=>{
+          const active=c.projects.filter((pr: any)=>pr.status==="production");
+          const archived=c.projects.filter((pr: any)=>pr.status==="invoiced"||pr.status==="paid");
+          const isArchived=active.length===0;
+          const topPr=active[0]||archived[0];
+          const prog=topPr?progOf(topPr):null;
+          return(
+            <div key={c.id} onClick={()=>setSel(c.id===sel?null:c.id)}
+              style={{border:`1px solid ${sel===c.id?C.light:C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?"rgba(26,26,26,0.03)":undefined,opacity:isArchived?0.6:1}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{c.name}</p>
+                  <p style={{fontSize:10.5,color:C.muted,margin:0}}>{c.contact}</p>
+                  {topPr&&<p style={{fontSize:10.5,color:C.muted,margin:"4px 0 0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{topPr.name}</p>}
+                </div>
+                <div style={{textAlign:"right" as const,flexShrink:0,marginLeft:12}}>
+                  {prog&&<span style={{fontSize:11,color:prog.done===prog.total?C.green:C.black,fontWeight:"500"}}>{prog.done}/{prog.total}</span>}
+                  {topPr?.deliveryDate&&<p style={{fontSize:9.5,color:C.muted,margin:"3px 0 0"}}>{fmtD(topPr.deliveryDate)}</p>}
+                  {isArchived&&<span style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"block",marginTop:3}}>Delivered</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>}
+
+      {/* ── RIGHT ── */}
+      {showDetail&&cl&&(
+        <div>
+          {isMobile&&<button onClick={()=>setSel(null)} style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,background:"none",border:"none",cursor:"pointer",padding:"0 0 16px",fontFamily:SANS}}>← Clients</button>}
+          <div style={{marginBottom:20}}>
+            <h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 2px"}}>{cl.name}</h2>
+            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{cl.contact}</p>
+          </div>
+          {cl.projects.filter((pr: any)=>PROD_STATUSES.includes(pr.status)).map((pr: any)=>{
+            const isArchived=pr.status==="invoiced"||pr.status==="paid";
+            const items=getDelivItems(pr);
+            const allDone=items.length>0&&items.every(it=>getDelSt(pr,it.id)==="Done");
+            const prog=progOf(pr);
+            return(
+              <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"14px 15px",marginBottom:12}}>
+                {/* header */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${C.rule}`}}>
+                  <div>
+                    <p style={{fontSize:13,color:C.black,margin:"0 0 3px",fontWeight:"500"}}>{pr.name}</p>
+                    {pr.deliveryDate&&<p style={{fontSize:10,color:C.muted,margin:0}}>Deadline · <span style={{color:C.black,fontWeight:"500"}}>{fmtD(pr.deliveryDate)}</span></p>}
+                  </div>
+                  <div style={{textAlign:"right" as const,flexShrink:0,marginLeft:12}}>
+                    {prog&&<span style={{fontSize:11,color:prog.done===prog.total?C.green:C.black}}>{prog.done}/{prog.total} done</span>}
+                    {isArchived&&<span style={{display:"block",fontSize:9,color:C.green,border:`1px solid ${C.greenBorder}`,background:C.greenBg,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,marginTop:4}}>Delivered</span>}
+                    {pr.readyToInvoice&&!isArchived&&<span style={{display:"block",fontSize:9,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,marginTop:4}}>Submitted</span>}
+                  </div>
+                </div>
+                {/* deliverables */}
+                {items.length===0&&<p style={{fontSize:11,color:C.muted}}>No deliverables found on quote.</p>}
+                {items.map((it,i)=>{
+                  const st=getDelSt(pr,it.id);
+                  const col=DEL_COL[st]||C.light;
+                  return(
+                    <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<items.length-1?`1px solid ${C.rule}`:"none"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <p style={{fontSize:11,color:C.black,margin:"0 0 1px"}}>{it.name}</p>
+                        {it.note&&<p style={{fontSize:10,color:C.muted,margin:0}}>{it.note}</p>}
+                      </div>
+                      <button disabled={isArchived} onClick={()=>!isArchived&&cycleSt(cl.id,pr.id,it.id,st)}
+                        style={{flexShrink:0,marginLeft:12,padding:"3px 10px",fontSize:9.5,color:col,border:`1px solid ${col}`,background:"transparent",borderRadius:2,cursor:isArchived?"default":"pointer",fontFamily:SANS,letterSpacing:"0.07em",textTransform:"uppercase" as const,whiteSpace:"nowrap" as const}}>
+                        {st}
+                      </button>
+                    </div>
+                  );
+                })}
+                {/* ready to invoice */}
+                {!isArchived&&!pr.readyToInvoice&&allDone&&(
+                  <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
+                    <button onClick={()=>setReady(cl.id,pr.id)}
+                      style={{padding:"7px 14px",border:"none",background:C.black,color:C.white,borderRadius:2,cursor:"pointer",fontFamily:SANS,fontSize:9.5,letterSpacing:"0.1em",textTransform:"uppercase" as const}}>
+                      Ready to Invoice
+                    </button>
+                    <p style={{fontSize:10,color:C.muted,margin:"6px 0 0"}}>Signals the manager that production is complete.</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {!isMobile&&!cl&&sorted.length>0&&(
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:200}}>
+          <p style={{fontSize:11,color:C.muted}}>Select a client to view projects.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -3803,7 +3957,7 @@ function CreatorDashboard({isMobile}: {isMobile:boolean}) {
 }
 
 // ─── CREATOR PAGE ─────────────────────────────────────────
-function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
+function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout:()=>void,clients:any[],setClients:any}) {
   const [menuOpen,setMenuOpen]=useState(false);
   const [nav,setNav]=useState(0);
   const [winW,setWinW]=useState(()=>window.innerWidth);
@@ -3861,9 +4015,9 @@ function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
         )}
       </div>
       {/* ── CONTENT ── */}
-      <div style={{maxWidth:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px"}}>
+      <div style={{maxWidth:nav===1&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile}/>}
-        {nav===1&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Clients</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
+        {nav===1&&<CreatorClients clients={clients} setClients={setClients} isMobile={isMobile}/>}
         {nav===2&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Workspace</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
         {nav===3&&<div style={{textAlign:"center",padding:"80px 20px"}}><p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Planner</p><p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>Coming soon.</p></div>}
       </div>
