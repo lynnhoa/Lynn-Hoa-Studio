@@ -3863,12 +3863,12 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
         const isOverdueGroup=g.key==="overdue";
         const isDoneGroup=g.key==="done";
         return(
-          <div key={g.key} style={{marginBottom:20}}>
+          <div key={g.key} style={{marginBottom:36}}>
             {/* Group header */}
             <div onClick={()=>toggleGroup(g.key)}
               style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,cursor:"pointer",userSelect:"none" as const}}>
-              <span style={{fontSize:11,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.muted,fontWeight:"600"}}>{g.label}</span>
-              <span style={{fontSize:11,color:isOverdueGroup&&g.items.length>0?C.red:C.light}}>{g.items.length}</span>
+              <span style={{fontSize:11,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:"600"}}>{g.label}</span>
+              <span style={{fontSize:11,color:isOverdueGroup&&g.items.length>0?C.red:C.muted}}>{g.items.length}</span>
               <span style={{fontSize:11,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
             </div>
             <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
