@@ -2055,10 +2055,12 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
             return(
               <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.rule}`}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <span style={{fontSize:10.5,color:C.black}}>{l.name}</span>
-                  {cat&&<span style={{fontSize:9,color:C.light,marginLeft:5}}>— {cat}</span>}
-                  {l._src!=="quote"&&<span style={{fontSize:9,color:C.amber,marginLeft:5}}>{l._src}</span>}
-                  <span style={{fontSize:9,color:C.light,marginLeft:5}}>· €{l.up} each · max {max}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" as const}}>
+                    <span style={{fontSize:10.5,color:C.black}}>{l.name}</span>
+                    {cat&&<span style={{fontSize:8,color:C.muted,border:`1px solid ${C.rule}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase" as const,flexShrink:0}}>{cat}</span>}
+                    {l._src!=="quote"&&<span style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em",flexShrink:0}}>{l._src}</span>}
+                  </div>
+                  <span style={{fontSize:9,color:C.light}}>€{l.up} each · max {max}</span>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
                   <button onClick={()=>setQty(key,max,qty-1)} style={{width:22,height:22,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:13,color:qty>0?C.black:C.light,lineHeight:1}}>−</button>
