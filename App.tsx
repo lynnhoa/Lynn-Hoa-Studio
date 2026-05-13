@@ -3656,6 +3656,7 @@ function getWsItems(clients: any[]): any[] {
             id,
             name:(pr.workspaceNames||{})[id]||ln.name+(qty>1?` ${q+1}`:""),
             defaultName:ln.name+(qty>1?` ${q+1}`:""),
+            lineNote:ln.note||"",
             clientId:c.id,
             clientName:c.name,
             projectId:pr.id,
@@ -3866,38 +3867,44 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
               const dayTag=plannerDayLabel(item.plannerDate);
               const isDone=item.status==="Done";
 
+              const descriptor=[item.defaultName,item.lineNote].filter(Boolean).join(" · ");
+
               return(
                 <div key={item.id}
-                  style={{display:"flex",alignItems:"center",gap:isMobile?6:10,padding:"9px 0",borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
+                  style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:"9px 0",borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
 
                   {/* Status icon */}
                   <button onClick={()=>advanceStatus(item)}
-                    style={{width:22,height:22,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:isDone?"default":"pointer",color:stColor,fontSize:14,padding:0,lineHeight:1}}>
+                    style={{width:22,height:22,flexShrink:0,marginTop:1,display:"flex",alignItems:"center",justifyContent:"center",background:"none",border:"none",cursor:isDone?"default":"pointer",color:stColor,fontSize:14,padding:0,lineHeight:1}}>
                     {icon}
                   </button>
 
                   {/* Category pill */}
-                  <span style={{fontSize:9,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
+                  <span style={{fontSize:9,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em",marginTop:2}}>
                     {item.category}
                   </span>
 
-                  {/* Name — editable */}
+                  {/* Name + descriptor */}
                   <div style={{flex:1,minWidth:0}}>
                     {isEditing?(
                       <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
                         onBlur={()=>saveName(item,editingVal)}
                         onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
-                        style={{width:"100%",fontFamily:SANS,fontSize:12,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
+                        placeholder={item.defaultName}
+                        style={{width:"100%",fontFamily:SANS,fontSize:12,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",marginBottom:3}}/>
                     ):(
                       <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
                         style={{fontSize:12,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
                         {item.name}
                       </span>
                     )}
+                    <span style={{fontSize:9.5,color:C.light,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                      {descriptor}
+                    </span>
                   </div>
 
                   {/* Right side */}
-                  <div style={{display:"flex",alignItems:"center",gap:isMobile?4:8,flexShrink:0}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?4:8,flexShrink:0,marginTop:2}}>
                     {/* Client */}
                     {!isMobile&&<span style={{fontSize:10,color:C.muted,letterSpacing:"0.04em"}}>{item.clientName.toUpperCase()}</span>}
 
