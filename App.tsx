@@ -402,16 +402,17 @@ function ProjectLicenseTracker({pr}: {pr:any}) {
     (pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null))
     :null;
   const exclRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate);
-  if(!usageEnd&&!exclRenewals.length)return null;
+  const usageRenewals=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate);
+  if(!usageEnd&&!exclRenewals.length&&!usageRenewals.length)return null;
   return(
     <div style={{marginBottom:8,marginTop:4}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
-      {usageEnd
-        ?<LicenseLine label="Usage Rights" end={usageEnd}/>
-        :null
-      }
+      {usageEnd&&<LicenseLine label="Usage Rights" end={usageEnd}/>}
+      {usageRenewals.map((r: any,i: number)=>(
+        <LicenseLine key={`ur${i}`} label={`Renewal ${i+1}`} end={r.endDate} note={r.optLabel||undefined}/>
+      ))}
       {exclRenewals.map((r: any,i: number)=>(
-        <LicenseLine key={i} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
+        <LicenseLine key={`er${i}`} label="Exclusivity" end={r.endDate} note={r.optLabel||undefined}/>
       ))}
     </div>
   );
@@ -2187,7 +2188,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const addCl=()=>{if(!nb.name.trim())return;setClients((p: any[])=>[...p,{id:uid(),...nb,projects:[]}]);setNb({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[],notes:""});setShowAdd(false);};
   const addP=(cid: string)=>{if(!newPN.trim())return;const pr={id:uid(),name:newPN,status:"quoted",amount:0,paid:false,date:today(),deliveryDate:"",notes:"",qd:null,amendments:[],renewals:[]};setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:[pr,...c.projects]}));setNewPN("");setShowAddP(false);};
   const saveAmend=(cid: string,pid: string,amend: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,amendments:[...(pr.amendments||[]),amend],amount:pr.amount+amend.amendTotal})}));setAmendT(null);};
-  const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),{...renewal,signed:true}],usageEndOverride:renewal.endDate})}));setRenewT(null);};
+  const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),{...renewal,signed:true}]})}));setRenewT(null);};
   const setStatus=(cid: string,pid: string,st: string)=>upP(cid,pid,{status:st,paid:st==="paid"});
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
