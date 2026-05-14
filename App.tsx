@@ -3721,7 +3721,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
               <div style={{display:"flex"}}>
-                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===4?7:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===2?nav===8:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i===4?7:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
               </div>
               <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
                 {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
@@ -3759,7 +3759,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===4?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===2?nav===8:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i===4?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
           </div>
         )}
