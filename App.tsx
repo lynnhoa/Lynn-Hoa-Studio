@@ -3742,7 +3742,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
           {["Client · Project","Delivery","Amount"].map((h,i)=><span key={i} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.light,textAlign:i>=1?"right" as const:"left" as const}}>{h}</span>)}
         </div>}
         {isMobile&&<div style={{borderBottom:`1px solid ${C.rule}`}}/>}
-        {filteredActive.map(renderCard)}
+        {filteredActive.map(pr=>renderCard(pr))}
         {filteredActive.length===0&&<p style={{fontSize:12,color:C.light,padding:"20px 0"}}>No projects match this filter.</p>}
       </>}
 
