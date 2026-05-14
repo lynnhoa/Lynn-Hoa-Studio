@@ -1831,17 +1831,17 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
           <div key={cat} style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,borderBottom:ci<catKeys.length-1?`1px solid ${C.rule}`:"none"}}>
 
             {/* col1 — category pill */}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
               <span style={{fontSize:isMobile?10:9,padding:isMobile?"3px 7px":"2px 6px",borderRadius:20,...catPill(cat)}}>{cat}</span>
             </div>
 
             {/* col2 — per-line deliverables */}
-            <div style={{borderRight:`1px solid ${C.rule}`,padding:"8px 10px",display:"flex",flexDirection:"column" as const,gap:isMobile?8:6}}>
+            <div style={{borderRight:`1px solid ${C.rule}`,padding:"0",display:"flex",flexDirection:"column" as const}}>
               {lineCircles.map(({ln,filled,qty,createdCount},lii)=>(
-                <div key={lii} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
+                <div key={lii} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6,padding:isMobile?"8px 10px":"6px 10px",borderTop:lii>0?`1px solid ${C.rule}`:"none"}}>
                   <div style={{minWidth:0,flex:1}}>
                     {isMobile&&(()=>{const cat=getWsCategory(ln.name);const pill=catPill(cat);return<span style={{fontSize:9,padding:"2px 6px",borderRadius:20,...pill,display:"inline-block",marginBottom:3}}>{cat}</span>;})()}
-                    <p style={{fontSize:isMobile?13:10,color:C.black,margin:0,fontWeight:"500",whiteSpace:isMobile?"normal":"nowrap" as const,overflow:isMobile?"visible":"hidden",textOverflow:isMobile?"unset":"ellipsis",lineHeight:1.3}}>{ln.name}</p>
+                    <p style={{fontSize:isMobile?13:10,color:C.black,margin:0,fontWeight:"500",whiteSpace:"normal" as const,lineHeight:1.3}}>{ln.name}</p>
                     {ln.note&&<p style={{fontSize:isMobile?11:9,color:C.muted,margin:"2px 0 0"}}>{ln.note}</p>}
                   </div>
                   {isMobile?(
@@ -1858,14 +1858,14 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
               ))}
               {/* ready badge when all created */}
               {canAct&&(
-                <div style={{display:"flex",justifyContent:"flex-end",marginTop:2}}>
+                <div style={{display:"flex",justifyContent:"flex-end",padding:"3px 10px 5px"}}>
                   <span style={{fontSize:9,padding:"1px 7px",borderRadius:20,background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green}}>ready</span>
                 </div>
               )}
             </div>
 
             {/* col3 — manager checkboxes */}
-            <div style={{padding:"8px 10px",display:"flex",flexDirection:"column" as const,justifyContent:"center",gap:isMobile?7:5,opacity:canAct||msc.reviewed?1:0.3}}>
+            <div style={{padding:"8px 10px",display:"flex",flexDirection:"column" as const,justifyContent:"flex-start",gap:isMobile?7:5,opacity:canAct||msc.reviewed?1:0.3}}>
               {/* reviewed */}
               <div style={{display:"flex",alignItems:"center",gap:5}}>
                 {chkBox(!!msc.reviewed,C.amber,false,()=>{if(canAct)setMs(cat,"reviewed");})}
@@ -3633,13 +3633,13 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
               </div>
             </>
           ):(
-            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",alignItems:"center"}}>
-              <div style={{fontSize:11,color:C.muted}}>{pr._cname}</div>
-              <div style={{minWidth:0}}>
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 110px 100px",alignItems:"center"}}>
+              <div style={{minWidth:0,paddingRight:12}}>
+                <div style={{fontSize:10,color:C.muted,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr._cname}</div>
                 <div style={{fontSize:FS.projectName,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</div>
-                <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:2}}>{pr.paid?"Paid":pr.status}</span>
+                <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:3}}>{pr.paid?"Paid":pr.status}</span>
               </div>
-              <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{pr.deliveryDate?fmtD(pr.deliveryDate):"—"}</div>
+              <div style={{fontSize:10,color:C.muted,textAlign:"right" as const,paddingRight:12}}>{pr.deliveryDate?fmtD(pr.deliveryDate):"—"}</div>
               <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
             </div>
           )}
@@ -3649,7 +3649,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
             <span style={{fontSize:isMobile?12:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Delivery</span>
             <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
           </div>}
-          {pr.status==="production"&&<ProductionSection pr={pr} clients={clients} cl={cl} upP={upP} isMobile={isMobile}/>}
+          {pr.status==="production"&&<><div style={{fontSize:9,color:C.muted,letterSpacing:"0.09em",textTransform:"uppercase" as const,marginBottom:5}}>Production</div><ProductionSection pr={pr} clients={clients} cl={cl} upP={upP} isMobile={isMobile}/></>}
           <ProjectLicenseTracker pr={pr}/>
           {pr.notes&&<p style={{fontSize:isMobile?12:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
           <div style={{display:"flex",gap:isMobile?8:5,flexWrap:"wrap",marginBottom:isMobile?10:7}}>
@@ -3731,8 +3731,8 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
           <span style={{fontSize:9,color:C.black}}>{fmt(activeTotal)}</span>
         </div>
         {/* col headers — desktop only, below section title */}
-        {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",padding:"4px 0 6px",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
-          {["Client · Project","","Delivery","Amount"].map((h,i)=><span key={i} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.light,textAlign:i>=2?"right" as const:"left" as const}}>{h}</span>)}
+        {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 110px 100px",padding:"4px 0 6px",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
+          {["Client · Project","Delivery","Amount"].map((h,i)=><span key={i} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.light,textAlign:i>=1?"right" as const:"left" as const}}>{h}</span>)}
         </div>}
         {isMobile&&<div style={{borderBottom:`1px solid ${C.rule}`}}/>}
         {filteredActive.map(renderCard)}
