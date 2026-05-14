@@ -50,7 +50,7 @@ const fmtD  = (d: string | null | undefined, l?: boolean) => {
 const addM  = (d: string, m: number) => { if(!d||!m) return null; const dt=new Date(d); dt.setMonth(dt.getMonth()+m); return dt.toISOString().split("T")[0]; };
 const dLeft = (d: string | null | undefined) => d ? Math.ceil((new Date(d).getTime()-new Date().getTime())/864e5) : null;
 const uid   = () => Math.random().toString(36).slice(2,9);
-const PASS  = "lynnhoa2025";
+const PASS  = import.meta.env.VITE_APP_PASSWORD ?? "lynnhoa2025";
 const STATUS = ["lead","quoted","revised","contracted","production","invoiced","paid"];
 
 const SETTINGS_DEFAULT = {
