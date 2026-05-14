@@ -442,7 +442,9 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   const MRow=({lb,v}: any) => <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{lb}</span><span>{v}</span></div>;
   const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC Creator",editorial:"Editorial"};
   const TRow=({ln,prevLn,idx}: any)=>{
-    const showCat=!!(ln.cat&&catBadgeLabel[ln.cat]&&ln.cat!==(prevLn?.cat));
+    const n=(ln.name||"").toLowerCase();
+    const inferredCat=ln.cat||(n.includes("hero")||n.includes("editorial")||n.includes("photo story")||n.includes("mini set")||n.includes("hero image")?"editorial":n.includes("ugc")||n.includes("campaign video")?"ugc":"influencer");
+    const showCat=!!(catBadgeLabel[inferredCat]&&inferredCat!==(prevLn?.(()=>{const pn=(prevLn.name||"").toLowerCase();return prevLn.cat||(pn.includes("hero")||pn.includes("editorial")||pn.includes("photo story")||pn.includes("mini set")||pn.includes("hero image")?"editorial":pn.includes("ugc")||pn.includes("campaign video")?"ugc":"influencer");})()));
     const subDetails=[
       ln.usageLabel,
       ln.exclLabel,
@@ -451,7 +453,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     ].filter(Boolean);
     return(
       <div data-trow={idx} style={{paddingTop:tRowGuards?.[idx]||0,borderBottom:`1px solid ${C.rule}`}}>
-        {showCat&&<div style={{paddingTop:10,paddingBottom:1}}><span style={{fontSize:5.5,letterSpacing:"0.14em",textTransform:"uppercase",color:C.light}}>{catBadgeLabel[ln.cat]}</span></div>}
+        {showCat&&<div style={{paddingTop:10,paddingBottom:1}}><span style={{fontSize:5.5,letterSpacing:"0.14em",textTransform:"uppercase",color:C.light}}>{catBadgeLabel[inferredCat]}</span></div>}
         <div style={{padding:"4px 0",display:"grid",gridTemplateColumns:"1fr 28px 52px 46px",alignItems:"baseline"}}>
           <div>
             <span style={{fontSize:8.5}}>{ln.name}</span>
@@ -500,7 +502,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
         <div style={{borderTop:`1px solid ${C.rule}`,borderBottom:`1px solid ${C.rule}`,padding:"4px 0",display:"grid",gridTemplateColumns:"1fr 28px 52px 46px",marginBottom:0}}>
           {[l?"Leistung":"Description",l?"Anz.":"Qty",l?"Einzelpreis":"Unit Price",l?"Betrag":"Amount"].map((h,i)=><span key={h} style={{fontSize:6,letterSpacing:"0.1em",textTransform:"uppercase",color:C.muted,textAlign:i>0?"right":"left"}}>{h}</span>)}
         </div>
-        {(type==="invoice"?allLines:baseLines).map((ln: any,i: number,arr: any[])=><TRow key={i} idx={i} ln={ln} prevLn={arr[i-1]}/>)}
+        {(()=>{const catOrder: Record<string,number>={influencer:0,ugc:1,editorial:2};const sortLines=(arr: any[])=>[...arr].sort((a,b)=>{const n1=(a.name||"").toLowerCase();const n2=(b.name||"").toLowerCase();const c1=a.cat||(n1.includes("hero")||n1.includes("editorial")?"editorial":n1.includes("ugc")||n1.includes("campaign video")?"ugc":"influencer");const c2=b.cat||(n2.includes("hero")||n2.includes("editorial")?"editorial":n2.includes("ugc")||n2.includes("campaign video")?"ugc":"influencer");return(catOrder[c1]??0)-(catOrder[c2]??0);});const lines=sortLines(type==="invoice"?allLines:baseLines);return lines.map((ln: any,i: number)=><TRow key={i} idx={i} ln={ln} prevLn={lines[i-1]}/>);})()}
         {type==="amendment"
           ?<div data-sig-anchor="true" style={{marginTop:22+(extraSigMargin||0)}}>
             <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
