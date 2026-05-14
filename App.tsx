@@ -3601,6 +3601,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const [editPrName,setEditPrName]=useState<string|null>(null);
   const [editPrNameVal,setEditPrNameVal]=useState("");
   const [delConfirm,setDelConfirm]=useState<string|null>(null);
+  const [statusFilter,setStatusFilter]=useState<string>("all");
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>setPdf(null)} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
@@ -3696,7 +3697,6 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const doneTotal=done.reduce((s: number,pr: any)=>s+pr.amount,0);
   const byStatus=(st: string)=>active.filter((pr: any)=>pr.status===st).length;
   const invoicedAmt=active.filter((pr: any)=>pr.status==="invoiced").reduce((s: number,pr: any)=>s+pr.amount,0);
-  const [statusFilter,setStatusFilter]=useState<string>("all");
   const FILTERS=[["all","All"],["production","Production"],["invoiced","Invoiced"],["contracted","Contracted"],["quoted","Quoted"]];
   const filteredActive=statusFilter==="all"?active:active.filter((pr: any)=>pr.status===statusFilter||(statusFilter==="quoted"&&pr.status==="revised"));
   return(
