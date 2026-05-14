@@ -572,7 +572,7 @@ function PDFModal({data,type,onClose,onSave,onSaveClose,settings,isNew}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
-  const [preview,setPreview]=useState<any>(init());
+  const [preview,setPreview]=useState<any>(init);
   const [lang,setLang]=useState("en");
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
