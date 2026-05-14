@@ -3588,7 +3588,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
           <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{fmtD(pr.date)}</div>
           <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
         </div>
-        {isOpen&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
+        {isOpen&&<div style={{padding:FS.pad,paddingTop:4,marginBottom:FS.gap,background:"#f5f3f0"}}>
           {["quoted","revised","contracted","production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:isMobile?12:8}}>
             <span style={{fontSize:isMobile?12:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Delivery</span>
             <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
