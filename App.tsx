@@ -1747,9 +1747,23 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
     const k=cat.toLowerCase();
     upP(cl.id,pr.id,{managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:true,[field+"Date"]:today()}}});
   };
+
+  // build per-line list (same skip logic as getCatProgress)
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+  const lines=(pr.qd?.lines||[]).filter((ln:any)=>ln.name&&!skip.some((s:string)=>ln.name.toLowerCase().includes(s)));
+
+  // category pill styling
+  const catPill=(cat:string):any=>{
+    if(cat==="UGC")return{background:"#fdf5ee",border:`1px solid ${C.amberBorder}`,color:C.amber};
+    if(cat==="Editorial")return{background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green};
+    return{background:"#f0f0f5",border:"1px solid #c8c8e0",color:"#6a6aaa"};
+  };
+
   return(
     <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
       <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:0,padding:isMobile?"7px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`,background:C.bg}}>Content production</p>
+
+      {/* ── category summary rows with progress rings (kept) ── */}
       {catKeys.map(cat=>{
         const prog=cats[cat];
         const k=cat.toLowerCase();
@@ -1784,7 +1798,8 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
                 <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.posted}/{prog.total}</text>
               </svg>
             )}
-            <span style={{fontSize:isMobile?11:9,color:C.black,fontWeight:"500",minWidth:60,flexShrink:0}}>{cat}</span>
+            {/* category pill */}
+            <span style={{fontSize:isMobile?10:8,padding:isMobile?"3px 9px":"2px 7px",borderRadius:20,flexShrink:0,...catPill(cat)}}>{cat}</span>
             <div style={{display:"flex",gap:isMobile?6:4,alignItems:"center",flex:1,flexWrap:"wrap" as const}}>
               <button style={btnStyle(!!msc.reviewed,C.amber)}
                 onClick={()=>{if(canAct&&!msc.reviewed)setMs(cat,"reviewed");}}>
@@ -1797,14 +1812,32 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
                 </button>
               )}
               {isInfluencer&&(
-                <span style={{fontSize:isMobile?10:8,color:prog.posted===prog.total&&prog.total>0?C.green:C.light,marginLeft:2}}>
-                  {prog.posted} of {prog.total} posted
+                <span style={{fontSize:isMobile?10:8,color:prog.posted===prog.total&&prog.total>0?C.green:msc.reviewed?C.amber:C.light,marginLeft:2}}>
+                  {prog.posted===prog.total&&prog.total>0?`${prog.posted} of ${prog.total} posted`:msc.reviewed?"— awaiting post":`${prog.posted} of ${prog.total} posted`}
                 </span>
               )}
             </div>
           </div>
         );
       })}
+
+      {/* ── individual line items ── */}
+      {lines.length>0&&(
+        <div style={{borderTop:`1px solid ${C.rule}`}}>
+          {lines.map((ln:any,li:number)=>{
+            const cat=getWsCategory(ln.name);
+            return(
+              <div key={li} style={{display:"flex",alignItems:"center",gap:isMobile?8:6,padding:isMobile?"8px 10px":"5px 10px",borderBottom:li<lines.length-1?`1px solid ${C.rule}`:"none"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontSize:isMobile?12:10,color:C.black,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{ln.name}</p>
+                  {ln.note&&<p style={{fontSize:isMobile?10:8,color:C.muted,margin:0}}>{ln.note}</p>}
+                </div>
+                <span style={{fontSize:isMobile?10:8,padding:isMobile?"3px 9px":"2px 7px",borderRadius:20,flexShrink:0,...catPill(cat)}}>{cat}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
