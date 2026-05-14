@@ -3619,7 +3619,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
 }
 
 // ─── CREATOR WORKSPACE ────────────────────────────────────
-const WS_STATUSES=["Not started","Finished","Reviewed","Delivered"];
+const WS_STATUSES=["Not started","Created","Reviewed","Delivered","Posted"];
 
 function getWsCategory(lineName: string): string {
   const n=(lineName||"").toLowerCase();
@@ -3629,9 +3629,10 @@ function getWsCategory(lineName: string): string {
 }
 
 function wsStatusIcon(st: string){
-  if(st==="Finished")return{icon:"",color:C.black};
+  if(st==="Created")return{icon:"",color:C.black};
   if(st==="Reviewed")return{icon:"",color:C.amber};
   if(st==="Delivered")return{icon:"",color:C.green};
+  if(st==="Posted")return{icon:"",color:C.green};
   return{icon:"",color:C.light};
 }
 
@@ -3709,7 +3710,6 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
   const [editingVal,setEditingVal]=useState("");
   const [noteId,setNoteId]=useState<string|null>(null);
   const [noteVal,setNoteVal]=useState("");
-  const [confirmInvoice,setConfirmInvoice]=useState<{cid:string,pid:string,pname:string,cname:string}|null>(null);
   const [confirmDelete,setConfirmDelete]=useState<{id:string,clientId:string,projectId:string}|null>(null);
   const [pickerOpen,setPickerOpen]=useState<string|null>(null);
   const [snackbar,setSnackbar]=useState<{msg:string,undo:()=>void}|null>(null);
@@ -3765,10 +3765,6 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
     setConfirmDelete(null);
   };
 
-  const confirmReadyToInvoice=(cid: string,pid: string)=>{
-    setClients((prev: any[])=>prev.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,readyToInvoice:true,readyToInvoiceAt:new Date().toISOString()})}));
-    setConfirmInvoice(null);
-  };
 
   // Filter out deleted items
   const activeItems=filtered.filter(it=>{
@@ -3782,10 +3778,10 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
   let groups: GroupDef[]=[];
 
   if(group==="Urgency"){
-    const overdue=activeItems.filter(it=>it.status!=="Delivered"&&isOverdue(it.deadline));
-    const week=activeItems.filter(it=>it.status!=="Delivered"&&!isOverdue(it.deadline)&&isThisWeek(it.deadline));
-    const later=activeItems.filter(it=>it.status!=="Delivered"&&!isOverdue(it.deadline)&&!isThisWeek(it.deadline));
-    const done=activeItems.filter(it=>it.status==="Delivered");
+    const overdue=activeItems.filter(it=>!["Delivered","Posted"].includes(it.status)&&isOverdue(it.deadline));
+    const week=activeItems.filter(it=>!["Delivered","Posted"].includes(it.status)&&!isOverdue(it.deadline)&&isThisWeek(it.deadline));
+    const later=activeItems.filter(it=>!["Delivered","Posted"].includes(it.status)&&!isOverdue(it.deadline)&&!isThisWeek(it.deadline));
+    const done=activeItems.filter(it=>["Delivered","Posted"].includes(it.status));
     groups=[
       {key:"overdue",label:`OVERDUE`,items:overdue},
       {key:"week",label:`DUE THIS WEEK`,items:week},
@@ -3816,13 +3812,6 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
   }
 
   const toggleGroup=(key: string)=>setCollapsed(p=>({...p,[key]:!p[key]}));
-
-  // Ready to Invoice — per project, only in Client group or always show at bottom
-  const readyProjects: {cid:string,pid:string,pname:string,cname:string}[]=[];
-  clients.forEach((c: any)=>c.projects.filter((pr: any)=>pr.status==="production"&&!pr.readyToInvoice).forEach((pr: any)=>{
-    const items=getWsItems([{...c,projects:[pr]}]);
-    if(items.length>0&&items.every(it=>it.status==="Delivered"))readyProjects.push({cid:c.id,pid:pr.id,pname:pr.name,cname:c.name});
-  }));
 
   const deadlineColor=(item: any)=>{
     if(isOverdue(item.deadline))return C.red;
@@ -3879,23 +3868,29 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
               const isNoting=noteId===item.id;
               const dlColor=deadlineColor(item);
               const dayTag=plannerDayLabel(item.plannerDate);
-              const isDelivered=item.status==="Delivered";
+              const isDone=["Delivered","Posted"].includes(item.status);
+              const isCreated=["Created","Reviewed","Delivered","Posted"].includes(item.status);
+              const isPosted=item.status==="Posted";
 
-              // derive which checkboxes are checked from status
-              const chkFinished=["Finished","Reviewed","Delivered"].includes(item.status);
-              const chkReviewed=["Reviewed","Delivered"].includes(item.status);
-              const chkDelivered=item.status==="Delivered";
+              // category drives checkbox shape
+              const showPost=item.category==="Influencer";
 
-              const toggleCheck=(box: "Finished"|"Reviewed"|"Delivered")=>{
-                const order=["Not started","Finished","Reviewed","Delivered"];
-                let next: string;
-                if(box==="Finished") next=chkFinished?"Not started":"Finished";
-                else if(box==="Reviewed") next=chkReviewed?"Finished":"Reviewed";
-                else next=chkDelivered?"Reviewed":"Delivered";
-                setItemStatus(item,next);
-              };
+              // manager status line (read from workspaceStatus by checking history)
+              const mgrStatus=(()=>{
+                const cl=clients.find((c:any)=>c.id===item.clientId);
+                const pr=cl?.projects.find((p:any)=>p.id===item.projectId);
+                const hist=((pr?.workspaceStatusHistory||{})[item.id]||[]);
+                const reviewedEntry=hist.find((h:any)=>h.status==="Reviewed");
+                const deliveredEntry=hist.find((h:any)=>h.status==="Delivered");
+                if(deliveredEntry)return{label:"delivered",date:deliveredEntry.date,color:C.green};
+                if(reviewedEntry)return{label:"reviewed",date:reviewedEntry.date,color:C.amber};
+                return null;
+              })();
 
-              const cbBox=(checked: boolean,color: string)=>({
+              const toggleCreated=()=>setItemStatus(item,isCreated?"Not started":"Created");
+              const togglePosted=()=>{if(!isCreated)return;setItemStatus(item,isPosted?"Created":"Posted");};
+
+              const cbBox=(checked:boolean,color:string)=>({
                 width:isMobile?26:20,height:isMobile?26:20,borderRadius:3,
                 border:`1.5px solid ${checked?color:C.rule}`,
                 background:checked?color:"transparent",
@@ -3904,7 +3899,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
               });
 
               return(
-                <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDelivered?0.6:1}}>
+                <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.6:1}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:isMobile?"12px 0":"9px 0"}}>
 
                     {/* brand */}
@@ -3912,7 +3907,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                       {item.clientName.toUpperCase()}
                     </span>
 
-                    {/* name + category tag + lineNote + user note */}
+                    {/* name + category tag + lineNote + user note + manager status */}
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {isEditing?(
@@ -3922,8 +3917,8 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                             placeholder={item.defaultName}
                             style={{fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",flex:1,minWidth:0}}/>
                         ):(
-                          <span onClick={()=>{if(!isDelivered){setEditingId(item.id);setEditingVal(item.name);}}}
-                            style={{fontSize:13,color:C.black,cursor:isDelivered?"default":"text",textDecoration:isDelivered?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                          <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
+                            style={{fontSize:13,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
                             {item.name}
                           </span>
                         )}
@@ -3933,39 +3928,35 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                       </div>
                       {item.lineNote&&<span style={{fontSize:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
                       {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
-                      {!item.notes&&!isNoting&&!isDelivered&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:isMobile?12:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
+                      {!item.notes&&!isNoting&&!isDone&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:isMobile?12:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
+                      {isCreated&&mgrStatus&&<span style={{fontSize:10,color:mgrStatus.color,display:"block",marginTop:2,letterSpacing:"0.02em"}}>{mgrStatus.label} · {fmtD(mgrStatus.date)}</span>}
                     </div>
 
-                    {/* deadline */}
-                    <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400",flexShrink:0,minWidth:44,textAlign:"right" as const}}>
-                      {fmtDeadline(item.deadline)}
-                    </span>
-
                     {/* day tag */}
-                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0}}>{dayTag}</span>}
+                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0,alignSelf:"flex-start" as const,marginTop:2}}>{dayTag}</span>}
 
-                    {/* three checkboxes */}
-                    <div style={{display:"flex",gap:isMobile?4:6,flexShrink:0}}>
-                      {/* Created */}
-                      <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
-                        <div onClick={()=>toggleCheck("Finished")} style={cbBox(chkFinished,C.black)}>
-                          {chkFinished&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                    {/* right column: deadline + checkboxes aligned */}
+                    <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4,flexShrink:0}}>
+                      <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400"}}>
+                        {fmtDeadline(item.deadline)}
+                      </span>
+                      <div style={{display:"flex",gap:isMobile?4:6}}>
+                        {/* Created */}
+                        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                          <div onClick={toggleCreated} style={cbBox(isCreated,C.black)}>
+                            {isCreated&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                          </div>
+                          {!isMobile&&<span style={{fontSize:9,color:isCreated?C.muted:C.light,letterSpacing:"0.02em"}}>created</span>}
                         </div>
-                        {!isMobile&&<span style={{fontSize:9,color:chkFinished?C.muted:C.light,letterSpacing:"0.02em"}}>Created</span>}
-                      </div>
-                      {/* Reviewed */}
-                      <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
-                        <div onClick={()=>chkFinished&&toggleCheck("Reviewed")} style={{...cbBox(chkReviewed,C.amber),cursor:chkFinished?"pointer":"default",opacity:chkFinished?1:0.4}}>
-                          {chkReviewed&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
-                        </div>
-                        {!isMobile&&<span style={{fontSize:9,color:chkReviewed?C.muted:C.light,letterSpacing:"0.02em"}}>Reviewed</span>}
-                      </div>
-                      {/* Delivered */}
-                      <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
-                        <div onClick={()=>chkReviewed&&toggleCheck("Delivered")} style={{...cbBox(chkDelivered,C.green),cursor:chkReviewed?"pointer":"default",opacity:chkReviewed?1:0.4}}>
-                          {chkDelivered&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
-                        </div>
-                        {!isMobile&&<span style={{fontSize:9,color:chkDelivered?C.muted:C.light,letterSpacing:"0.02em"}}>Delivered</span>}
+                        {/* Post — Influencer only */}
+                        {showPost&&(
+                          <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                            <div onClick={togglePosted} style={{...cbBox(isPosted,C.green),cursor:isCreated?"pointer":"default",opacity:isCreated?1:0.35}}>
+                              {isPosted&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                            </div>
+                            {!isMobile&&<span style={{fontSize:9,color:isPosted?C.muted:C.green,letterSpacing:"0.02em"}}>post</span>}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -3996,34 +3987,6 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
           <span>{snackbar.msg}</span>
           <button onClick={snackbar.undo} style={{background:"none",border:"none",cursor:"pointer",color:C.amber,fontFamily:SANS,fontSize:12,fontWeight:"500",padding:0}}>Undo</button>
         </div>
-      )}
-
-      {/* Ready to Invoice banners */}
-      {readyProjects.map(rp=>(
-        <div key={rp.pid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",border:`1px solid ${C.greenBorder}`,background:C.greenBg,borderRadius:2,padding:"12px 16px",marginTop:12}}>
-          <span style={{fontSize:11,color:C.green}}>✓ {rp.cname} — {rp.pname} · all done</span>
-          <button onClick={()=>setConfirmInvoice(rp)}
-            style={{padding:"6px 16px",border:`1px solid ${C.green}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,color:C.green,letterSpacing:"0.1em",textTransform:"uppercase" as const,fontWeight:"600"}}>
-            Ready to Invoice
-          </button>
-        </div>
-      ))}
-
-      {/* Confirm Invoice Dialog */}
-      {confirmInvoice&&createPortal(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
-          onClick={()=>setConfirmInvoice(null)}>
-          <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",maxWidth:340,width:"90%",boxShadow:"0 4px 24px rgba(0,0,0,0.15)"}}
-            onClick={e=>e.stopPropagation()}>
-            <p style={{fontSize:13,color:C.black,margin:"0 0 8px",fontFamily:SERIF}}>Signal ready to invoice?</p>
-            <p style={{fontSize:11,color:C.muted,margin:"0 0 20px"}}>This will mark {confirmInvoice.cname} — {confirmInvoice.pname} as production complete and lock it read-only.</p>
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-              <button onClick={()=>setConfirmInvoice(null)} style={{padding:"6px 16px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.muted}}>Cancel</button>
-              <button onClick={()=>confirmReadyToInvoice(confirmInvoice.cid,confirmInvoice.pid)}
-                style={{padding:"6px 16px",border:`1px solid ${C.green}`,borderRadius:2,background:C.green,cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.white,letterSpacing:"0.06em"}}>Confirm</button>
-            </div>
-          </div>
-        </div>,document.body
       )}
 
       {/* Confirm Delete Dialog */}
