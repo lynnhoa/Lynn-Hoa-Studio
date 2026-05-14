@@ -2364,7 +2364,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
     setPdf({cid,pid:pr.id,data,type:"contract",lang:"en",isRevision:true,nextContractRev:nextRev});
   };
 
-  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
+  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>{setRenewT(null);setScrollTrigger(t=>t+1);}} rc={rc} settings={settings}/>;
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);setRevInvT(null);}} settings={settings}
     onSave={revInvT
       ?(doc: any)=>{const tot=(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(revInvT.cid,revInvT.pid,{qd:{...revInvT.p.qd,lines:doc.lines},amount:tot});}
@@ -3581,6 +3581,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const [delConfirm,setDelConfirm]=useState<string|null>(null);
   const [statusFilter,setStatusFilter]=useState<string>("all");
   const [sortOrder,setSortOrder]=useState<string>("newest");
+  const [scrollTrigger,setScrollTrigger]=useState(0);
   useEffect(()=>{
     if(!pendingProjectQNo)return;
     const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id})));
@@ -3592,9 +3593,9 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
     if(!expanded)return;
     const el=document.querySelector(`[data-prid="${expanded}"]`);
     if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),80);
-  },[expanded]);
-  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
-  if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>setPdf(null)} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
+  },[expanded,scrollTrigger]);
+  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>{setRenewT(null);setScrollTrigger(t=>t+1);}} rc={rc} settings={settings}/>;
+  if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);setScrollTrigger(t=>t+1);}} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
   const upP=(cid: string,pid: string,data: any)=>setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,...data})}));
