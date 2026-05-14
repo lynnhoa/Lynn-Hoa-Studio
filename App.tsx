@@ -3669,7 +3669,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
               <B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
               <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
             </>}
-            {pr.status==="production"&&<B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>}
+            {pr.status==="production"&&<B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px",opacity:pr.deliveryDate?1:0.35,cursor:pr.deliveryDate?"pointer":"not-allowed"}} title={pr.deliveryDate?"":"Set a delivery date first"} onClick={()=>{if(!pr.deliveryDate)return;setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>}
             {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
             {pr.paid&&<>
               <B v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
