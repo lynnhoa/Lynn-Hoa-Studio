@@ -3604,8 +3604,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>{
     if(sortOrder==="amount")return b.amount-a.amount;
     if(sortOrder==="oldest")return a.date>b.date?1:-1;
-    if(b.createdAt&&a.createdAt)return b.createdAt-a.createdAt;
-    return b.date>a.date?1:-1;
+    return (b.createdAt||0)-(a.createdAt||0);
   });
   const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
   const renderCard=(pr: any,isDone?:boolean)=>{
