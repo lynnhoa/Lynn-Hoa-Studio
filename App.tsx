@@ -1514,7 +1514,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const [items,setItems]=useState<any[]>(()=>{
     if(prefill?.isRev&&prefill?.origLines?.length){
-      return prefill.origLines.map((ln: any)=>({id:uid(),cat:prefill.ctab||"influencer",name:ln.name||"",note:ln.note||"",qty:ln.qty||1,up:ln.up||0,amt:ln.amt||0,usageLabel:undefined,exclLabel:undefined,addons:[]}));
+      return prefill.origLines.map((ln: any)=>({id:uid(),cat:ln.cat||prefill.ctab||"influencer",name:ln.name||"",note:ln.note||"",qty:ln.qty||1,up:ln.up||0,amt:ln.amt||0,usageLabel:undefined,exclLabel:undefined,addons:[]}));
     }
     return[];
   });
