@@ -1647,11 +1647,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
             <option value={-1}>— Select deliverable —</option>
             {deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}
           </S></div>
-          <div><Lbl>Qty</Lbl><div style={{display:"flex",alignItems:"center",gap:4,height:32}}>
-            <button type="button" onClick={()=>setBQty(q=>Math.max(1,(parseInt(String(q))||1)-1))} style={{width:28,height:28,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:15,color:C.black,lineHeight:1,flexShrink:0}}>−</button>
-            <input type="number" min={1} value={bQty} onChange={(e:any)=>setBQty(e.target.value===""?"":(parseInt(e.target.value)||1))} onBlur={(e:any)=>setBQty(parseInt(e.target.value)||1)} style={{width:36,textAlign:"center",fontFamily:SANS,fontSize:13,color:C.black,border:`1px solid ${C.rule}`,borderRadius:2,padding:"4px 2px",background:C.bg,outline:"none"}}/>
-            <button type="button" onClick={()=>setBQty(q=>(parseInt(String(q))||1)+1)} style={{width:28,height:28,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:15,color:C.black,lineHeight:1,flexShrink:0}}>+</button>
-          </div></div>
+          <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e:any)=>setBQty(e.target.value===""?"":(parseInt(e.target.value)||1))} onBlur={(e:any)=>setBQty(parseInt(e.target.value)||1)}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:9}}>
           <div>
