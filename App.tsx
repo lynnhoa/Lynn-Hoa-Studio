@@ -60,7 +60,7 @@ const SETTINGS_DEFAULT = {
   kleinunternehmer:"true",
   steuernummer:"",ustIdNr:"",vatRate:"19",
   taxNote:"Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
-  password:"lynnhoa2025",
+  password:import.meta.env.VITE_APP_PASSWORD??"lynnhoa2025",
 };
 
 // ─── RATE CARD DATA ────────────────────────────────────────
