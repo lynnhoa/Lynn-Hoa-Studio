@@ -3579,14 +3579,32 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
     const isOpen=expanded===pr.id;
     return(
       <div key={pr.id} style={{borderBottom:`1px solid ${C.rule}`}}>
-        <div onClick={()=>setExpanded(isOpen?null:pr.id)} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 100px 80px 90px",alignItems:"center",padding:"10px 0",cursor:"pointer"}}>
-          <div style={{fontSize:11,color:C.muted}}>{pr._cname}</div>
-          <div style={{minWidth:0}}>
-            <div style={{fontSize:FS.projectName,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</div>
-            <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:2}}>{pr.paid?"Paid":pr.status}</span>
-          </div>
-          <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{fmtD(pr.date)}</div>
-          <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
+        <div onClick={()=>setExpanded(isOpen?null:pr.id)} style={{padding:"10px 0",cursor:"pointer"}}>
+          {isMobile?(
+            <>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4}}>
+                <span style={{fontSize:13,color:C.muted,fontWeight:"500"}}>{pr._cname}</span>
+                <span style={{fontFamily:SERIF,fontSize:16,color:C.black,flexShrink:0,marginLeft:12}}>{fmt(pr.amount)}</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <span style={{fontSize:14,color:C.black,fontWeight:"500",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
+                  <span style={{fontSize:11,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:3}}>{pr.paid?"Paid":pr.status}</span>
+                </div>
+                <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:12}}>{fmtD(pr.date)}</span>
+              </div>
+            </>
+          ):(
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",alignItems:"center"}}>
+              <div style={{fontSize:11,color:C.muted}}>{pr._cname}</div>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:FS.projectName,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</div>
+                <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:2}}>{pr.paid?"Paid":pr.status}</span>
+              </div>
+              <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{fmtD(pr.date)}</div>
+              <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
+            </div>
+          )}
         </div>
         {isOpen&&<div style={{padding:FS.pad,paddingTop:4,marginBottom:FS.gap,background:"#f5f3f0"}}>
           {["quoted","revised","contracted","production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:isMobile?12:8}}>
@@ -3638,9 +3656,9 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   };
   return(
     <div>
-      <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 100px 80px 90px",marginBottom:8}}>
+      {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",marginBottom:8}}>
         {["Client","Project","Date","Amount"].map((h,i)=><span key={h} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.muted,textAlign:i>=2?"right" as const:"left" as const}}>{h}</span>)}
-      </div>
+      </div>}
       {active.length>0&&<><p style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 0",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Active — {active.length}</p>{active.map(renderCard)}</>}
       {done.length>0&&<><p style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:`${active.length>0?24:0}px 0 0`,paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Done — {done.length}</p><div style={{opacity:0.5}}>{done.map(renderCard)}</div></>}
       {active.length===0&&done.length===0&&<p style={{fontSize:12,color:C.light,textAlign:"center" as const,marginTop:40}}>No projects yet.</p>}
