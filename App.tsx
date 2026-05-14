@@ -1784,8 +1784,8 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
     </div>
   );
 
-  const col1W=isMobile?60:72;
-  const col3W=isMobile?110:130;
+  const col1W=isMobile?52:72;
+  const col3W=isMobile?100:130;
 
   return(
     <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
@@ -1864,25 +1864,31 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
               {/* reviewed */}
               <div style={{display:"flex",alignItems:"center",gap:5}}>
                 {chkBox(!!msc.reviewed,C.amber,false,()=>{if(canAct)setMs(cat,"reviewed");})}
-                <span style={{fontSize:isMobile?11:10,color:msc.reviewed?C.amber:C.muted}}>reviewed</span>
-                {msc.reviewed&&<span style={{fontSize:9,color:C.muted}}>{fmtD(msc.reviewedDate)}</span>}
+                <div style={{minWidth:0}}>
+                  <span style={{fontSize:isMobile?11:10,color:msc.reviewed?C.amber:C.muted,display:"block"}}>reviewed</span>
+                  {msc.reviewed&&<span style={{fontSize:9,color:C.muted,display:"block"}}>{fmtD(msc.reviewedDate)}</span>}
+                </div>
               </div>
               {/* delivered — UGC + Editorial */}
               {!isInfluencer&&(
                 <div style={{display:"flex",alignItems:"center",gap:5}}>
                   {chkBox(!!msc.delivered,C.green,false,()=>{if(canAct)setMs(cat,"delivered");})}
-                  <span style={{fontSize:isMobile?11:10,color:msc.delivered?C.green:C.muted}}>delivered</span>
-                  {msc.delivered&&<span style={{fontSize:9,color:C.muted}}>{fmtD(msc.deliveredDate)}</span>}
+                  <div style={{minWidth:0}}>
+                    <span style={{fontSize:isMobile?11:10,color:msc.delivered?C.green:C.muted,display:"block"}}>delivered</span>
+                    {msc.delivered&&<span style={{fontSize:9,color:C.muted,display:"block"}}>{fmtD(msc.deliveredDate)}</span>}
+                  </div>
                 </div>
               )}
               {/* all posted — Influencer + Editorial, read-only, auto */}
               {(isInfluencer||isEditorial)&&(
                 <div style={{display:"flex",alignItems:"center",gap:5,opacity:allPosted?1:0.4}}>
                   {chkBox(allPosted,C.green,true,()=>{})}
-                  <span style={{fontSize:isMobile?11:10,color:allPosted?C.green:C.muted}}>
-                    {allPosted?"all posted":"awaiting post"}
-                  </span>
-                  {allPosted&&prog.posted>0&&<span style={{fontSize:9,color:C.muted}}>{fmtD(lineCircles.find(lc=>lc.lastPostedDate)?.lastPostedDate||null)}</span>}
+                  <div style={{minWidth:0}}>
+                    <span style={{fontSize:isMobile?11:10,color:allPosted?C.green:C.muted,display:"block"}}>
+                      {allPosted?"all posted":"awaiting post"}
+                    </span>
+                    {allPosted&&prog.posted>0&&<span style={{fontSize:9,color:C.muted,display:"block"}}>{fmtD(lineCircles.find(lc=>lc.lastPostedDate)?.lastPostedDate||null)}</span>}
+                  </div>
                 </div>
               )}
             </div>
@@ -3187,149 +3193,200 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   }
 
   const unsignedC=all.filter((pr: any)=>pr.status==="contracted");
+
+  // revenue bar chart data — monthly this year
+  const revMonthly=Array.from({length:12},(_,m)=>paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m).reduce((s: number,pr: any)=>s+pr.amount,0));
+  const revMax=Math.max(...revMonthly,1);
+  const prevMonthRev=nowM>0?revMonthly[nowM-1]:0;
+  const revChange=prevMonthRev>0?Math.round(((thisMonthRev-prevMonthRev)/prevMonthRev)*100):null;
+
+  // shared card style
+  const DCard=({children,onClick,accentColor,bg,border}:{children:any,onClick:()=>void,accentColor:string,bg?:string,border?:string})=>(
+    <div onClick={onClick} style={{background:bg||C.bg,border:`1px solid ${border||C.rule}`,borderLeft:`3px solid ${accentColor}`,borderRadius:4,padding:"14px 16px",cursor:"pointer",position:"relative",minHeight:120}}>
+      {children}
+      <span style={{position:"absolute",right:14,bottom:14,fontSize:13,color:C.light}}>→</span>
+    </div>
+  );
+  const DLabel=({children}:{children:any})=>(
+    <p style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase" as const,margin:"0 0 8px"}}>{children}</p>
+  );
+  const DNumber=({children,color}:{children:any,color?:string})=>(
+    <p style={{fontFamily:SERIF,fontSize:26,fontWeight:"normal",color:color||C.black,margin:"0 0 4px",lineHeight:1}}>{children}</p>
+  );
+  const DSub=({children}:{children:any})=>(
+    <p style={{fontSize:12,color:C.muted,margin:"0 0 8px"}}>{children}</p>
+  );
+  const DDivider=()=><div style={{borderTop:`1px solid ${C.rule}`,margin:"10px 0"}}/>;
+  const DRow=({label,badge,badgeColor,badgeBg}:{label:string,badge:string,badgeColor:string,badgeBg:string})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0"}}>
+      <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,maxWidth:"65%"}}>{label}</span>
+      <span style={{fontSize:11,fontWeight:"500",padding:"2px 8px",borderRadius:3,background:badgeBg,color:badgeColor,flexShrink:0}}>{badge}</span>
+    </div>
+  );
+  const ageBadge=(days: number|null):{col:string,bg:string,txt:string}=>{
+    if(days===null)return{col:C.muted,bg:C.rule,txt:"—"};
+    if(days>=14)return{col:C.red,bg:C.redBg,txt:`${days}d`};
+    if(days>=7)return{col:C.amber,bg:C.amberBg,txt:`${days}d`};
+    return{col:C.muted,bg:"#f0ede9",txt:`${days}d`};
+  };
+
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
 
         {/* 1 — Revenue */}
-        <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("revenue")}
-          sub={<>
-            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>{nowY}</span>
-              <span style={{fontSize:10,color:C.black}}>{fmt(thisYearRev)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>{MO[nowM]} {nowY}</span>
-              <span style={{fontSize:10,color:C.black}}>{fmt(thisMonthRev)}</span>
-            </div>
-          </>}
-        />
+        <DCard onClick={()=>setDrill("revenue")} accentColor={C.green}>
+          <DLabel>Revenue · {nowY}</DLabel>
+          <DNumber color={C.green}>{fmt(thisYearRev)}</DNumber>
+          <DSub>
+            {MO[nowM]} · <strong style={{color:C.black}}>{fmt(thisMonthRev)}</strong>
+            {revChange!==null&&<span style={{color:revChange>=0?C.green:C.red,fontSize:11,marginLeft:6}}>{revChange>=0?"+":""}{revChange}% vs {MO[nowM-1]}</span>}
+          </DSub>
+          {/* mini bar chart */}
+          <div style={{display:"flex",gap:3,alignItems:"flex-end",height:32,marginTop:8}}>
+            {revMonthly.map((v,i)=>{
+              const h=Math.max(2,Math.round((v/revMax)*28));
+              return<div key={i} style={{flex:1,height:`${h}px`,borderRadius:"2px 2px 0 0",background:i===nowM?C.green:v>0?"#C0DD97":C.rule}}/>;
+            })}
+          </div>
+          <div style={{display:"flex",gap:3,marginTop:3}}>
+            {MO.map((m,i)=><div key={i} style={{flex:1,fontSize:9,textAlign:"center" as const,color:i===nowM?C.green:C.light}}>{m[0]}</div>)}
+          </div>
+        </DCard>
 
         {/* 2 — Invoices */}
-        <Card label="Invoices" count={unpaid.length>0?<span style={{color:C.amber}}>{unpaid.length} unpaid</span>:0} onClick={()=>setDrill("invoices")}
-          sub={<>
-            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.amber}}>Unpaid · {unpaid.length}</span>
-              <span style={{fontSize:10,color:C.amber}}>{fmt(out)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:10,color:C.muted}}>Paid · {paid.length}</span>
-              <span style={{fontSize:10,color:C.muted}}>{fmt(rev)}</span>
-            </div>
+        <DCard onClick={()=>setDrill("invoices")} accentColor={unpaid.length>0?C.amber:C.green}>
+          <DLabel>Invoices unpaid</DLabel>
+          {unpaid.length===0
+            ?<><DNumber color={C.green}>All clear</DNumber><DSub>No outstanding invoices</DSub></>
+            :<><DNumber color={C.amber}>{fmt(out)}</DNumber><DSub style={{color:C.amber}}>{unpaid.length} invoice{unpaid.length!==1?"s":""} outstanding</DSub></>
+          }
+          {unpaid.length>0&&<>
+            <DDivider/>
+            {[...unpaid].sort((a: any,b: any)=>(a.date||"").localeCompare(b.date||"")).slice(0,3).map((pr: any,i: number)=>{
+              const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+              const b=ageBadge(days);
+              return<DRow key={i} label={pr.cName} badge={b.txt} badgeColor={b.col} badgeBg={b.bg}/>;
+            })}
+            {unpaid.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{unpaid.length-3} more</p>}
           </>}
-        />
-
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
+        </DCard>
 
         {/* 3 — Open Quotes */}
-        <Card label="Open Quotes" count={fmt(openQ.reduce((s: number,pr: any)=>s+pr.amount,0))} warm={openQ.length>0} onClick={()=>setDrill("quotes")}
-          sub={<>
-            {openQ.length===0&&<p style={{fontSize:10,color:C.light,margin:0}}>—</p>}
-            <p style={{fontSize:9.5,color:C.muted,margin:"0 0 4px"}}>{openQ.length} quote{openQ.length!==1?"s":""}</p>
+        <DCard onClick={()=>setDrill("quotes")} accentColor={openQ.length>0?C.amber:C.green}>
+          <DLabel>Open quotes</DLabel>
+          {openQ.length===0
+            ?<><DNumber color={C.green}>All clear</DNumber><DSub>No quotes pending</DSub></>
+            :<><DNumber>{openQ.length}</DNumber><DSub>{openQ.length} quote{openQ.length!==1?"s":""} awaiting reply</DSub></>
+          }
+          {openQ.length>0&&<>
+            <DDivider/>
             {[...openQ].sort((a: any,b: any)=>{const ae=a.qd?.validUntil?new Date(a.qd.validUntil).getTime():Infinity;const be=b.qd?.validUntil?new Date(b.qd.validUntil).getTime():Infinity;return ae-be;}).slice(0,3).map((pr: any,i: number)=>{
               const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
-              const col=days!==null&&days>=14?C.red:days!==null&&days>=7?C.amber:C.light;
-              return(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{pr.cName}</span>
-                  {days!==null&&<span style={{fontSize:9.5,color:col,fontWeight:days>=7?"500":"normal"}}>{days}d</span>}
-                </div>
-              );
+              const b=ageBadge(days);
+              return<DRow key={i} label={pr.cName} badge={b.txt} badgeColor={b.col} badgeBg={b.bg}/>;
             })}
-            {openQ.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{openQ.length-3} more</p>}
+            {openQ.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{openQ.length-3} more</p>}
           </>}
-        />
+        </DCard>
 
         {/* 4 — Unsigned Contracts */}
         {(()=>{
           const hasUrgentC=unsignedC.some((pr: any)=>pr.date&&Math.floor((Date.now()-new Date(pr.date).getTime())/86400000)>=14);
-          const totalUC=unsignedC.reduce((s: number,pr: any)=>s+pr.amount,0);
+          const accent=unsignedC.length===0?C.green:hasUrgentC?C.amber:C.amber;
+          const bg=hasUrgentC?C.amberBg:undefined;
+          const border=hasUrgentC?C.amberBorder:C.rule;
           return(
-            <div onClick={()=>setDrill("contracts")} style={{border:`1px solid ${hasUrgentC?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",cursor:"pointer",background:hasUrgentC?C.amberBg:undefined}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Unsigned Contracts</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:unsignedC.length>0?C.black:C.light}}>{fmt(totalUC)}</span>
-              </div>
-              {unsignedC.length===0&&<p style={{fontSize:10,color:C.light,margin:0}}>—</p>}
-              <p style={{fontSize:9.5,color:C.muted,margin:"0 0 4px"}}>{unsignedC.length} contract{unsignedC.length!==1?"s":""}</p>
-              {[...unsignedC].sort((a: any,b: any)=>(a.date||"").localeCompare(b.date||"")).slice(0,3).map((pr: any,i: number)=>{
-                const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
-                const col=days!==null&&days>=14?C.red:days!==null&&days>=7?C.amber:C.light;
-                return(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                    <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{pr.cName}</span>
-                    {days!==null&&<span style={{fontSize:9.5,color:col,fontWeight:days>=7?"500":"normal"}}>{days}d</span>}
-                  </div>
-                );
-              })}
-              {unsignedC.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{unsignedC.length-3} more</p>}
-            </div>
+            <DCard onClick={()=>setDrill("contracts")} accentColor={accent} bg={bg} border={border}>
+              <DLabel>Unsigned contracts</DLabel>
+              {unsignedC.length===0
+                ?<><DNumber color={C.green}>All clear</DNumber><DSub>No contracts pending</DSub></>
+                :<><DNumber color={hasUrgentC?C.amber:C.black}>{unsignedC.length}</DNumber><DSub>{unsignedC.length} contract{unsignedC.length!==1?"s":""} need{unsignedC.length===1?"s":""} signature</DSub></>
+              }
+              {unsignedC.length>0&&<>
+                <DDivider/>
+                {[...unsignedC].sort((a: any,b: any)=>(a.date||"").localeCompare(b.date||"")).slice(0,3).map((pr: any,i: number)=>{
+                  const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+                  const b=ageBadge(days);
+                  return<DRow key={i} label={pr.cName} badge={`${b.txt} waiting`} badgeColor={b.col} badgeBg={b.bg}/>;
+                })}
+                {unsignedC.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{unsignedC.length-3} more</p>}
+              </>}
+            </DCard>
           );
         })()}
 
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-
         {/* 5 — Active Projects */}
-        <Card label="Active Projects" count={fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} onClick={()=>setDrill("projects")}
-          sub={<>
-            <p style={{fontSize:10,color:C.muted,margin:"0 0 6px"}}>{activeProjects.length} project{activeProjects.length!==1?"s":""} in progress</p>
-            {activeProjects.slice(0,3).map((pr: any,i: number)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                <div style={{minWidth:0,flex:1}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
-                  <span style={{fontSize:9.5,color:C.light,display:"block"}}>{pr.name}</span>
-                </div>
-                <span style={{fontSize:10.5,flexShrink:0,marginLeft:8}}>{fmt(pr.amount)}</span>
+        <DCard onClick={()=>setDrill("projects")} accentColor={"#185FA5"}>
+          <DLabel>Active projects</DLabel>
+          <DNumber>{activeProjects.length}</DNumber>
+          <DSub>{activeProjects.length} project{activeProjects.length!==1?"s":""} in pipeline</DSub>
+          {(()=>{
+            const byStatus=(st: string)=>activeProjects.filter((pr: any)=>pr.status===st).length;
+            const pills=[
+              {label:"Production",count:byStatus("production"),bg:"#E6F1FB",col:"#185FA5",dot:"#378ADD"},
+              {label:"Contracted",count:byStatus("contracted"),bg:C.amberBg,col:C.amber,dot:"#EF9F27"},
+              {label:"Quoted",count:byStatus("quoted")+byStatus("revised"),bg:"#f0ede9",col:C.muted,dot:C.light},
+            ].filter(p=>p.count>0);
+            return(
+              <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginTop:8}}>
+                {pills.map((p,i)=>(
+                  <span key={i} style={{fontSize:11,padding:"3px 10px",borderRadius:20,background:p.bg,color:p.col,display:"inline-flex",alignItems:"center",gap:4}}>
+                    <span style={{width:7,height:7,borderRadius:"50%",background:p.dot,flexShrink:0,display:"inline-block"}}/>
+                    {p.label} · {p.count}
+                  </span>
+                ))}
               </div>
-            ))}
-            {activeProjects.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{activeProjects.length-3} more</p>}
-          </>}
-        />
+            );
+          })()}
+        </DCard>
 
         {/* 6 — License Tracker */}
         {(()=>{
           const actionedStatuses=["ignored","takendown","renewal"];
           const needsAtt=(r: any)=>!actionedStatuses.includes(licenseActions[r.key]||"");
           const attLics=allLicenses.filter((r: any)=>needsAtt(r));
-          const urgentCard=attLics.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<=7;});
-          const expiredCard=urgentCard.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<0;});
-          const allClear=attLics.length===0;
-          const hasRed=expiredCard.length>0;
-          const hasAmber=!hasRed&&urgentCard.length>0;
-          const cardBorder=hasRed?C.redBorder:hasAmber?C.amberBorder:C.rule;
-          const cardBg=hasRed?C.redBg:hasAmber?C.amberBg:undefined;
-          // show top 3 needing attention sorted soonest first
-          const toShow=[...attLics].sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999)).slice(0,3);
+          const urgentOnly=attLics.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<=7;});
+          const expiredOnly=urgentOnly.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<0;});
+          const allClear=urgentOnly.length===0;
+          const hasRed=expiredOnly.length>0;
+          const accent=allClear?C.green:hasRed?C.red:C.amber;
+          const bg=hasRed?C.redBg:!allClear?C.amberBg:undefined;
+          const border=hasRed?C.redBorder:!allClear?C.amberBorder:C.rule;
+          const toShow=[...urgentOnly].sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999)).slice(0,3);
           return(
-            <div onClick={()=>setDrill("license")} style={{border:`1px solid ${cardBorder}`,borderRadius:2,padding:"13px 15px",cursor:"pointer",background:cardBg}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>License Tracker</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:allClear?C.green:hasRed?C.red:hasAmber?C.amber:C.black}}>{allClear?"All clear":attLics.length}</span>
-              </div>
-              {allClear&&<p style={{fontSize:10,color:C.green,margin:0}}>No action needed</p>}
+            <DCard onClick={()=>setDrill("license")} accentColor={accent} bg={bg} border={border}>
+              <DLabel>License tracker</DLabel>
+              {allClear
+                ?<><DNumber color={C.green}>All clear</DNumber><DSub>No action needed</DSub></>
+                :<><DNumber color={hasRed?C.red:C.amber}>{expiredOnly.length>0?`${expiredOnly.length} expired`:`${urgentOnly.length} expiring`}</DNumber><DSub>{hasRed&&urgentOnly.length-expiredOnly.length>0?`+ ${urgentOnly.length-expiredOnly.length} expiring soon`:hasRed?"Check usage rights":"Take action now"}</DSub></>
+              }
               {!allClear&&<>
+                <DDivider/>
                 {toShow.map((r: any,i: number)=>{
                   const d=dLeft(r.end);
                   const isExp=d!==null&&d<0;
                   const isSoon=d!==null&&d>=0&&d<=7;
-                  const col=isExp?C.red:isSoon?C.amber:C.muted;
-                  const txt=isExp?`+${Math.abs(d!)}d`:d!==null?`${d}d`:"—";
+                  const badgeTxt=isExp?`+${Math.abs(d!)}d expired`:d!==null?`${d}d left`:"—";
+                  const badgeCol=isExp?C.red:isSoon?C.amber:C.muted;
+                  const badgeBg=isExp?C.redBg:isSoon?C.amberBg:"#f0ede9";
+                  const trackPct=isExp?100:d!==null?Math.max(5,Math.round((1-(d/90))*100)):50;
                   return(
-                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                      <div style={{minWidth:0,flex:1}}>
-                        <span style={{fontSize:10,color:C.muted}}>{r.cName}</span>
-                        <span style={{fontSize:9,color:C.light,marginLeft:5}}>{r.type==="excl"?"Excl.":"Usage"}</span>
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
+                      <div style={{minWidth:0,flex:1,marginRight:10}}>
+                        <span style={{fontSize:12,color:C.muted,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{r.cName} · <span style={{fontSize:11,color:C.light}}>{r.type==="excl"?"Excl.":"Usage"}</span></span>
+                        <div style={{height:4,borderRadius:2,background:C.rule,overflow:"hidden",width:"100%",marginTop:3}}>
+                          <div style={{width:`${trackPct}%`,height:"100%",background:badgeCol,borderRadius:2}}/>
+                        </div>
                       </div>
-                      <span style={{fontSize:9.5,color:col,fontWeight:isExp||isSoon?"500":"normal",flexShrink:0}}>{txt}</span>
+                      <span style={{fontSize:11,fontWeight:"500",padding:"2px 8px",borderRadius:3,background:badgeBg,color:badgeCol,flexShrink:0}}>{badgeTxt}</span>
                     </div>
                   );
                 })}
-                {attLics.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{attLics.length-3} more</p>}
+                {urgentOnly.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{urgentOnly.length-3} more</p>}
               </>}
-            </div>
+            </DCard>
           );
         })()}
 
