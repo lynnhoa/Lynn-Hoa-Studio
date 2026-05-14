@@ -444,7 +444,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   const TRow=({ln,prevLn,idx}: any)=>{
     const n=(ln.name||"").toLowerCase();
     const inferredCat=ln.cat||(n.includes("hero")||n.includes("editorial")||n.includes("photo story")||n.includes("mini set")||n.includes("hero image")?"editorial":n.includes("ugc")||n.includes("campaign video")?"ugc":"influencer");
-    const prevCat=prevLn?(()=>{const pn=(prevLn.name||"").toLowerCase();return prevLn.cat||(pn.includes("hero")||pn.includes("editorial")||pn.includes("photo story")||pn.includes("mini set")||pn.includes("hero image")?"editorial":pn.includes("ugc")||pn.includes("campaign video")?"ugc":"influencer");})()):null;
+    const prevCat=prevLn?(()=>{const pn=(prevLn.name||"").toLowerCase();return prevLn.cat||(pn.includes("hero")||pn.includes("editorial")||pn.includes("photo story")||pn.includes("mini set")||pn.includes("hero image")?"editorial":pn.includes("ugc")||pn.includes("campaign video")?"ugc":"influencer");})():null;
     const showCat=!!(catBadgeLabel[inferredCat]&&inferredCat!==prevCat);
     const subDetails=[
       ln.usageLabel,
@@ -572,7 +572,7 @@ function PDFModal({data,type,onClose,onSave,onSaveClose,settings,isNew}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
-  const [preview,setPreview]=useState<any>(init());
+  const [preview,setPreview]=useState<any>(init);
   const [lang,setLang]=useState("en");
   const [panelW,setPanelW]=useState(380);
   const [flash,setFlash]=useState<string|null>(null);
