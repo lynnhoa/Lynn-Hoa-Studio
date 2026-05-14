@@ -3609,6 +3609,11 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
     if(match)setExpanded(match.id);
     if(onPendingClear)onPendingClear();
   },[pendingProjectQNo]);
+  useEffect(()=>{
+    if(!expanded)return;
+    const el=document.querySelector(`[data-prid="${expanded}"]`);
+    if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),80);
+  },[expanded]);
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>setPdf(null)} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
@@ -3624,7 +3629,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
     const ps=prv(pr.status);
     const isOpen=expanded===pr.id;
     return(
-      <div key={pr.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
+      <div key={pr.id} data-prid={pr.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
         <div onClick={()=>setExpanded(isOpen?null:pr.id)} style={{padding:"10px 0",cursor:"pointer"}}>
           {isMobile?(
             <>
