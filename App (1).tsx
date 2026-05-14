@@ -50,7 +50,7 @@ const fmtD  = (d: string | null | undefined, l?: boolean) => {
 const addM  = (d: string, m: number) => { if(!d||!m) return null; const dt=new Date(d); dt.setMonth(dt.getMonth()+m); return dt.toISOString().split("T")[0]; };
 const dLeft = (d: string | null | undefined) => d ? Math.ceil((new Date(d).getTime()-new Date().getTime())/864e5) : null;
 const uid   = () => Math.random().toString(36).slice(2,9);
-const PASS  = "lynnhoa2025";
+const PASS  = import.meta.env.VITE_APP_PASSWORD ?? "lynnhoa2025";
 const STATUS = ["lead","quoted","revised","contracted","production","invoiced","paid"];
 
 const SETTINGS_DEFAULT = {
@@ -60,7 +60,7 @@ const SETTINGS_DEFAULT = {
   kleinunternehmer:"true",
   steuernummer:"",ustIdNr:"",vatRate:"19",
   taxNote:"Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
-  password:"lynnhoa2025",
+  password:import.meta.env.VITE_APP_PASSWORD??"lynnhoa2025",
 };
 
 // ─── RATE CARD DATA ────────────────────────────────────────
@@ -359,6 +359,60 @@ function UBadge({end,label="Usage"}: {end: string|null|undefined,label?: string}
   </span>;
 }
 
+// ─── LICENSE TRACKER ROW (per project) ───────────────────
+function LicenseLine({label,end,note}: {label:string,end:string,note?:string}) {
+  const d=dLeft(end);
+  if(d===null)return null;
+  const expired=d<0;
+  const expiring=!expired&&d<=7;
+  const col=expired?C.red:expiring?C.amber:C.green;
+  const bg=expired?C.redBg:expiring?C.amberBg:C.greenBg;
+  const bd=expired?C.redBorder:expiring?C.amberBorder:C.greenBorder;
+  const txt=expired?`+${Math.abs(d)}d expired`:expiring?`${d}d left`:`${d}d`;
+  return(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",background:bg,border:`1px solid ${bd}`,borderRadius:2,marginBottom:3}}>
+      <span style={{fontSize:9.5,color:col,fontWeight:"500"}}>{label}{note?` · ${note}`:""}</span>
+      <span style={{fontSize:9.5,color:col,fontWeight:"600"}}>{fmtD(end)} · {txt}</span>
+    </div>
+  );
+}
+
+function getUsageMo(qd: any): number|null {
+  if(!qd)return null;
+  if(qd.mo&&qd.mo>0)return qd.mo;
+  const lines=qd.lines||[];
+  for(const l of lines){
+    if(l.usageLabel){
+      const m=String(l.usageLabel).match(/([0-9]+)\s*month/i);
+      if(m)return parseInt(m[1]);
+    }
+    if(l.name&&String(l.name).toLowerCase().includes("usage")){
+      const m=String(l.name).match(/([0-9]+)\s*month/i);
+      if(m)return parseInt(m[1]);
+    }
+  }
+  return null;
+}
+
+function ProjectLicenseTracker({pr}: {pr:any}) {
+  if(!pr||!pr.qd)return null;
+  const mo=getUsageMo(pr.qd);
+  const originalUsageEnd=(pr.usageEndOverride||(pr.deliveryDate&&mo&&mo>0?addM(pr.deliveryDate,mo):null));
+  const usageRenewalDates=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+  const allUsageDates=[originalUsageEnd,...usageRenewalDates].filter(Boolean) as string[];
+  const activeUsageEnd=allUsageDates.length>0?allUsageDates.reduce((a,b)=>a>b?a:b):null;
+  const exclDates=(pr.renewals||[]).filter((r: any)=>r&&r.type==="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+  const activeExclEnd=exclDates.length>0?exclDates.reduce((a,b)=>a>b?a:b):null;
+  if(!activeUsageEnd&&!activeExclEnd)return null;
+  return(
+    <div style={{marginBottom:8,marginTop:4}}>
+      <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",margin:"0 0 4px"}}>License Tracker</p>
+      {activeUsageEnd&&<LicenseLine label="Usage Rights" end={activeUsageEnd}/>}
+      {activeExclEnd&&<LicenseLine label="Exclusivity" end={activeExclEnd}/>}
+    </div>
+  );
+}
+
 // ─── PDF ENGINE ────────────────────────────────────────────
 function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) {
   const s={...SETTINGS_DEFAULT,...(settings||{})};
@@ -388,7 +442,10 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   const MRow=({lb,v}: any) => <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{lb}</span><span>{v}</span></div>;
   const catBadgeLabel: Record<string,string>={influencer:"Brand Collaboration",ugc:"UGC Creator",editorial:"Editorial"};
   const TRow=({ln,prevLn,idx}: any)=>{
-    const showCat=!!(ln.cat&&catBadgeLabel[ln.cat]&&ln.cat!==(prevLn?.cat));
+    const n=(ln.name||"").toLowerCase();
+    const inferredCat=ln.cat||(n.includes("hero")||n.includes("editorial")||n.includes("photo story")||n.includes("mini set")||n.includes("hero image")?"editorial":n.includes("ugc")||n.includes("campaign video")?"ugc":"influencer");
+    const prevCat=prevLn?(()=>{const pn=(prevLn.name||"").toLowerCase();return prevLn.cat||(pn.includes("hero")||pn.includes("editorial")||pn.includes("photo story")||pn.includes("mini set")||pn.includes("hero image")?"editorial":pn.includes("ugc")||pn.includes("campaign video")?"ugc":"influencer");})():null;
+    const showCat=!!(catBadgeLabel[inferredCat]&&inferredCat!==prevCat);
     const subDetails=[
       ln.usageLabel,
       ln.exclLabel,
@@ -397,7 +454,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     ].filter(Boolean);
     return(
       <div data-trow={idx} style={{paddingTop:tRowGuards?.[idx]||0,borderBottom:`1px solid ${C.rule}`}}>
-        {showCat&&<div style={{paddingTop:10,paddingBottom:1}}><span style={{fontSize:5.5,letterSpacing:"0.14em",textTransform:"uppercase",color:C.light}}>{catBadgeLabel[ln.cat]}</span></div>}
+        {showCat&&<div style={{paddingTop:10,paddingBottom:1}}><span style={{fontSize:5.5,letterSpacing:"0.14em",textTransform:"uppercase",color:C.light}}>{catBadgeLabel[inferredCat]}</span></div>}
         <div style={{padding:"4px 0",display:"grid",gridTemplateColumns:"1fr 28px 52px 46px",alignItems:"baseline"}}>
           <div>
             <span style={{fontSize:8.5}}>{ln.name}</span>
@@ -446,7 +503,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
         <div style={{borderTop:`1px solid ${C.rule}`,borderBottom:`1px solid ${C.rule}`,padding:"4px 0",display:"grid",gridTemplateColumns:"1fr 28px 52px 46px",marginBottom:0}}>
           {[l?"Leistung":"Description",l?"Anz.":"Qty",l?"Einzelpreis":"Unit Price",l?"Betrag":"Amount"].map((h,i)=><span key={h} style={{fontSize:6,letterSpacing:"0.1em",textTransform:"uppercase",color:C.muted,textAlign:i>0?"right":"left"}}>{h}</span>)}
         </div>
-        {(type==="invoice"?allLines:baseLines).map((ln: any,i: number,arr: any[])=><TRow key={i} idx={i} ln={ln} prevLn={arr[i-1]}/>)}
+        {(()=>{const catOrder: Record<string,number>={influencer:0,ugc:1,editorial:2};const sortLines=(arr: any[])=>[...arr].sort((a,b)=>{const n1=(a.name||"").toLowerCase();const n2=(b.name||"").toLowerCase();const c1=a.cat||(n1.includes("hero")||n1.includes("editorial")?"editorial":n1.includes("ugc")||n1.includes("campaign video")?"ugc":"influencer");const c2=b.cat||(n2.includes("hero")||n2.includes("editorial")?"editorial":n2.includes("ugc")||n2.includes("campaign video")?"ugc":"influencer");return(catOrder[c1]??0)-(catOrder[c2]??0);});const lines=sortLines(type==="invoice"?allLines:baseLines);return lines.map((ln: any,i: number)=><TRow key={i} idx={i} ln={ln} prevLn={lines[i-1]}/>);})()}
         {type==="amendment"
           ?<div data-sig-anchor="true" style={{marginTop:22+(extraSigMargin||0)}}>
             <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
@@ -486,7 +543,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
       {type==="contract"&&<div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
         {(d.clauses&&d.clauses.length>0?d.clauses:[
           {title:l?"§ 1 — Vertragsgegenstand":"§ 1 — Subject Matter",text:l?`${s.company||s.name||"Der/Die Auftragnehmer/in"} verpflichtet sich, folgende Leistungen gegen ein vereinbartes Honorar von ${fmt(total)} zu erbringen: ${deliverablesList||"den vereinbarten Content gemäß obiger Übersicht"}. Umfang, Format und Zeitplan werden vor Produktionsbeginn schriftlich von beiden Parteien bestätigt. Das kreative Konzept bedarf der schriftlichen Freigabe beider Parteien vor Beginn der Produktion.`:`${s.company||s.name||"The creator"} agrees to produce and deliver the following for a total agreed fee of ${fmt(total)}: ${deliverablesList||"the content specified above"}. The deliverable scope, format, and timeline shall be confirmed in writing by both parties prior to production. The creative concept is subject to mutual written approval before work begins.`},
-          {title:l?"§ 2 — Lieferung":"§ 2 — Delivery",text:l?"Die Lieferung erfolgt innerhalb des schriftlich vereinbarten Zeitrahmens. Stellt der Auftraggeber erforderliche Materialien, Freigaben, Produkte oder Zugänge nicht innerhalb von 5 Werktagen nach vereinbartem Termin zur Verfügung, verlängert sich die Lieferfrist entsprechend. Auftraggeber-seitige Verzögerungen berechtigen nicht zur Minderung des Honorars.":"Delivery follows the project timeline confirmed at commencement. If the client delays providing required materials, approvals, products, or access by more than 5 business days beyond any agreed handover date, the delivery deadline extends by the same period. Client-caused delays do not reduce the agreed fee."},
+          {title:l?"§ 2 — Lieferung":"§ 2 — Delivery",text:l?`${d.delivery?"Die Inhalte sind bis zum "+fmtD(d.delivery,true)+" zu liefern. ":""}Die Lieferung erfolgt innerhalb des schriftlich vereinbarten Zeitrahmens. Stellt der Auftraggeber erforderliche Materialien, Freigaben, Produkte oder Zugänge nicht innerhalb von 5 Werktagen nach vereinbartem Termin zur Verfügung, verlängert sich die Lieferfrist entsprechend. Auftraggeber-seitige Verzögerungen berechtigen nicht zur Minderung des Honorars.`:`${d.delivery?"Content is to be delivered by "+fmtD(d.delivery)+". ":""}Delivery follows the project timeline confirmed at commencement. If the client delays providing required materials, approvals, products, or access by more than 5 business days beyond any agreed handover date, the delivery deadline extends by the same period. Client-caused delays do not reduce the agreed fee.`},
           {title:l?"§ 3 — Korrekturen":"§ 3 — Revisions",text:l?"Eine (1) Korrektur je Leistung ist im Honorar enthalten. Korrekturwünsche sind innerhalb von 5 Werktagen nach Ablieferung schriftlich einzureichen; später eingereichte Anfragen können als neue Aufträge gewertet werden. Weitere Korrekturen werden nach dem jeweils gültigen Tagessatz berechnet. Kreativstil und redaktionelle Linie bleiben stets beim Auftragnehmer.":"One revision per deliverable is included in the agreed fee. Revision requests must be submitted in writing within 5 business days of each delivery; requests received after this period may be treated as new work. Additional revisions are charged at the creator's current rate. The creator's editorial voice and creative direction remain at the creator's sole discretion throughout."},
           {title:l?"§ 4 — Nutzungsrechte":"§ 4 — Usage Rights",text:l?`${s.company||s.name||"Der/Die Auftragnehmer/in"} räumt dem Auftraggeber ein zeitlich begrenztes, nicht-exklusives, nicht übertragbares Nutzungsrecht an den vereinbarten Inhalten für ${platformsList||"die vereinbarten Plattformen"}, den vereinbarten Zweck, Zeitraum und Geltungsbereich ein. Urheberrecht und Persönlichkeitsrechte verbleiben ausschließlich bei ${s.company||s.name||"dem/der Auftragnehmer/in"}. Es werden weder dauerhafte noch exklusive Rechte gewährt; Unterlizenzierung ist ohne schriftliche Zustimmung unzulässig. Der Auftragnehmer behält das Recht zur Verwendung der Inhalte im eigenen Portfolio. Mit Ablauf des Nutzungszeitraums fallen alle eingeräumten Rechte vollständig zurück.`:`${s.company||s.name||"The creator"} grants the client a time-limited, non-exclusive, non-transferable licence to use the delivered content for ${platformsList||"the agreed platforms"}, purpose, duration, and territory only. All copyright, moral rights, and ownership vest exclusively in ${s.company||s.name||"the creator"}. No perpetual, exclusive, or sub-licensable rights are granted; sub-licensing requires prior written consent. The creator retains the right to display the content in their portfolio and press materials. Upon expiry of the licence period, all granted rights revert in full to the creator.`},
           {title:l?"§ 5 — Zahlung":"§ 5 — Payment",text:l?`Das Honorar in Höhe von ${fmt(total)} ist innerhalb von 14 Tagen nach Rechnungsdatum fällig. Bei Zahlungsverzug ist ${s.company||s.name||"der/die Auftragnehmer/in"} berechtigt, Verzugszinsen gemäß § 288 BGB ab dem ersten Verzugstag geltend zu machen. ${s.taxNote||"Gemäß § 19 UStG wird keine Umsatzsteuer erhoben."}`:`The total fee of ${fmt(total)} is due within 14 days of the invoice date. In the event of late payment, statutory default interest pursuant to § 288 BGB is charged from the first day of delay. ${s.taxNote||"No VAT is charged pursuant to § 19 UStG."}`},
@@ -511,7 +568,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   );
 }
 
-function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
+function PDFModal({data,type,onClose,onSave,onSaveClose,settings,isNew}: any) {
   const init=()=>JSON.parse(JSON.stringify(data));
   const [hs,setHs]=useState({hist:[init()],idx:0});
   const staged=hs.hist[hs.idx];
@@ -535,7 +592,8 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
   const docRef=useRef<HTMLDivElement>(null);
   const [docHeight,setDocHeight]=useState(841);
   const PAGE_H=841;
-  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
+  const CHROME_H=210; // top padding (120px) + bottom padding (90px) inside A4 div — only add a page if real body content overflows
+  const numPages=docHeight>PAGE_H+CHROME_H?Math.ceil(docHeight/PAGE_H):1;
   const s={...SETTINGS_DEFAULT,...(settings||{})};
   const isDE=lang==="de";
   const _dc=s.company||s.name||(isDE?"Der/Die Auftragnehmer/in":"The creator");
@@ -736,7 +794,7 @@ function PDFModal({data,type,onClose,onSave,settings,isNew}: any) {
           <p style={{fontFamily:SERIF,fontSize:15,fontWeight:"normal",color:C.black,margin:"0 0 6px"}}>{isNew?"Save this document?":"Save before closing?"}</p>
           <p style={{fontSize:10,color:C.muted,margin:"0 0 18px"}}>{isNew?"It will be added to the client's project.":"Changes will be lost if you don't save."}</p>
           <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-            <B onClick={()=>{handleSave();setConfirmClose(false);onClose();}}>Yes, save</B>
+            <B onClick={()=>{handleSave();setConfirmClose(false);if(onSaveClose)onSaveClose();else onClose();}}>Yes, save</B>
             <B v="sec" onClick={()=>{setConfirmClose(false);onClose();}}>No, discard</B>
           </div>
         </div>
@@ -1018,7 +1076,7 @@ function ChangePassword({settings,setSettings}: any) {
 function RCContent({card,lang,cleanSecT,rcSecGuards}: any) {
   const l=lang==="de";
   return(
-    <div style={{padding:"90px 62px 130px",fontSize:9.5,lineHeight:1.5,fontFamily:SANS,color:C.black,background:C.bg,minHeight:841}}>
+    <div style={{padding:"90px 62px 130px",fontSize:9.5,lineHeight:1.5,fontFamily:SANS,color:C.black,background:C.bg}}>
       <div style={{marginBottom:22}}>
         <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 4px"}}>{l?"Preisliste":"Rate Card"}</h1>
         <p style={{fontSize:7.5,color:C.muted,margin:0}}>{card.sub}</p>
@@ -1065,7 +1123,8 @@ function RateCardBuilderPreview({card,settings,onSave,onClose}: any) {
   const [confirmClose,setConfirmClose]=useState(false);
   const measureRef=useRef<HTMLDivElement>(null);
   const PAGE_H=841;
-  const numPages=Math.max(1,Math.ceil(docHeight/PAGE_H));
+  const CHROME_H=220; // top padding (90px) + bottom padding (130px) inside RCContent div — only add a page if real body content overflows
+  const numPages=docHeight>PAGE_H+CHROME_H?Math.ceil(docHeight/PAGE_H):1;
   const pageScale=winW<700?Math.min(1,(winW-32)/595):1;
   const sett={...SETTINGS_DEFAULT,...(settings||{})};
   const cleanSecT=(t: string)=>t.replace(/\s*[—–-]\s*\d+%[^"<]*/g,"").replace(/^Volume Discount\s*[&]\s*/i,"").trim();
@@ -1275,7 +1334,7 @@ function RateCardBuilderModal({rc,onSave,onClose}: any) {
           </div>}
 
           {sections.map((sec,si)=>{
-            const available=catItems(baseCat).filter((it: any)=>!sec.items.find((s: any)=>s.n===it.n));
+            const available=catItems(baseCat).filter((it: any)=>!sec.items.find((s: any)=>s.id===it.id));
             return(
               <div key={sec.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 12px",marginBottom:10,background:C.white}}>
                 {/* section heading */}
@@ -1445,7 +1504,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const [bCat,setBCat]=useState("influencer");
   const [bDel,setBDel]=useState(-1); // -1 = sentinel "— Select deliverable —"
-  const [bQty,setBQty]=useState(1);
+  const [bQty,setBQty]=useState<number|string>(1);
   const [bUsage,setBUsage]=useState(0); // 0 = sentinel
   const [bExcl,setBExcl]=useState(0);  // 0 = sentinel
   const [bNeg,setBNeg]=useState("");
@@ -1458,7 +1517,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const [items,setItems]=useState<any[]>(()=>{
     if(prefill?.isRev&&prefill?.origLines?.length){
-      return prefill.origLines.map((ln: any)=>({id:uid(),cat:prefill.ctab||"influencer",name:ln.name||"",note:ln.note||"",qty:ln.qty||1,up:ln.up||0,amt:ln.amt||0,usageLabel:undefined,exclLabel:undefined,addons:[]}));
+      return prefill.origLines.map((ln: any)=>({id:uid(),cat:ln.cat||prefill.ctab||"influencer",name:ln.name||"",note:ln.note||"",qty:ln.qty||1,up:ln.up||0,amt:ln.amt||0,usageLabel:undefined,exclLabel:undefined,addons:[]}));
     }
     return[];
   });
@@ -1472,9 +1531,10 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const computePrice=()=>{
     const item=bDel>=0?deliverables[bDel]:null;
+    const bQtyN=parseInt(String(bQty))||1;
     const base=bNeg!==""?parseFloat(bNeg)||0:(item?.p||0);
-    const lb=base*(bQty||1);
-    let vp=0;if(bVol){if(bCat==="editorial")vp=10;else if(bQty>=10)vp=20;else if(bQty>=3)vp=15;}
+    const lb=base*(bQtyN||1);
+    let vp=0;if(bVol){if(bCat==="editorial")vp=10;else if(bQtyN>=10)vp=20;else if(bQtyN>=3)vp=15;}
     const av=lb*(1-vp/100);
     const usagePct=card.usage[bUsage]?.sentinel?0:(card.usage[bUsage]?.pct||0);
     const exclPct=card.excl[bExcl]?.sentinel?0:(card.excl[bExcl]?.pct||0);
@@ -1494,7 +1554,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
     setItems(prev=>[...prev,{
       id:uid(),cat:bCat,
       name:item?.n||"",note:item?.note||"",
-      qty:bQty,up:item?.p||parseFloat(bNeg)||0,amt:price,
+      qty:parseInt(String(bQty))||1,up:item?.p||parseFloat(bNeg)||0,amt:price,
       usageLabel:usageSel?.sentinel?undefined:usageSel?.l,
       exclLabel:exclSel?.sentinel?undefined:exclSel?.l,
       addons:bAddons.map(aid=>addonList.find((x: any)=>x.id===aid)?.n).filter(Boolean),
@@ -1512,8 +1572,32 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
   const openPreview=()=>{
     const cats=[...new Set(items.map(it=>it.cat))];
     const ctype=cats.length>1?"Content Creator":cats[0]==="ugc"?"UGC Creator":cats[0]==="editorial"?"Editorial Content Creator":"Content Creator (Influencer)";
-    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,
-      lines:items.map(it=>({name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]})),
+    const ctab=cats.length===1?cats[0]:(cats.length>1?"complete":"influencer");
+    // derive usage months from selected usage option on items
+    const usageItem=items.find(it=>it.usageLabel);
+    let mo: number|null=null; // only set if usage rights explicitly selected
+    if(usageItem?.usageLabel){
+      const cardKey=usageItem.cat||ctab;
+      const cardRef=(rc&&rc[cardKey])||Object.values(rc||{})[0]||{usage:[]};
+      const found=(cardRef.usage||[]).find((u: any)=>u.l===usageItem.usageLabel);
+      if(found&&found.mo)mo=found.mo;
+      else{const m=usageItem.usageLabel.match(/(\d+)\s*month/i);if(m)mo=parseInt(m[1]);}
+    }
+    // Merge same name+cat — sum qty and amt, keep all other fields from first occurrence
+    const mergedMap=new Map<string,any>();
+    items.forEach(it=>{
+      const key=`${it.cat}__${it.name}`;
+      if(mergedMap.has(key)){
+        const ex=mergedMap.get(key);
+        ex.qty=(ex.qty||1)+(it.qty||1);
+        ex.amt=(ex.amt||0)+(it.amt||0);
+      } else {
+        mergedMap.set(key,{id:it.id,name:it.name,note:it.note,qty:it.qty,up:it.up,amt:it.amt,cat:it.cat,platforms:it.platforms||[],usageLabel:it.usageLabel,exclLabel:it.exclLabel,addons:it.addons||[]});
+      }
+    });
+    const mergedLines=Array.from(mergedMap.values());
+    setPdf({brand,contact,date:qDate,validUntil,qNo,rev:isRev?revN:0,mo,ctab,
+      lines:mergedLines,
       total:grand,ctype,footer:"Looking forward to working together."});
   };
 
@@ -1566,20 +1650,20 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
             <option value={-1}>— Select deliverable —</option>
             {deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}
           </S></div>
-          <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e: any)=>setBQty(parseInt(e.target.value)||1)}/></div>
+          <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e:any)=>setBQty(e.target.value===""?"":(parseInt(e.target.value)||1))} onBlur={(e:any)=>setBQty(parseInt(e.target.value)||1)}/></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:9}}>
           <div>
             <Lbl>Usage Rights</Lbl>
             <S value={bUsage} onChange={(e: any)=>setBUsage(parseInt(e.target.value))}>
-              {card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}{!u.sentinel&&u.pct>0?` (+${u.pct}%)`:""}</option>)}
+              {card.usage.map((u: any,i: number)=><option key={i} value={i}>{u.l}</option>)}
             </S>
             <div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:5}}>
               {(["Instagram","TikTok","YouTube","Other"] as const).map(p=>{const on=bPlatforms.includes(p);return<button key={p} type="button" onClick={()=>setBPlatforms(pr=>on?pr.filter(x=>x!==p):[...pr,p])} style={{padding:"3px 8px",border:`1px solid ${on?C.black:C.rule}`,background:on?C.black:C.bg,color:on?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:8.5,letterSpacing:"0.05em",borderRadius:2}}>{p}</button>;})}
             </div>
           </div>
           <div><Lbl>Exclusivity</Lbl><S value={bExcl} onChange={(e: any)=>setBExcl(parseInt(e.target.value))}>
-            {card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}{!e.sentinel&&e.pct>0?` (+${e.pct}%)`:""}</option>)}
+            {card.excl.map((e: any,i: number)=><option key={i} value={i}>{e.l}</option>)}
           </S></div>
         </div>
         <div style={{marginBottom:9}}>
@@ -1655,66 +1739,233 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 }
 
 // ─── CLIENT DETAIL PANEL ─────────────────────────────────
-function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight}: any) {
+function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
+  const cats=getCatProgress(pr,clients);
+  const catKeys=Object.keys(cats).filter(k=>cats[k].total>0);
+  if(catKeys.length===0)return null;
+  const ms=pr.managerStatus||{};
+  const setMs=(cat:string,field:string)=>{
+    const k=cat.toLowerCase();
+    const base={managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:true,[field+"Date"]:today()}}};
+    if(field==="delivered"){
+      const skipD=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+      const newWs={...(pr.workspaceStatus||{})};
+      const newHist={...(pr.workspaceStatusHistory||{})};
+      (pr.qd?.lines||[]).forEach((ln:any,li:number)=>{
+        if(!ln.name)return;
+        if(skipD.some((s:string)=>ln.name.toLowerCase().includes(s)))return;
+        if(getWsCategory(ln.name)!==cat)return;
+        const qty=parseInt(ln.qty)||1;
+        for(let q=0;q<qty;q++){
+          const id=`${pr.id}_ln${li}_q${q}`;
+          newWs[id]="Delivered";
+          newHist[id]=[...((pr.workspaceStatusHistory||{})[id]||[]),{status:"Delivered",date:today()}];
+        }
+      });
+      upP(cl.id,pr.id,{...base,workspaceStatus:newWs,workspaceStatusHistory:newHist});
+    } else {
+      upP(cl.id,pr.id,base);
+    }
+  };
+
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+  const allLines=(pr.qd?.lines||[]).map((ln:any,li:number)=>({...ln,_li:li})).filter((ln:any)=>ln.name&&!skip.some((s:string)=>ln.name.toLowerCase().includes(s)));
+
+  const catPill=(cat:string):any=>{
+    if(cat==="UGC")return{background:"#fdf5ee",border:`1px solid ${C.amberBorder}`,color:C.amber};
+    if(cat==="Editorial")return{background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green};
+    return{background:"#f0f0f5",border:"1px solid #c8c8e0",color:"#6a6aaa"};
+  };
+
+  const chkBox=(checked:boolean,color:string,readOnly:boolean,onClick:()=>void)=>(
+    <div onClick={!readOnly&&!checked?onClick:undefined}
+      style={{width:isMobile?14:12,height:isMobile?14:12,borderRadius:3,border:`1.5px solid ${checked?color:C.rule}`,background:checked?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:!readOnly&&!checked?"pointer":"default",opacity:readOnly?0.6:1}}>
+      {checked&&<div style={{width:isMobile?7:6,height:isMobile?5:4,borderLeft:`1.5px solid #fff`,borderBottom:`1.5px solid #fff`,transform:"rotate(-45deg) translateY(-1px)"}}/>}
+    </div>
+  );
+
+  const col1W=isMobile?60:72;
+  const col3W=isMobile?110:130;
+
+  return(
+    <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+      {/* header */}
+      <div style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,background:C.bg,borderBottom:`1px solid ${C.rule}`}}>
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Cat.</div>
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Deliverable · progress</div>
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Manager</div>
+      </div>
+
+      {/* category blocks */}
+      {catKeys.map((cat,ci)=>{
+        const prog=cats[cat];
+        const k=cat.toLowerCase();
+        const msc=ms[k]||{};
+        const isInfluencer=cat==="Influencer";
+        const isEditorial=cat==="Editorial";
+        const canAct=prog.allCreated;
+        const allPosted=prog.total>0&&prog.posted===prog.total;
+        const catLines=allLines.filter((ln:any)=>getWsCategory(ln.name)===cat);
+
+        // per-line circle data
+        const lineCircles=catLines.map((ln:any)=>{
+          const qty=parseInt(ln.qty)||1;
+          const filled=Array.from({length:qty},(_,q)=>{
+            const id=`${pr.id}_ln${ln._li}_q${q}`;
+            const st=(pr.workspaceStatus||{})[id]||"Not started";
+            return["Created","Reviewed","Delivered","Posted"].includes(st);
+          });
+          const postedAll=Array.from({length:qty},(_,q)=>{
+            const id=`${pr.id}_ln${ln._li}_q${q}`;
+            return(pr.workspaceStatus||{})[id]==="Posted";
+          });
+          const lastPostedDate=postedAll.every(Boolean)&&postedAll.length>0?(()=>{
+            let d="";
+            for(let q=0;q<qty;q++){const id=`${pr.id}_ln${ln._li}_q${q}`;const sd=(pr.workspaceStatus||{})[id+"_date"];if(sd&&sd>d)d=sd;}
+            return d;
+          })():null;
+          return{ln,filled,qty,createdCount:filled.filter(Boolean).length,postedAll:postedAll.every(Boolean)&&postedAll.length>0,lastPostedDate};
+        });
+
+        return(
+          <div key={cat} style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,borderBottom:ci<catKeys.length-1?`1px solid ${C.rule}`:"none"}}>
+
+            {/* col1 — category pill */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:isMobile?10:9,padding:isMobile?"3px 7px":"2px 6px",borderRadius:20,...catPill(cat)}}>{cat}</span>
+            </div>
+
+            {/* col2 — per-line deliverables */}
+            <div style={{borderRight:`1px solid ${C.rule}`,padding:"8px 10px",display:"flex",flexDirection:"column" as const,gap:isMobile?8:6}}>
+              {lineCircles.map(({ln,filled,qty,createdCount},lii)=>(
+                <div key={lii} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
+                  <div style={{minWidth:0,flex:1}}>
+                    <p style={{fontSize:isMobile?12:10,color:C.black,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,fontWeight:"500"}}>{ln.name}</p>
+                    {ln.note&&<p style={{fontSize:isMobile?10:9,color:C.muted,margin:0}}>{ln.note}</p>}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0,flexWrap:"wrap" as const,justifyContent:"flex-end"}}>
+                    {filled.map((f:boolean,fi:number)=>(
+                      <div key={fi} style={{width:isMobile?10:8,height:isMobile?10:8,borderRadius:"50%",background:f?C.black:"transparent",border:`1.5px solid ${f?C.black:C.light}`,flexShrink:0}}/>
+                    ))}
+                    <span style={{fontSize:isMobile?10:9,color:C.muted,marginLeft:2,whiteSpace:"nowrap" as const}}>{createdCount}/{qty}</span>
+                  </div>
+                </div>
+              ))}
+              {/* ready badge when all created */}
+              {canAct&&(
+                <div style={{display:"flex",justifyContent:"flex-end",marginTop:2}}>
+                  <span style={{fontSize:9,padding:"1px 7px",borderRadius:20,background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green}}>ready</span>
+                </div>
+              )}
+            </div>
+
+            {/* col3 — manager checkboxes */}
+            <div style={{padding:"8px 10px",display:"flex",flexDirection:"column" as const,justifyContent:"center",gap:isMobile?7:5,opacity:canAct||msc.reviewed?1:0.3}}>
+              {/* reviewed */}
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                {chkBox(!!msc.reviewed,C.amber,false,()=>{if(canAct)setMs(cat,"reviewed");})}
+                <span style={{fontSize:isMobile?11:10,color:msc.reviewed?C.amber:C.muted}}>reviewed</span>
+                {msc.reviewed&&<span style={{fontSize:9,color:C.muted}}>{fmtD(msc.reviewedDate)}</span>}
+              </div>
+              {/* delivered — UGC + Editorial */}
+              {!isInfluencer&&(
+                <div style={{display:"flex",alignItems:"center",gap:5}}>
+                  {chkBox(!!msc.delivered,C.green,false,()=>{if(canAct)setMs(cat,"delivered");})}
+                  <span style={{fontSize:isMobile?11:10,color:msc.delivered?C.green:C.muted}}>delivered</span>
+                  {msc.delivered&&<span style={{fontSize:9,color:C.muted}}>{fmtD(msc.deliveredDate)}</span>}
+                </div>
+              )}
+              {/* all posted — Influencer + Editorial, read-only, auto */}
+              {(isInfluencer||isEditorial)&&(
+                <div style={{display:"flex",alignItems:"center",gap:5,opacity:allPosted?1:0.4}}>
+                  {chkBox(allPosted,C.green,true,()=>{})}
+                  <span style={{fontSize:isMobile?11:10,color:allPosted?C.green:C.muted}}>
+                    {allPosted?"all posted":"awaiting post"}
+                  </span>
+                  {allPosted&&prog.posted>0&&<span style={{fontSize:9,color:C.muted}}>{fmtD(lineCircles.find(lc=>lc.lastPostedDate)?.lastPostedDate||null)}</span>}
+                </div>
+              )}
+            </div>
+
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight,isMobile}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
+  // Mobile-scaled sizes
+  const FS={sectionLabel:isMobile?11:10,bodyText:isMobile?13:11,metaText:isMobile?12:10.5,valueText:isMobile?13:10.5,projectName:isMobile?15:12,projectDate:isMobile?12:10.5,amountText:isMobile?16:14,statusBadge:isMobile?11:9.5,actionBtn:isMobile?10:8,docBtn:isMobile?10:8,pad:isMobile?"16px 16px":"12px 14px",gap:isMobile?12:10};
   return(
-    <div style={{flex:"0 0 56%",minWidth:0,overflowY:"auto",maxHeight:"calc(100vh - 80px)",paddingLeft:4}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
+    <div style={{flex:isMobile?undefined:"0 0 56%",minWidth:0,overflowY:isMobile?undefined:"auto",maxHeight:isMobile?undefined:"calc(100vh - 80px)",paddingLeft:isMobile?0:4}}>
+
+      {/* ── HEADER ── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isMobile?18:14,gap:8,flexWrap:"wrap"}}>
         <div style={{minWidth:0}}>
-          {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
+          {editMode
+            ?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:isMobile?20:18,fontFamily:SERIF,marginBottom:4}}/>
+            :<h2 style={{fontFamily:SERIF,fontSize:isMobile?26:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
         </div>
-        <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
+        <div style={{display:"flex",gap:isMobile?8:6,flexShrink:0,alignItems:"flex-start"}}>
           {editMode
-            ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
-            :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
-          <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
+            ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}} s={isMobile?{fontSize:11,padding:"9px 16px"}:{}}>Save</B><B v="sec" onClick={()=>setEditMode(false)} s={isMobile?{fontSize:11,padding:"9px 16px"}:{}}>Cancel</B></>
+            :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}} s={isMobile?{fontSize:11,padding:"9px 16px"}:{}}>Edit</B>
+              <button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
+          <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:isMobile?22:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
         </div>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Brand Info</p>
+
+      {/* ── INFO GRID ── */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:FS.gap,marginBottom:FS.gap}}>
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad}}>
+          <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:10}px`}}>Brand Info</p>
           {editMode?<>
-            <Lbl>Contact</Lbl><I value={edt.contact||""} onChange={(e: any)=>setEd((p: any)=>({...p,contact:e.target.value}))}/>
-            <Lbl>Email</Lbl><I value={edt.email||""} onChange={(e: any)=>setEd((p: any)=>({...p,email:e.target.value}))} type="email"/>
-            <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
-            <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
+            <Lbl>Contact</Lbl><I value={edt.contact||""} onChange={(e: any)=>setEd((p: any)=>({...p,contact:e.target.value}))} s={isMobile?{fontSize:14,padding:"10px 12px"}:{}}/>
+            <Lbl>Email</Lbl><I value={edt.email||""} onChange={(e: any)=>setEd((p: any)=>({...p,email:e.target.value}))} type="email" s={isMobile?{fontSize:14,padding:"10px 12px"}:{}}/>
+            <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))} s={isMobile?{fontSize:14,padding:"10px 12px"}:{}}><option>Direct</option><option>Agency</option></S>
+            <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))} s={isMobile?{fontSize:14,padding:"10px 12px"}:{}}/>
             <Lbl>Tags</Lbl>
             <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
-            <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
-          </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
-        </div>
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Financial Snapshot</p>
-          <IR label="Total Revenue" value={fmt(f.total)}/>
-          <IR label="Paid Projects" value={`${f.count}`}/>
-          <IR label="Last Invoice" value={f.lastDate?`${fmt(f.last)} \u00b7 ${fmtD(f.lastDate)}`:"—"}/>
-          <IR label="Avg. Deal" value={f.avg?fmt(f.avg):"—"}/>
-          <IR label="Outstanding" value={fmt(f.out)}/>
-        </div>
-      </div>
-      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
-        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Relationship Notes</p>
-        {editMode?<textarea value={edt.notes||""} onChange={(e: any)=>setEd((p: any)=>({...p,notes:e.target.value}))} style={{width:"100%",minHeight:50,padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:11,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>:<p style={{fontSize:11,color:cl.notes?C.black:C.light,margin:0,lineHeight:1.6}}>{cl.notes||"No notes yet\u2026"}</p>}
-      </div>
-      {cl.projects.some((pr: any)=>uEnd(pr))&&(
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Usage Rights Tracker</p>
-          {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
-            <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"7px 0",borderBottom:`1px solid ${C.rule}`,gap:8,flexWrap:"wrap"}}>
-              <div style={{minWidth:0}}>
-                <span style={{fontSize:11,display:"block",marginBottom:3}}>{pr.name}</span>
-                {(()=>{
-                  const lines=pr.qd?.lines||[];
-                  const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
-                  const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
-                  return(usage.length>0||excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                    {usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 6px",borderRadius:2}}>📋 {l}</span>)}
-                    {excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 6px",borderRadius:2}}>🔒 {l}</span>)}
-                  </div>;
-                })()}
+            <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" s={isMobile?{fontSize:14,padding:"10px 12px"}:{}} onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:isMobile?11:9}}>+</B></div>
+          </>:<>
+            {[["Contact",cl.contact],["Email",cl.email],["Type",cl.agency],["Country",cl.country]].map(([lbl,val])=>(
+              <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:`${isMobile?9:6}px 0`,borderBottom:`1px solid ${C.rule}`}}>
+                <span style={{fontSize:FS.metaText,color:C.muted}}>{lbl}</span>
+                <span style={{fontSize:FS.valueText,color:C.black,fontWeight:"500",maxWidth:"60%",textAlign:"right"}}>{val||"—"}</span>
               </div>
+            ))}
+          </>}
+        </div>
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad}}>
+          <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:10}px`}}>Financial Snapshot</p>
+          {[["Total Revenue",fmt(f.total)],["Paid Projects",`${f.count}`],["Last Invoice",f.lastDate?`${fmt(f.last)} · ${fmtD(f.lastDate)}`:"—"],["Avg. Deal",f.avg?fmt(f.avg):"—"],["Outstanding",fmt(f.out)]].map(([lbl,val])=>(
+            <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:`${isMobile?9:6}px 0`,borderBottom:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:FS.metaText,color:C.muted}}>{lbl}</span>
+              <span style={{fontSize:FS.valueText,color:C.black,fontWeight:"500",textAlign:"right"}}>{val}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── NOTES ── */}
+      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
+        <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?10:9}px`}}>Relationship Notes</p>
+        {editMode
+          ?<textarea value={edt.notes||""} onChange={(e: any)=>setEd((p: any)=>({...p,notes:e.target.value}))} style={{width:"100%",minHeight:isMobile?80:50,padding:isMobile?"10px 12px":"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:isMobile?14:11,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+          :<p style={{fontSize:FS.bodyText,color:cl.notes?C.black:C.light,margin:0,lineHeight:1.65}}>{cl.notes||"No notes yet…"}</p>}
+      </div>
+
+      {/* ── USAGE RIGHTS TRACKER ── */}
+      {cl.projects.some((pr: any)=>uEnd(pr))&&(
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
+          <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:10}px`}}>Usage Rights Tracker</p>
+          {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
+            <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:`${isMobile?10:5}px 0`,borderBottom:`1px solid ${C.rule}`,gap:8,flexWrap:"wrap"}}>
+              <span style={{fontSize:FS.bodyText}}>{pr.name}</span>
               <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
                 <UBadge end={uEnd(pr)}/>
                 {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
@@ -1723,129 +1974,366 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
           ))}
         </div>
       )}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"0 0 9px"}}>
-        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Collaboration History</p>
-        <B v="sec" s={{fontSize:8}} onClick={()=>{setShowAddP((s: boolean)=>!s);setNewPN("");}}>+ Add Project</B>
+
+      {/* ── COLLABORATION HISTORY ── */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:`0 0 ${isMobile?12:9}px`}}>
+        <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Projects</p>
+        <B v="sec" s={{fontSize:FS.actionBtn,padding:isMobile?"8px 14px":"5px 10px"}} onClick={()=>{setShowAddP((s: boolean)=>!s);setNewPN("");}}>+ Add Project</B>
       </div>
-      {showAddP&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"9px 11px",marginBottom:9}}>
-        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Add Project</p>
-        <B s={{width:"100%",textAlign:"center",marginBottom:8}} onClick={()=>{onGoToCalc(cl.name);setShowAddP(false);}}>Build Quote in Calculator</B>
-        <p style={{fontSize:10,color:C.muted,textAlign:"center",margin:"0 0 8px"}}>\u2014 or add manually \u2014</p>
+      {showAddP&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
+        <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:9}px`}}>Add Project</p>
+        <B s={{width:"100%",textAlign:"center",marginBottom:isMobile?10:8,fontSize:isMobile?11:9.5,padding:isMobile?"11px":"7px 14px"}} onClick={()=>{onGoToCalc(cl.name);setShowAddP(false);}}>Build Quote in Calculator</B>
+        <p style={{fontSize:isMobile?12:10,color:C.muted,textAlign:"center",margin:`0 0 ${isMobile?10:8}px`}}>— or add manually —</p>
         <div style={{display:"flex",gap:7}}>
-          <I placeholder="Project name" value={newPN} onChange={(e: any)=>setNewPN(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addP(cl.id)}/>
-          <B v="sec" onClick={()=>addP(cl.id)}>Add</B>
-          <B v="sec" onClick={()=>{setShowAddP(false);setNewPN("");}}>Cancel</B>
+          <I placeholder="Project name" value={newPN} onChange={(e: any)=>setNewPN(e.target.value)} s={isMobile?{fontSize:14,padding:"10px 12px"}:{}} onKeyDown={(e: any)=>e.key==="Enter"&&addP(cl.id)}/>
+          <B v="sec" s={isMobile?{fontSize:11,padding:"10px 14px"}:{}} onClick={()=>addP(cl.id)}>Add</B>
+          <B v="sec" s={isMobile?{fontSize:11,padding:"10px 14px"}:{}} onClick={()=>{setShowAddP(false);setNewPN("");}}>✕</B>
         </div>
       </div>}
+
+      {/* ── PROJECT CARDS ── */}
       {cl.projects.map((pr: any,i: number)=>{
         const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
         const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
-        const licenseLabels=(()=>{
-          const lines=pr.qd?.lines||[];
-          const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
-          const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
-          return{usage,excl};
-        })();
         return(
-          <div key={pr.id} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+          <div key={pr.id} onClick={()=>{if(isHighlighted&&onClearHighlight)onClearHighlight();}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
+
+            {/* project header row */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isMobile?12:8}}>
               <div style={{flex:1,minWidth:0}}>
                 {editPrName===pr.id
-                  ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 6px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:3}}/>
-                  :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>✎</span></p>}
-                <p style={{fontSize:10.5,color:C.muted,margin:"0 0 6px"}}>{fmtD(pr.date)}</p>
+                  ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:isMobile?15:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"4px 8px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:4}}/>
+                  :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:FS.projectName,color:C.black,margin:`0 0 ${isMobile?4:3}px`,fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:isMobile?11:9,color:C.light}}>✎</span></p>}
+                <p style={{fontSize:FS.projectDate,color:C.muted,margin:`0 0 ${isMobile?8:6}px`}}>{fmtD(pr.date)}</p>
                 <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                  <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
-                  {end&&<UBadge end={end}/>}
+                  <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:isMobile?"4px 10px":"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
+
                 </div>
-                {(licenseLabels.usage.length>0||licenseLabels.excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:6}}>
-                  {licenseLabels.usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8.5,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>📋 {l}</span>)}
-                  {licenseLabels.excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8.5,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>🔒 {l}</span>)}
-                </div>}
               </div>
-              <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
-                <p style={{fontFamily:SERIF,fontSize:14,color:C.black,margin:"0 0 3px"}}>{fmt(pr.amount)}</p>
+              <div style={{textAlign:"right",flexShrink:0,marginLeft:isMobile?14:8}}>
+                <p style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,margin:`0 0 ${isMobile?4:3}px`}}>{fmt(pr.amount)}</p>
                 {(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:"0 0 2px"}}>incl. {pr.amendments.length} amend.</p>}
                 {(pr.renewals||[]).length>0&&<p style={{fontSize:10,color:C.green,margin:0}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</p>}
                 <div style={{marginTop:4}}>
                   {delConfirm===pr.id
-                    ?<span style={{fontSize:8,color:C.red}}>Delete? <button onClick={()=>{setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.filter((proj: any)=>proj.id!==pr.id)}));setDelConfirm(null);}} style={{color:C.red,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>Yes</button> <button onClick={()=>setDelConfirm(null)} style={{color:C.muted,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>No</button></span>
-                    :<button onClick={()=>{setDelConfirm(pr.id);setEditPrName(null);}} style={{fontSize:9.5,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS}}>delete</button>}
+                    ?<span style={{fontSize:isMobile?11:8,color:C.red}}>Delete? <button onClick={()=>{setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.filter((proj: any)=>proj.id!==pr.id)}));setDelConfirm(null);}} style={{color:C.red,background:"none",border:"none",cursor:"pointer",fontSize:isMobile?11:8,padding:"0 3px"}}>Yes</button> <button onClick={()=>setDelConfirm(null)} style={{color:C.muted,background:"none",border:"none",cursor:"pointer",fontSize:isMobile?11:8,padding:"0 3px"}}>No</button></span>
+                    :<button onClick={()=>{setDelConfirm(pr.id);setEditPrName(null);}} style={{fontSize:isMobile?11:9.5,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS}}>delete</button>}
                 </div>
               </div>
             </div>
-            {["production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
-              <span style={{fontSize:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase"}}>Delivery Date</span>
-              <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
+
+            {/* delivery date — desktop only shows full row; mobile shows compact */}
+            {["quoted","revised","contracted","production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:isMobile?12:8}}>
+              <span style={{fontSize:isMobile?12:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase"}}>Delivery</span>
+              <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
             </div>}
-            {(pr.renewals||[]).map((r: any,ri: number)=>(
-              <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div>
-                    <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p>
-                    <p style={{fontSize:10,color:C.muted,margin:"0 0 5px"}}>{fmtD(r.startDate)} → {fmtD(r.endDate)}</p>
-                  </div>
-                  <p style={{fontSize:11,fontFamily:SERIF,margin:0,flexShrink:0,marginLeft:8}}>{fmt(r.fee)}</p>
-                </div>
-                <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                  <span style={{fontSize:9,color:r.paid?C.green:r.signed?C.muted:C.amber,border:`1px solid ${r.paid?C.greenBorder:r.signed?C.rule:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase"}}>{r.paid?"Renewal Paid":r.signed?"Signed — awaiting payment":"Unsigned"}</span>
-                  {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
-                  {!r.signed&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,signed:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Signed</button>}
-                  {r.signed&&!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Renewal Paid</button>}
-                  {r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:false})})}))} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.amber,fontFamily:SANS}}>Undo</button>}
-                </div>
-              </div>
-            ))}
-            {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
+
+            {/* ── PRODUCTION — review / deliver ── */}
+            {pr.status==="production"&&<ProductionSection pr={pr} clients={clients} cl={cl} upP={upP} isMobile={isMobile}/>}
+
+            {/* ── LICENSE TRACKER ── */}
+            <ProjectLicenseTracker pr={pr}/>
+
+            {pr.notes&&<p style={{fontSize:isMobile?12:9,color:C.muted,margin:`0 0 ${isMobile?10:7}px`,lineHeight:1.6}}>{pr.notes}</p>}
 
             {/* ── DOCUMENTS ── */}
-            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
-              {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
-              {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
-              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
-              {(pr.amendments||[]).map((a: any,ai: number)=>(
-                <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" ·  unsigned":""}</B>
+            <div style={{display:"flex",gap:isMobile?8:5,flexWrap:"wrap",marginBottom:isMobile?10:7}}>
+              {!pr.qd&&<B s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote</B>}
+              {pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
+              {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
+              {!isMobile&&(pr.amendments||[]).map((a: any,ai: number)=>(
+                <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" · unsigned":""}</B>
               ))}
-              {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
+              {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
+              {(pr.renewals||[]).map((r: any,ri: number)=>(
+                r.doc&&<B key={ri} v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px",color:r.paid?C.black:C.green,borderColor:r.paid?C.rule:C.greenBorder}} onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})}>Renewal {ri+1}</B>
+              ))}
             </div>
 
             {/* ── ACTIONS ── */}
-            <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-
-              {/* quoted / revised: revise quote OR accept → open contract PDF */}
+            <div style={{display:"flex",gap:isMobile?8:5,flexWrap:"wrap",alignItems:"center",paddingTop:isMobile?10:7,borderTop:`1px solid ${C.rule}`}}>
               {["quoted","revised"].includes(pr.status)&&<>
-                <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
-                <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
+                <B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
+                <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
               </>}
-
-              {/* contracted: revise contract (stays contracted, bumps rev) OR mark signed → production */}
               {pr.status==="contracted"&&<>
-                <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
-                <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
+                <B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
+                <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
               </>}
-
-              {/* production: creator working → create invoice opens PDF immediately */}
               {pr.status==="production"&&<>
-                <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>
+                <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>
               </>}
-
-              {/* invoiced: mark paid */}
               {pr.status==="invoiced"&&!pr.paid&&<>
-                <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
+                <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
               </>}
-
-              {/* paid: undo paid */}
               {pr.paid&&<>
-                <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
+                <B v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
+                <B v="sec" s={{fontSize:FS.actionBtn,color:C.amber,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
               </>}
-
-              {/* undo — one step back at every non-paid stage */}
-              {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
-
+              {(pr.renewals||[]).map((r: any,ri: number)=>(
+                <span key={r.id||ri} style={{display:"contents"}}>
+                  {!r.paid&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any)=>rn.id===r.id?{...rn,paid:true}:rn)})}))}>Mark Renewal {ri+1} Paid</B>}
+                  {!r.paid&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.amber,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.filter((_: any,i: number)=>i!==ri)})}))}>Undo Renewal {ri+1}</B>}
+                  {r.paid&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.amber,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any)=>rn.id===r.id?{...rn,paid:false}:rn)})}))}>Undo Renewal {ri+1}</B>}
+                </span>
+              ))}
+              {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:FS.actionBtn,color:C.muted,padding:isMobile?"10px 14px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
             </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── RENEWAL MODAL ────────────────────────────────────────
+const CAT_FROM_ID=(id: string)=>{
+  if(!id)return"";
+  const p=id.charAt(0);
+  return p==="i"?"Influencer":p==="u"?"UGC":p==="e"?"Editorial":p==="h"?"Hotels":"";
+};
+const addD=(d: string,days: number)=>{if(!d||!days)return null;const dt=new Date(d);dt.setDate(dt.getDate()+days);return dt.toISOString().split("T")[0];};
+
+function RenewalModal({p,onSave,onClose,rc,settings}: any) {
+  const q=p.qd;
+  const sett={...SETTINGS_DEFAULT,...(settings||{})};
+  // all billable lines from quote + signed amendments
+  const origLines=(q?.lines||[]).map((l: any)=>({...l,_src:"quote"}));
+  const amendLines=(p.amendments||[]).filter((a: any)=>a.signed).flatMap((a: any)=>
+    (a.lines||[]).map((l: any)=>({...l,_src:`Amend ${a.aNo}`}))
+  );
+  const allLines=[...origLines,...amendLines].filter((l: any)=>l.amt>0);
+  const catLabel=CAT_FROM_ID;
+
+  // 01 deliverables — qty stepper (0 = not selected, max = qty in quote)
+  const [selQty,setSelQty]=useState<Record<string,number>>({});
+  const setQty=(key: string,max: number,val: number)=>setSelQty(p=>({...p,[key]:Math.max(0,Math.min(max,val))}));
+  const selIds=Object.keys(selQty).filter(k=>selQty[k]>0);
+  const base=allLines.reduce((s: number,l: any,i: number)=>{
+    const key=l.id||`line_${i}`;
+    const qty=selQty[key]||0;
+    return s+(parseFloat(l.up||0)*qty);
+  },0);
+
+  // 02 usage rights
+  const [uMode,setUMode]=useState<"predefined"|"custom"|"none">("none");
+  const [uIdx,setUIdx]=useState(0);
+  const [uCustomDays,setUCustomDays]=useState("");
+  const [uCustomUnit,setUCustomUnit]=useState<"days"|"months">("days");
+  const [uCustomFee,setUCustomFee]=useState("");
+  const uOpt=RENEWAL_OPTS.usage[uIdx];
+  const uFee=uMode==="predefined"?Math.round(base*(uOpt.pct/100)):uMode==="custom"?parseFloat(uCustomFee)||0:0;
+
+  // 02 exclusivity
+  const [eMode,setEMode]=useState<"predefined"|"custom"|"none">("none");
+  const [eIdx,setEIdx]=useState(0);
+  const [eCustomDays,setECustomDays]=useState("");
+  const [eCustomUnit,setECustomUnit]=useState<"days"|"months">("days");
+  const [eCustomFee,setECustomFee]=useState("");
+  const eOpt=RENEWAL_OPTS.excl[eIdx];
+  const eFee=eMode==="predefined"?Math.round(base*(eOpt.pct/100)):eMode==="custom"?parseFloat(eCustomFee)||0:0;
+
+  // 03 dates
+  const [startD,setStartD]=useState(today());
+  const calcEnd=(mode: string,opt: any,customDays: string,customUnit: string)=>{
+    if(mode==="predefined")return addM(startD,opt.mo);
+    if(mode==="custom"){
+      const n=parseInt(customDays)||0;
+      return customUnit==="days"?addD(startD,n):addM(startD,n);
+    }
+    return null;
+  };
+  const uEnd=calcEnd(uMode,uOpt,uCustomDays,uCustomUnit);
+  const eEnd=calcEnd(eMode,eOpt,eCustomDays,eCustomUnit);
+  const endD=uEnd&&eEnd?(uEnd>eEnd?uEnd:eEnd):uEnd||eEnd;
+
+  const totalFee=uFee+eFee;
+  const rNo=`RNW-${(q?.qNo||"").replace("QUO","").trim()||"001"}-${String((p.renewals||[]).length+1).padStart(2,"0")}`;
+  const canPreview=base>0&&(uMode!=="none"||eMode!=="none")&&totalFee>0;
+
+  const [showPreview,setShowPreview]=useState(false);
+
+  const buildDoc=()=>{
+    const lines: any[]=[];
+    const selLines=allLines.filter((_l: any,i: number)=>{const key=_l.id||`line_${i}`;return (selQty[key]||0)>0;});
+    const itemsSummary=selLines.map((_l: any,i: number)=>{
+      const key=_l.id||`line_${i}`;
+      const qty=selQty[key]||0;
+      const cat=_l.cat==="influencer"?"Influencer":_l.cat==="ugc"?"UGC":_l.cat==="editorial"?"Editorial":"";
+      return`${qty}× ${_l.name}${cat?` [${cat}]`:""}`;
+    }).join(", ");
+    if(uMode!=="none"&&uFee>0){
+      const label=uMode==="predefined"?uOpt.l:`Custom (${uCustomDays} ${uCustomUnit})`;
+      const pctNote=uMode==="predefined"&&uOpt.pct>0?` · ${fmt(base)} × ${uOpt.pct}% = ${fmt(uFee)}`:"";
+      lines.push({name:`Usage Rights — ${label}`,note:`${itemsSummary}${pctNote} · ${fmtD(startD)}${uEnd?` → ${fmtD(uEnd)}`:""}`,qty:1,up:uFee,amt:uFee});
+    }
+    if(eMode!=="none"&&eFee>0){
+      const label=eMode==="predefined"?eOpt.l:`Custom (${eCustomDays} ${eCustomUnit})`;
+      const pctNote=eMode==="predefined"&&eOpt.pct>0?` · ${fmt(base)} × ${eOpt.pct}% = ${fmt(eFee)}`:"";
+      lines.push({name:`Exclusivity — ${label}`,note:`${itemsSummary}${pctNote} · ${fmtD(startD)}${eEnd?` → ${fmtD(eEnd)}`:""}`,qty:1,up:eFee,amt:eFee});
+    }
+    return{
+      brand:q?.brand,contact:q?.contact,date:today(),
+      rNo,qNo:q?.qNo,ctype:q?.ctype||"Content Creator",
+      lines,total:totalFee,
+      startDate:startD,endDate:endD,
+      footer:"Thank you for the pleasure of working together.",
+      type:"renewal"
+    };
+  };
+
+  const SectionHead=({n,title}: any)=>(
+    <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 10px",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>{n} — {title}</p>
+  );
+  const ModeToggle=({val,set}: {val:string,set:(v:any)=>void})=>(
+    <div style={{display:"flex",gap:4,marginBottom:8}}>
+      <Pill on={val==="none"} onClick={()=>set("none")}>None</Pill>
+      <Pill on={val==="predefined"} onClick={()=>set("predefined")}>Predefined</Pill>
+      <Pill on={val==="custom"} onClick={()=>set("custom")}>Custom</Pill>
+    </div>
+  );
+
+  if(showPreview){
+    const doc=buildDoc();
+    const renewal={id:uid(),optLabel:[uMode!=="none"?uOpt?.l:"",eMode!=="none"?eOpt?.l:""].filter(Boolean).join(" + ")||"Custom",startDate:startD,endDate:endD,fee:totalFee,rNo,signed:false,paid:false,doc};
+    return<PDFModal data={doc} type="renewal" settings={settings} isNew={true}
+      onClose={onClose}
+      onSave={()=>onSave(renewal)}
+      onSaveClose={onClose}
+    />;
+  }
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:C.bg,width:"100%",maxWidth:520,borderRadius:2,padding:20,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",maxHeight:"92vh",overflowY:"auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <h3 style={{fontFamily:SERIF,fontSize:17,fontWeight:"normal",margin:0}}>Add Renewal</h3>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:16,color:C.muted}}>✕</button>
+        </div>
+        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 16px"}}>Project: <strong style={{color:C.black}}>{p.name}</strong></p>
+
+        {/* 01 — Deliverables */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <SectionHead n="01" title="Which Deliverables"/>
+          <p style={{fontSize:9.5,color:C.muted,margin:"0 0 8px"}}>Select items the renewal fee applies to. Their prices are the base for % calculation.</p>
+          {allLines.map((l: any,i: number)=>{
+            const key=l.id||`line_${i}`;
+            const max=l.qty||1;
+            const qty=selQty[key]||0;
+            const catFromId=catLabel(l.id||"");
+            const catFromField=l.cat==="influencer"?"Influencer":l.cat==="ugc"?"UGC":l.cat==="editorial"?"Editorial":l.cat==="hotels"?"Hotels":"";
+            const cat=catFromId||catFromField;
+            return(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:`1px solid ${C.rule}`}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap" as const}}>
+                    <span style={{fontSize:10.5,color:C.black}}>{l.name}</span>
+                    {cat&&<span style={{fontSize:8,color:C.muted,border:`1px solid ${C.rule}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase" as const,flexShrink:0}}>{cat}</span>}
+                    {l._src!=="quote"&&<span style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.06em",flexShrink:0}}>{l._src}</span>}
+                  </div>
+                  <span style={{fontSize:9,color:C.light}}>€{l.up} each · max {max}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                  <button onClick={()=>setQty(key,max,qty-1)} style={{width:22,height:22,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:13,color:qty>0?C.black:C.light,lineHeight:1}}>−</button>
+                  <span style={{fontSize:11,fontFamily:SERIF,minWidth:16,textAlign:"center",color:qty>0?C.black:C.light}}>{qty}</span>
+                  <button onClick={()=>setQty(key,max,qty+1)} style={{width:22,height:22,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:13,color:qty<max?C.black:C.light,lineHeight:1}}>+</button>
+                </div>
+                <span style={{fontFamily:SERIF,fontSize:10,color:qty>0?C.black:C.muted,flexShrink:0,minWidth:52,textAlign:"right"}}>{qty>0?fmt(parseFloat(l.up||0)*qty):"—"}</span>
+              </div>
+            );
+          })}
+          {base>0&&<p style={{fontSize:10,color:C.muted,margin:"8px 0 0",textAlign:"right"}}>Base: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(base)}</strong></p>}
+        </div>
+
+        {/* 02 — Usage Rights */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <SectionHead n="02" title="Usage Rights"/>
+          <ModeToggle val={uMode} set={setUMode}/>
+          {uMode==="predefined"&&<>
+            <S value={uIdx} onChange={(e: any)=>setUIdx(parseInt(e.target.value))} s={{marginBottom:6}}>
+              {RENEWAL_OPTS.usage.map((o,i)=><option key={i} value={i}>{o.l}{o.pct>0?` (+${o.pct}%)`:""}</option>)}
+            </S>
+            {base>0&&<p style={{fontSize:10,color:C.muted,margin:0}}>Fee: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(uFee)}</strong> ({uOpt.pct}% of {fmt(base)})</p>}
+          </>}
+          {uMode==="custom"&&<>
+            <Lbl>Reference rate <span style={{fontWeight:"normal",color:C.light}}>(for pro-rata calculation)</span></Lbl>
+            <S value={uIdx} onChange={(e: any)=>setUIdx(parseInt(e.target.value))} s={{marginBottom:8,opacity:0.6}}>
+              {RENEWAL_OPTS.usage.map((o,i)=><option key={i} value={i}>{o.l}{o.pct>0?` (+${o.pct}%)`:""}</option>)}
+            </S>
+            <div style={{display:"flex",gap:7,marginBottom:6}}>
+              <I type="number" placeholder="Duration" value={uCustomDays} onChange={(e: any)=>{
+                const d=parseInt(e.target.value)||0;
+                setUCustomDays(e.target.value);
+                if(d>0&&uOpt.pct>0&&uOpt.mo>0&&base>0){
+                  const refDays=uOpt.mo*30;
+                  const proRataPct=(d/refDays)*uOpt.pct;
+                  setUCustomFee(String(Math.round(base*proRataPct/100)));
+                }
+              }} s={{flex:1}}/>
+              <S value={uCustomUnit} onChange={(e: any)=>setUCustomUnit(e.target.value)} s={{flex:1}}>
+                <option value="days">Days</option>
+                <option value="months">Months</option>
+              </S>
+            </div>
+            {uCustomDays&&uOpt.pct>0&&base>0&&<p style={{fontSize:9.5,color:C.muted,margin:"0 0 6px"}}>Pro-rata: {parseInt(uCustomDays)||0}d / {uOpt.mo*30}d × {uOpt.pct}% = {Math.round(((parseInt(uCustomDays)||0)/(uOpt.mo*30))*uOpt.pct)}% of {fmt(base)}</p>}
+            <I type="number" placeholder="Fee (€)" value={uCustomFee} onChange={(e: any)=>setUCustomFee(e.target.value)}/>
+          </>}
+        </div>
+
+        {/* 02b — Exclusivity */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <SectionHead n="03" title="Exclusivity"/>
+          <ModeToggle val={eMode} set={setEMode}/>
+          {eMode==="predefined"&&<>
+            <S value={eIdx} onChange={(e: any)=>setEIdx(parseInt(e.target.value))} s={{marginBottom:6}}>
+              {RENEWAL_OPTS.excl.map((o,i)=><option key={i} value={i}>{o.l}{o.pct>0?` (+${o.pct}%)`:""}</option>)}
+            </S>
+            {base>0&&<p style={{fontSize:10,color:C.muted,margin:0}}>Fee: <strong style={{color:C.black,fontFamily:SERIF}}>{fmt(eFee)}</strong> ({eOpt.pct}% of {fmt(base)})</p>}
+          </>}
+          {eMode==="custom"&&<>
+            <Lbl>Reference rate <span style={{fontWeight:"normal",color:C.light}}>(for pro-rata calculation)</span></Lbl>
+            <S value={eIdx} onChange={(e: any)=>setEIdx(parseInt(e.target.value))} s={{marginBottom:8,opacity:0.6}}>
+              {RENEWAL_OPTS.excl.map((o,i)=><option key={i} value={i}>{o.l}{o.pct>0?` (+${o.pct}%)`:""}</option>)}
+            </S>
+            <div style={{display:"flex",gap:7,marginBottom:6}}>
+              <I type="number" placeholder="Duration" value={eCustomDays} onChange={(e: any)=>{
+                const d=parseInt(e.target.value)||0;
+                setECustomDays(e.target.value);
+                if(d>0&&eOpt.pct>0&&eOpt.mo>0&&base>0){
+                  const refDays=eOpt.mo*30;
+                  const proRataPct=(d/refDays)*eOpt.pct;
+                  setECustomFee(String(Math.round(base*proRataPct/100)));
+                }
+              }} s={{flex:1}}/>
+              <S value={eCustomUnit} onChange={(e: any)=>setECustomUnit(e.target.value)} s={{flex:1}}>
+                <option value="days">Days</option>
+                <option value="months">Months</option>
+              </S>
+            </div>
+            {eCustomDays&&eOpt.pct>0&&base>0&&<p style={{fontSize:9.5,color:C.muted,margin:"0 0 6px"}}>Pro-rata: {parseInt(eCustomDays)||0}d / {eOpt.mo*30}d × {eOpt.pct}% = {Math.round(((parseInt(eCustomDays)||0)/(eOpt.mo*30))*eOpt.pct)}% of {fmt(base)}</p>}
+            <I type="number" placeholder="Fee (€)" value={eCustomFee} onChange={(e: any)=>setECustomFee(e.target.value)}/>
+          </>}
+        </div>
+
+        {/* 03 — Dates */}
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 14px",marginBottom:12,background:C.white}}>
+          <SectionHead n="04" title="Dates"/>
+          <Lbl>Start Date</Lbl>
+          <I type="date" value={startD} onChange={(e: any)=>setStartD(e.target.value)} s={{marginBottom:6}}/>
+          {endD&&<p style={{fontSize:10,color:C.muted,margin:0}}>End date: <strong style={{color:C.black}}>{fmtD(endD)}</strong></p>}
+        </div>
+
+        {/* Total */}
+        <div style={{padding:"9px 12px",border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+          <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Renewal Total</span>
+          <span style={{fontFamily:SERIF,fontSize:18}}>{fmt(totalFee)}</span>
+        </div>
+
+        <div style={{display:"flex",gap:7,justifyContent:"flex-end"}}>
+          <B v="sec" onClick={onClose}>Cancel</B>
+          <B s={{opacity:canPreview?1:0.4}} onClick={()=>{if(!canPreview)return;setShowPreview(true);}}>Preview & Save</B>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1914,11 +2402,21 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
   const addCl=()=>{if(!nb.name.trim())return;setClients((p: any[])=>[...p,{id:uid(),...nb,projects:[]}]);setNb({name:"",contact:"",email:"",agency:"Direct",country:"Germany",tags:[],notes:""});setShowAdd(false);};
   const addP=(cid: string)=>{if(!newPN.trim())return;const pr={id:uid(),name:newPN,status:"quoted",amount:0,paid:false,date:today(),deliveryDate:"",notes:"",qd:null,amendments:[],renewals:[]};setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:[pr,...c.projects]}));setNewPN("");setShowAddP(false);};
   const saveAmend=(cid: string,pid: string,amend: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,amendments:[...(pr.amendments||[]),amend],amount:pr.amount+amend.amendTotal})}));setAmendT(null);};
-  const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),renewal],usageEndOverride:renewal.endDate})}));setRenewT(null);};
+  const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),{...renewal,signed:true}]})}));setRenewT(null);};
   const setStatus=(cid: string,pid: string,st: string)=>upP(cid,pid,{status:st,paid:st==="paid"});
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
-  const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
+  const uEnd=(pr: any)=>{
+    if(!pr.deliveryDate||!pr.qd)return null;
+    const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);
+    const hasRenewals=(pr.renewals||[]).length>0;
+    if(!ul?.usageLabel&&!hasRenewals)return null;
+    if(pr.usageEndOverride)return pr.usageEndOverride;
+    if(!ul?.usageLabel)return null;
+    const m=ul.usageLabel.match(/(\d+)\s*month/i);
+    const mo=m?parseInt(m[1]):null;
+    return mo?addM(pr.deliveryDate,mo):null;
+  };
   const fin=(c: any)=>{const paid=c.projects.filter((pr: any)=>pr.paid);const tot=paid.reduce((s: number,pr: any)=>s+pr.amount,0);const last=[...paid].sort((a: any,b: any)=>b.date.localeCompare(a.date))[0];return{total:tot,last:last?.amount||0,lastDate:last?.date||null,avg:paid.length?Math.round(tot/paid.length):0,count:paid.length,out:c.projects.filter((pr: any)=>pr.status==="invoiced"&&!pr.paid).reduce((s: number,pr: any)=>s+pr.amount,0)};};
   const flagged=clients.filter((c: any)=>{if(!c.projects.length)return false;if(c.projects.some((pr: any)=>pr.status==="invoiced"||pr.status==="paid"))return false;const lat=c.projects.reduce((a: any,b: any)=>a.date>b.date?a:b);return(new Date().getTime()-new Date(lat.date).getTime())/864e5>90;});
 
@@ -1939,6 +2437,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
     setPdf({cid,pid:pr.id,data,type:"contract",lang:"en",isRevision:true,nextContractRev:nextRev});
   };
 
+  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);setRevInvT(null);}} settings={settings}
     onSave={revInvT
       ?(doc: any)=>{const tot=(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(revInvT.cid,revInvT.pid,{qd:{...revInvT.p.qd,lines:doc.lines},amount:tot});}
@@ -1951,206 +2450,17 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
           :undefined}/>;
 
   if(cl&&isMobile){
-    const f=fin(cl);
-    const edt=editMode?ed:cl;
     return(
-      <div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:8,flexWrap:"wrap"}}>
-          <div style={{minWidth:0}}>
-            {editMode?<I value={edt.name} onChange={(e: any)=>setEd((p: any)=>({...p,name:e.target.value}))} s={{fontSize:18,fontFamily:SERIF,marginBottom:4}}/>:<h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 6px"}}>{cl.name}</h2>}
-            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{cl.tags?.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>
-          </div>
-          <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"flex-start"}}>
-            {editMode
-              ?<><B onClick={()=>{upCl(cl.id,ed);setEditMode(false);}}>Save</B><B v="sec" onClick={()=>setEditMode(false)}>Cancel</B></>
-              :<><B v="sec" onClick={()=>{setEd({...cl});setEditMode(true);}}>Edit Info</B><button onClick={()=>delCl(cl.id)} style={{fontSize:9.5,color:C.red,border:`1px solid ${C.redBorder}`,padding:"5px 10px",borderRadius:2,cursor:"pointer",background:"none",fontFamily:SANS,letterSpacing:"0.08em",textTransform:"uppercase"}}>Delete</button></>}
-            <button onClick={()=>{setSel(null);setEditMode(false);}} title="Close" style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px",marginLeft:2}}>✕</button>
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
-          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Brand Info</p>
-            {editMode?<>
-              <Lbl>Contact</Lbl><I value={edt.contact||""} onChange={(e: any)=>setEd((p: any)=>({...p,contact:e.target.value}))}/>
-              <Lbl>Email</Lbl><I value={edt.email||""} onChange={(e: any)=>setEd((p: any)=>({...p,email:e.target.value}))} type="email"/>
-              <Lbl>Agency / Direct</Lbl><S value={edt.agency||"Direct"} onChange={(e: any)=>setEd((p: any)=>({...p,agency:e.target.value}))}><option>Direct</option><option>Agency</option></S>
-              <Lbl>Country</Lbl><I value={edt.country||""} onChange={(e: any)=>setEd((p: any)=>({...p,country:e.target.value}))}/>
-              <Lbl>Tags</Lbl>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:5}}>{(edt.tags||[]).map((t: string)=><Tag key={t} onRemove={()=>setEd((p: any)=>({...p,tags:p.tags.filter((x: string)=>x!==t)}))}>{t}</Tag>)}</div>
-              <div style={{display:"flex",gap:5}}><I value={tagI} onChange={(e: any)=>setTagI(e.target.value)} placeholder="Add tag" onKeyDown={(e: any)=>{if(e.key==="Enter"&&tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} /><B v="sec" onClick={()=>{if(tagI.trim()){setEd((p: any)=>({...p,tags:[...(p.tags||[]),tagI.trim()]}));setTagI("");}}} s={{fontSize:9}}>+</B></div>
-            </>:<><IR label="Contact" value={cl.contact}/><IR label="Email" value={cl.email}/><IR label="Type" value={cl.agency}/><IR label="Country" value={cl.country}/></>}
-          </div>
-          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px"}}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Financial Snapshot</p>
-            <IR label="Total Revenue" value={fmt(f.total)}/>
-            <IR label="Paid Projects" value={`${f.count}`}/>
-            <IR label="Last Invoice" value={f.lastDate?`${fmt(f.last)} · ${fmtD(f.lastDate)}`:"—"}/>
-            <IR label="Avg. Deal" value={f.avg?fmt(f.avg):"—"}/>
-            <IR label="Outstanding" value={fmt(f.out)}/>
-          </div>
-        </div>
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Relationship Notes</p>
-          {editMode?<textarea value={edt.notes||""} onChange={(e: any)=>setEd((p: any)=>({...p,notes:e.target.value}))} style={{width:"100%",minHeight:50,padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:11,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>:<p style={{fontSize:11,color:cl.notes?C.black:C.light,margin:0,lineHeight:1.6}}>{cl.notes||"No notes yet…"}</p>}
-        </div>
-        {cl.projects.some((pr: any)=>uEnd(pr))&&(
-          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10}}>
-            <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 10px"}}>Usage Rights Tracker</p>
-            {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
-              <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"7px 0",borderBottom:`1px solid ${C.rule}`,gap:8,flexWrap:"wrap"}}>
-                <div style={{minWidth:0}}>
-                  <span style={{fontSize:11,display:"block",marginBottom:3}}>{pr.name}</span>
-                  {(()=>{
-                    const lines=pr.qd?.lines||[];
-                    const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
-                    const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
-                    return(usage.length>0||excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                      {usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 6px",borderRadius:2}}>📋 {l}</span>)}
-                      {excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 6px",borderRadius:2}}>🔒 {l}</span>)}
-                    </div>;
-                  })()}
-                </div>
-                <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
-                  <UBadge end={uEnd(pr)}/>
-                  {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"0 0 9px"}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Collaboration History</p>
-          <B v="sec" s={{fontSize:8}} onClick={()=>{setShowAddP((s: boolean)=>!s);setNewPN("");}}>+ Add Project</B>
-        </div>
-        {showAddP&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"9px 11px",marginBottom:9}}>
-          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:"0 0 9px"}}>Add Project</p>
-          <B s={{width:"100%",textAlign:"center",marginBottom:8}} onClick={()=>{onGoToCalc(cl.name);setShowAddP(false);}}>Build Quote in Calculator</B>
-          <p style={{fontSize:10,color:C.muted,textAlign:"center",margin:"0 0 8px"}}>— or add manually —</p>
-          <div style={{display:"flex",gap:7}}>
-            <I placeholder="Project name" value={newPN} onChange={(e: any)=>setNewPN(e.target.value)} onKeyDown={(e: any)=>e.key==="Enter"&&addP(cl.id)}/>
-            <B v="sec" onClick={()=>addP(cl.id)}>Add</B>
-            <B v="sec" onClick={()=>{setShowAddP(false);setNewPN("");}}>Cancel</B>
-          </div>
-        </div>}
-        {cl.projects.map((pr: any,i: number)=>{
-          const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
-          const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
-          const licenseLabels=(()=>{
-            const lines=pr.qd?.lines||[];
-            const usage=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
-            const excl=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
-            return{usage,excl};
-          })();
-          return(
-            <div key={pr.id} onClick={()=>{if(isHighlighted)setHighlightedProjectQNo(null);}} style={{border:`1px solid ${isHighlighted?C.light:C.rule}`,borderRadius:2,padding:"12px 14px",marginBottom:10,background:isHighlighted?"rgba(26,26,26,0.03)":undefined}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                <div style={{flex:1,minWidth:0}}>
-                  {editPrName===pr.id
-                    ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 6px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:3}}/>
-                    :<p onClick={()=>{setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:12,color:C.black,margin:"0 0 3px",fontWeight:i===0?"500":"normal",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:9,color:C.light}}>✎</span></p>}
-                  <p style={{fontSize:10.5,color:C.muted,margin:"0 0 6px"}}>{fmtD(pr.date)}</p>
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                    <span style={{fontSize:9.5,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{pr.paid?"Paid":pr.status}</span>
-                    {end&&<UBadge end={end}/>}
-                  </div>
-                  {(licenseLabels.usage.length>0||licenseLabels.excl.length>0)&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:6}}>
-                    {licenseLabels.usage.map((l: string,li: number)=><span key={"u"+li} style={{fontSize:8.5,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>📋 {l}</span>)}
-                    {licenseLabels.excl.map((l: string,li: number)=><span key={"e"+li} style={{fontSize:8.5,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 7px",borderRadius:2,letterSpacing:"0.04em"}}>🔒 {l}</span>)}
-                  </div>}
-                </div>
-                <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
-                  <p style={{fontFamily:SERIF,fontSize:14,color:C.black,margin:"0 0 3px"}}>{fmt(pr.amount)}</p>
-                  {(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:"0 0 2px"}}>incl. {pr.amendments.length} amend.</p>}
-                  {(pr.renewals||[]).length>0&&<p style={{fontSize:10,color:C.green,margin:0}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</p>}
-                  <div style={{marginTop:4}}>
-                    {delConfirm===pr.id
-                      ?<span style={{fontSize:8,color:C.red}}>Delete? <button onClick={()=>{setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.filter((proj: any)=>proj.id!==pr.id)}));setDelConfirm(null);}} style={{color:C.red,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>Yes</button> · <button onClick={()=>setDelConfirm(null)} style={{color:C.muted,background:"none",border:"none",cursor:"pointer",fontSize:8,padding:"0 2px"}}>No</button></span>
-                      :<button onClick={()=>{setDelConfirm(pr.id);setEditPrName(null);}} style={{fontSize:9.5,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS}}>✕ delete</button>}
-                  </div>
-                </div>
-              </div>
-              {["production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
-                <span style={{fontSize:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase"}}>Delivery Date</span>
-                <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:138,fontSize:10}}/>
-              </div>}
-              {(pr.renewals||[]).map((r: any,ri: number)=>(
-                <div key={r.id} style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:2,padding:"7px 10px",marginBottom:6}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                    <div>
-                      <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontWeight:"500"}}>Renewal {ri+1} — {r.optLabel}</p>
-                      <p style={{fontSize:10,color:C.muted,margin:"0 0 5px"}}>{fmtD(r.startDate)} → {fmtD(r.endDate)}</p>
-                    </div>
-                    <p style={{fontSize:11,fontFamily:SERIF,margin:0,flexShrink:0,marginLeft:8}}>{fmt(r.fee)}</p>
-                  </div>
-                  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                    <span style={{fontSize:9,color:r.paid?C.green:r.signed?C.muted:C.amber,border:`1px solid ${r.paid?C.greenBorder:r.signed?C.rule:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase"}}>{r.paid?"Renewal Paid":r.signed?"Signed — awaiting payment":"Unsigned"}</span>
-                    {r.doc&&<button onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.muted,fontFamily:SANS}}>PDF</button>}
-                    {!r.signed&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,signed:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Signed</button>}
-                    {r.signed&&!r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:true})})}))} style={{fontSize:9,background:C.black,color:C.white,border:"none",borderRadius:2,padding:"2px 8px",cursor:"pointer",fontFamily:SANS,letterSpacing:"0.06em",textTransform:"uppercase"}}>Mark Renewal Paid</button>}
-                    {r.paid&&<button onClick={()=>setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.map((proj: any)=>proj.id!==pr.id?proj:{...proj,renewals:proj.renewals.map((rn: any,rni: number)=>rni!==ri?rn:{...rn,paid:false})})}))} style={{fontSize:9,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"2px 7px",cursor:"pointer",color:C.amber,fontFamily:SANS}}>Undo</button>}
-                  </div>
-                </div>
-              ))}
-              {pr.notes&&<p style={{fontSize:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
-
-              {/* ── DOCUMENTS ── */}
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>
-                {!pr.qd&&<B s={{fontSize:8}} onClick={()=>onGoToCalc(cl.name)}>+ Create Quote in Calculator</B>}
-                {pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
-                {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
-                {(pr.amendments||[]).map((a: any,ai: number)=>(
-                  <B key={ai} v="sec" s={{fontSize:8,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" · unsigned":""}</B>
-                ))}
-                {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:8}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
-              </div>
-
-              {/* ── ACTIONS ── */}
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center",paddingTop:7,borderTop:`1px solid ${C.rule}`}}>
-
-                {/* quoted / revised: revise quote OR accept → open contract PDF */}
-                {["quoted","revised"].includes(pr.status)&&<>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>onRevise(pr,cl)}>Revise Quote</B>
-                  <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"contracted");openPDF({...pr,status:"contracted"},"contract","en",cl.id);}}>→ Contract</B>
-                </>}
-
-                {/* contracted: revise contract (stays contracted, bumps rev) OR mark signed → production */}
-                {pr.status==="contracted"&&<>
-                  <B v="sec" s={{fontSize:8}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
-                  <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
-                </>}
-
-                {/* production: creator working → create invoice opens PDF immediately */}
-                {pr.status==="production"&&<>
-                  <B s={{fontSize:8}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>
-                </>}
-
-                {/* invoiced: mark paid */}
-                {pr.status==="invoiced"&&!pr.paid&&<>
-                  <B s={{fontSize:8}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>
-                </>}
-
-                {/* paid: undo paid */}
-                {pr.paid&&<>
-                  <B v="sec" s={{fontSize:8,color:C.amber}} onClick={()=>upP(cl.id,pr.id,{paid:false,status:"invoiced"})}>Undo Paid</B>
-                </>}
-
-                {/* undo — one step back at every non-paid stage */}
-                {!pr.paid&&pr.status!=="quoted"&&<B v="sec" s={{fontSize:8,color:C.muted}} onClick={()=>setStatus(cl.id,pr.id,ps)}>Undo</B>}
-
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={true}/>
     );
   }
 
   return(
     <div style={{display:cl&&!isMobile?"flex":"block",gap:cl&&!isMobile?28:0,alignItems:"flex-start"}}>
       <div style={{flex:cl&&!isMobile?"0 0 42%":"1 1 100%",minWidth:0,overflowY:cl&&!isMobile?"auto":undefined,maxHeight:cl&&!isMobile?"calc(100vh - 80px)":undefined}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:13}}>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Clients</h2>
-        <B onClick={()=>setShowAdd((s: boolean)=>!s)}>+ New Client</B>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:isMobile?16:13}}>
+        <h2 style={{fontFamily:SERIF,fontSize:isMobile?26:24,fontWeight:"normal",margin:0}}>Clients</h2>
+        <B onClick={()=>setShowAdd((s: boolean)=>!s)} s={isMobile?{fontSize:11,padding:"9px 16px"}:{}}>+ New Client</B>
       </div>
       {flagged.length>0&&<div style={{background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,padding:"9px 13px",marginBottom:10}}><p style={{fontSize:10.5,color:C.amber,margin:0}}>⚠ {flagged.length} client{flagged.length>1?"s":""} — no activity 3+ months</p></div>}
       <I placeholder="Search clients, tags…" value={search} onChange={(e: any)=>setSearch(e.target.value)} s={{marginBottom:8}}/>
@@ -2212,23 +2522,23 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
         });
         const multiProj=new Set(allRights.map((r: any)=>r.prName)).size>1;
         return(
-          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${sel===c.id?C.light:C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?"rgba(26,26,26,0.03)":undefined}}>
+          <div key={c.id} onClick={()=>setSel(c.id)} style={{border:`1px solid ${sel===c.id?C.light:C.rule}`,borderRadius:2,padding:isMobile?"14px 16px":"11px 13px",marginBottom:isMobile?10:8,cursor:"pointer",background:sel===c.id?"rgba(26,26,26,0.03)":undefined}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div>
-                <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{c.name}</p>
-                <p style={{fontSize:10.5,color:C.muted,margin:0}}>{c.contact}{c.email?` · ${c.email}`:""}</p>
-                {(c.tags||[]).length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{c.tags.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>}
-                {active&&<p style={{fontSize:10.5,color:C.muted,margin:"4px 0 0"}}>{active.name}</p>}
+              <div style={{minWidth:0,flex:1}}>
+                <p style={{fontSize:isMobile?16:13,color:C.black,margin:`0 0 ${isMobile?3:2}px`,fontWeight:"500"}}>{c.name}</p>
+                <p style={{fontSize:isMobile?13:10.5,color:C.muted,margin:0}}>{c.contact}{c.email&&!isMobile?` · ${c.email}`:""}</p>
+                {(c.tags||[]).length>0&&<div style={{display:"flex",gap:4,marginTop:isMobile?6:4,flexWrap:"wrap"}}>{c.tags.map((t: string)=><Tag key={t}>{t}</Tag>)}</div>}
+                {active&&<p style={{fontSize:isMobile?13:10.5,color:C.muted,margin:`${isMobile?5:4}px 0 0`}}>{active.name}</p>}
               </div>
-              {active&&<div style={{textAlign:"right"}}>
-                <p style={{fontFamily:SERIF,fontSize:14,color:C.black,margin:"0 0 3px"}}>{fmt(active.amount)}</p>
-                <span style={{fontSize:9.5,color:scol(active.paid?"paid":active.status),border:`1px solid ${scol(active.paid?"paid":active.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{active.paid?"Paid":active.status}</span>
+              {active&&<div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
+                <p style={{fontFamily:SERIF,fontSize:isMobile?17:14,color:C.black,margin:`0 0 ${isMobile?5:3}px`}}>{fmt(active.amount)}</p>
+                <span style={{fontSize:isMobile?11:9.5,color:scol(active.paid?"paid":active.status),border:`1px solid ${scol(active.paid?"paid":active.status)}`,padding:isMobile?"3px 10px":"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase"}}>{active.paid?"Paid":active.status}</span>
               </div>}
             </div>
-            {allRights.length>0&&<div style={{marginTop:7,paddingTop:7,borderTop:`1px solid ${C.rule}`,display:"flex",flexDirection:"column",gap:4}}>
+            {allRights.length>0&&<div style={{marginTop:isMobile?9:7,paddingTop:isMobile?9:7,borderTop:`1px solid ${C.rule}`,display:"flex",flexDirection:"column",gap:isMobile?6:4}}>
               {allRights.map((r: any,i: number)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                  {multiProj&&<span style={{fontSize:9,color:C.light,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140}}>{r.prName}</span>}
+                  {multiProj&&<span style={{fontSize:isMobile?11:9,color:C.light,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140}}>{r.prName}</span>}
                   <UBadge end={r.end} label={r.label}/>
                 </div>
               ))}
@@ -2237,19 +2547,30 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
         );
       })}
       </div>{/* end left col */}
-      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)}/>}
+      {cl&&!isMobile&&<ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={false}/>}
     </div>
   );
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────
-function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProjectQNo,settings,resetKey}: any) {
-  const [drill,setDrill]=useState<null|"revenue"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
+function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProjectQNo,setFromDrill,settings,resetKey,drill,setDrill}: any) {
   const [invoiceTab,setInvoiceTab]=useState<"unpaid"|"paid">("unpaid");
   const [pFilter,setPFilter]=useState<string>("all");
   const [pSort,setPSort]=useState<string>("status");
+  const [revYear,setRevYear]=useState<string>("all");
+  const [revSort,setRevSort]=useState<string>("date_new");
+  const [invTab,setInvTab]=useState<"unpaid"|"paid">("unpaid");
+  const [invYear,setInvYear]=useState<string>("all");
+  const [invType,setInvType]=useState<string>("all");
+  const [invClient,setInvClient]=useState<string>("all");
+  const [invSel,setInvSel]=useState<Set<string>>(new Set());
+  const [invBulkStatus,setInvBulkStatus]=useState<string|null>(null);
+  const [invPdfData,setInvPdfData]=useState<any>(null);
+  const [licenseActions,setLicenseActions]=useState<Record<string,string>>({});
+  const [licTab,setLicTab]=useState<"usage"|"excl">("usage");
   useEffect(()=>{setDrill(null);},[resetKey]);
-  const goToProject=(cName: string,qNo?: string)=>{setPendingClientName(cName);if(qNo&&setPendingProjectQNo)setPendingProjectQNo(qNo);goTo(1);};
+
+  const goToProject=(cName: string,qNo?: string,from?: string)=>{setPendingClientName(cName);if(qNo&&setPendingProjectQNo)setPendingProjectQNo(qNo);if(from&&setFromDrill)setFromDrill(from);goTo(1);};
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,cName:c.name,cId:c.id})));
   const paid=all.filter((pr: any)=>pr.paid&&pr.date);
   const openQ=all.filter((pr: any)=>pr.status==="quoted"||pr.status==="revised");
@@ -2273,15 +2594,27 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
 
   const rev=paid.reduce((s: number,pr: any)=>s+pr.amount,0);
   const out=unpaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-  const uEnd=(pr: any)=>{if(pr.usageEndOverride)return pr.usageEndOverride;if(!pr.deliveryDate||!pr.qd?.mo)return null;return addM(pr.deliveryDate,pr.qd.mo);};
+  const uEnd=(pr: any)=>{
+    if(!pr.deliveryDate||!pr.qd)return null;
+    const ul=(pr.qd?.lines||[]).find((l: any)=>l.usageLabel);
+    const hasRenewals=(pr.renewals||[]).length>0;
+    if(!ul?.usageLabel&&!hasRenewals)return null;
+    if(pr.usageEndOverride)return pr.usageEndOverride;
+    if(!ul?.usageLabel)return null;
+    const m=ul.usageLabel.match(/(\d+)\s*month/i);
+    const mo=m?parseInt(m[1]):null;
+    return mo?addM(pr.deliveryDate,mo):null;
+  };
   const allLicenses=clients.flatMap((c: any)=>c.projects.flatMap((pr: any)=>{
-    const items: {cName:string,cId:string,prName:string,end:string,label:string,usageLabel?:string,exclLabel?:string,qNo?:string}[]=[];
-    const ue=uEnd(pr);
-    const lines=pr.qd?.lines||[];
-    const usageLabels=[...new Set(lines.map((ln: any)=>ln.usageLabel).filter(Boolean))] as string[];
-    const exclLabels=[...new Set(lines.map((ln: any)=>ln.exclLabel).filter(Boolean))] as string[];
-    if(ue)items.push({cName:c.name,cId:c.id,prName:pr.name,end:ue,label:"Usage",usageLabel:usageLabels[0],qNo:pr.qd?.qNo});
-    (pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).forEach((r: any)=>{items.push({cName:c.name,cId:c.id,prName:pr.name,end:r.endDate,label:"Excl.",exclLabel:exclLabels[0],qNo:pr.qd?.qNo});});
+    const items: {cName:string,cId:string,prName:string,end:string,label:string,type:"usage"|"excl",key:string}[]=[];
+    const originalUe=uEnd(pr);
+    const usageRenewalDates=(pr.renewals||[]).filter((r: any)=>r.type!=="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+    const allUDates=[originalUe,...usageRenewalDates].filter(Boolean) as string[];
+    const latestUe=allUDates.length>0?allUDates.reduce((a,b)=>a>b?a:b):null;
+    if(latestUe)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestUe,label:"Usage",type:"usage",key:`usage_${c.id}_${pr.id}`});
+    const exclDates=(pr.renewals||[]).filter((r: any)=>r.type==="excl"&&r.endDate).map((r: any)=>r.endDate as string);
+    const latestExcl=exclDates.length>0?exclDates.reduce((a: string,b: string)=>a>b?a:b):null;
+    if(latestExcl)items.push({cName:c.name,cId:c.id,prName:pr.name,end:latestExcl,label:"Excl.",type:"excl",key:`excl_${c.id}_${pr.id}`});
     return items;
   })).sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999));
   const nowY=new Date().getFullYear();
@@ -2296,24 +2629,25 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   const allYears=Array.from(new Set(paid.map((pr: any)=>yearOf(pr)))).sort((a: any,b: any)=>b-a) as number[];
   const monthsToShow=Array.from({length:nowM+1},(_,i)=>i);
 
-  const Card=({label,count,items,warm,sub,onClick}: any)=>(
-    <div onClick={onClick||(()=>items?.length&&goTo(1))} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:(onClick||items?.length)?"pointer":"default"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:7}}>
-        <span style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase"}}>{label}</span>
-        <span style={{fontFamily:SERIF,fontSize:16,color:typeof count==="string"?C.black:count>0&&warm?C.amber:count>0?C.black:C.light}}>{count}</span>
+  const Card=({label,count,warm,sub,onClick}: any)=>(
+    <div onClick={onClick} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",cursor:onClick?"pointer":"default"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+        <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{label}</span>
+        <span style={{fontFamily:SERIF,fontSize:20,color:typeof count==="number"?(count>0&&warm?C.amber:count>0?C.black:C.light):C.black}}>{count}</span>
       </div>
-      {sub&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 8px"}}>{sub}</p>}
-      {items?.slice(0,3).map((pr: any,i: number)=>(
-        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-          <div style={{minWidth:0,flex:1}}>
-            <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
-            {pr.name&&<span style={{fontSize:9.5,color:C.light,display:"block"}}>{pr.name}</span>}
-          </div>
-          <span style={{fontSize:10.5,flexShrink:0,marginLeft:8}}>{pr.amount?fmt(pr.amount):""}</span>
-        </div>
-      ))}
-      {items?.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{items.length-3} more</p>}
-      {items?.length===0&&<p style={{fontSize:10.5,color:C.muted,margin:0}}>—</p>}
+      {sub}
+    </div>
+  );
+
+  // ── Shared drill layout helpers ──
+  const DrillBack=({onClick}: {onClick:()=>void})=>(
+    <button onClick={onClick} style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20}}>← Dashboard</button>
+  );
+  const DrillHeader=({title,count,sub}: {title:string,count?:any,sub?:string})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:sub?4:20,flexWrap:"wrap" as const,gap:8}}>
+      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>{title}</h2>
+      {count!==undefined&&<span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{count}</span>}
+      {sub&&<p style={{fontSize:12,color:C.muted,margin:"0 0 16px",width:"100%"}}>{sub}</p>}
     </div>
   );
 
@@ -2321,112 +2655,165 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
   if(drill==="projects"){
     const FILTERS=[["all","All"],["production","Production"],["contracted","Contracted"],["invoiced","Invoiced"],["quoted","Quoted"]];
     const SORTS=[["status","By Stage"],["amount_hi","Amount ↓"],["amount_lo","Amount ↑"],["delivery","Delivery"]];
+    const totalActive=activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0);
+    const daysIn=(pr: any)=>pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+    const dCol=(d: number|null)=>d===null?C.light:d>=14?C.red:d>=7?C.amber:C.muted;
+
+    // group: needs your action first, then in progress
+    const needsAction=filteredProjects.filter((pr: any)=>["invoiced","contracted"].includes(pr.status));
+    const inProgress=filteredProjects.filter((pr: any)=>["production","quoted","revised"].includes(pr.status));
+
+    const Row=({pr}: {pr: any})=>{
+      const d=daysIn(pr);
+      const col=STATUS_COLOR[pr.status]||C.muted;
+      const next=NEXT_ACTION[pr.status]||"";
+      const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
+      return(
+        <div onClick={()=>goToProject(pr.cName,pr.qd?.qNo,"projects")} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
+          <span style={{fontSize:12,color:dCol(d),flexShrink:0,minWidth:32,fontWeight:"500"}}>{d!==null?`${d}d`:"—"}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+              <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+              <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+              <span style={{fontSize:10,color:col,border:`1px solid ${col}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em",textTransform:"uppercase" as const,flexShrink:0}}>{pr.status}</span>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:3,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:11,color:C.light}}>{next}</span>
+              {pr.deliveryDate&&<span style={{fontSize:11,color:C.light}}>· Due {fmtD(pr.deliveryDate)}</span>}
+              {unsignedAmends>0&&<span style={{fontSize:11,color:C.amber}}>· {unsignedAmends} unsigned amend</span>}
+            </div>
+          </div>
+          <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+          <span style={{fontSize:11,color:C.light}}>→</span>
+        </div>
+      );
+    };
+
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
-          <div>
-            <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 3px"}}>Active Projects</h2>
-            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{filteredProjects.length} of {activeProjects.length} project{activeProjects.length!==1?"s":""}</p>
-          </div>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-            <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
-              {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-            </S>
-            <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:9,padding:"4px 8px"}}>
-              {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-            </S>
-          </div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Active Projects" count={fmt(totalActive)} sub={`${filteredProjects.length} of ${activeProjects.length} project${activeProjects.length!==1?"s":""} in progress`}/>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:5,marginBottom:16}}>
+          <S value={pFilter} onChange={(e: any)=>setPFilter(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
+            {FILTERS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </S>
+          <S value={pSort} onChange={(e: any)=>setPSort(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
+            {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </S>
         </div>
 
-        {filteredProjects.length===0&&<p style={{fontSize:11,color:C.muted}}>No projects match this filter.</p>}
-        {filteredProjects.map((pr: any,i: number)=>{
-          const col=STATUS_COLOR[pr.status]||C.muted;
-          const next=NEXT_ACTION[pr.status]||"";
-          const unsignedAmends=(pr.amendments||[]).filter((a: any)=>!a.signed).length;
-          return(
-            <div key={i} onClick={()=>{setPendingClientName(pr.cName);goTo(1);}} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
+        {filteredProjects.length===0&&<p style={{fontSize:12,color:C.muted}}>No projects match this filter.</p>}
 
-              {/* header row */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-                <div style={{minWidth:0}}>
-                  <p style={{fontSize:12,color:C.muted,margin:"0 0 2px",letterSpacing:"0.04em"}}>{pr.cName}</p>
-                  <p style={{fontSize:15,color:C.black,margin:0,fontFamily:SERIF,fontWeight:"normal"}}>{pr.name}</p>
-                </div>
-                <span style={{fontFamily:SERIF,fontSize:15,flexShrink:0}}>{fmt(pr.amount)}</span>
-              </div>
+        {needsAction.length>0&&<>
+          <p style={{fontSize:11,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 6px",fontWeight:"600"}}>Needs your action</p>
+          {needsAction.map((pr: any,i: number)=><Row key={i} pr={pr}/>)}
+        </>}
 
-              {/* meta row */}
-              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
-                <span style={{fontSize:9,letterSpacing:"0.08em",textTransform:"uppercase",color:col,border:`1px solid ${col}`,padding:"2px 7px",borderRadius:2}}>{pr.status}</span>
-                {pr.deliveryDate&&<span style={{fontSize:10,color:C.muted}}>Due {fmtD(pr.deliveryDate)}</span>}
-                {(pr.amendments||[]).length>0&&<span style={{fontSize:10,color:unsignedAmends>0?C.amber:C.muted}}>{pr.amendments.length} amend{unsignedAmends>0?` · ${unsignedAmends} unsigned`:""}</span>}
-                {(pr.renewals||[]).length>0&&<span style={{fontSize:10,color:C.green}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
-              </div>
-
-              {/* next action */}
-              <div style={{paddingTop:7,borderTop:`1px solid ${C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:10,color:C.muted}}>Next: <strong style={{color:C.black}}>{next}</strong></span>
-                <span style={{fontSize:9,color:C.light,letterSpacing:"0.06em"}}>→ Open in Clients</span>
-              </div>
-
-            </div>
-          );
-        })}
+        {inProgress.length>0&&<>
+          <p style={{fontSize:11,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${needsAction.length>0?"20px":"0"} 0 6px`,fontWeight:"600"}}>In progress</p>
+          {inProgress.map((pr: any,i: number)=><Row key={i} pr={pr}/>)}
+        </>}
       </div>
     );
   }
-  if(drill==="year"){
+  if(drill==="revenue"){
+    // filter + sort
+    const revFiltered=revYear==="all"?paid:paid.filter((pr: any)=>String(yearOf(pr))===revYear);
+    const revSorted=(()=>{
+      const arr=[...revFiltered];
+      if(revSort==="date_new")arr.sort((a: any,b: any)=>b.date.localeCompare(a.date));
+      else if(revSort==="date_old")arr.sort((a: any,b: any)=>a.date.localeCompare(b.date));
+      else if(revSort==="amount_hi")arr.sort((a: any,b: any)=>b.amount-a.amount);
+      else if(revSort==="amount_lo")arr.sort((a: any,b: any)=>a.amount-b.amount);
+      else if(revSort==="client")arr.sort((a: any,b: any)=>(a.cName||"").localeCompare(b.cName||""));
+      return arr;
+    })();
+    // group by year then month
+    const revGroups: {year:number,months:{month:number,rows:any[]}[]}[]=[];
+    revSorted.forEach((pr: any)=>{
+      const y=yearOf(pr),m=monthOf(pr);
+      let yg=revGroups.find(g=>g.year===y);
+      if(!yg){yg={year:y,months:[]};revGroups.push(yg);}
+      let mg=yg.months.find(x=>x.month===m);
+      if(!mg){mg={month:m,rows:[]};yg.months.push(mg);}
+      mg.rows.push(pr);
+    });
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Year</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allYears.length} year{allYears.length!==1?"s":""} with paid projects</p>
-        {allYears.map((y: number)=>{
-          const yPaid=paid.filter((pr: any)=>yearOf(pr)===y);
-          const yRev=yPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
-          return(
-            <div key={y} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:yPaid.length?8:0}}>
-                <span style={{fontSize:11,color:y===nowY?C.black:C.muted,fontWeight:y===nowY?"500":"normal"}}>{y}{y===nowY?" · Current":""}</span>
-                <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(yRev)}</span>
-              </div>
-              {yPaid.slice(0,3).map((pr: any,i: number)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
-                </div>
-              ))}
-              {yPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{yPaid.length-3} more</p>}
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:4,flexWrap:"wrap" as const,gap:8}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Revenue</h2>
+          <span style={{fontFamily:SERIF,fontSize:20,color:C.black}}>{fmt(rev)}</span>
+        </div>
+        <p style={{fontSize:12,color:C.muted,margin:"0 0 16px"}}>{paid.length} paid project{paid.length!==1?"s":""} · all time</p>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:5,marginBottom:20}}>
+          <S value={revYear} onChange={(e: any)=>setRevYear(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
+            <option value="all">All years</option>
+            {allYears.map((y: number)=><option key={y} value={String(y)}>{y}</option>)}
+          </S>
+          <S value={revSort} onChange={(e: any)=>setRevSort(e.target.value)} s={{fontSize:11,padding:"5px 10px"}}>
+            <option value="date_new">Newest first</option>
+            <option value="date_old">Oldest first</option>
+            <option value="amount_hi">Amount ↓</option>
+            <option value="amount_lo">Amount ↑</option>
+            <option value="client">Client A→Z</option>
+          </S>
+        </div>
+        {revSorted.length===0&&<p style={{fontSize:12,color:C.muted}}>No paid projects yet.</p>}
+        {revGroups.map((yg,yi)=>(
+          <div key={yg.year} style={{marginBottom:28}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingBottom:8,borderBottom:`2px solid ${yg.year===nowY?C.black:C.rule}`,marginBottom:4}}>
+              <span style={{fontSize:13,color:yg.year===nowY?C.black:C.muted,fontWeight:"600",letterSpacing:"0.04em"}}>{yg.year}{yg.year===nowY?" · Current":""}</span>
+              <span style={{fontFamily:SERIF,fontSize:15,color:C.black}}>{fmt(yg.months.flatMap((m: any)=>m.rows).reduce((s: number,pr: any)=>s+pr.amount,0))}</span>
             </div>
-          );
-        })}
+            {yg.months.map((mg: any)=>(
+              <div key={mg.month} style={{marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"8px 0 4px"}}>
+                  <span style={{fontSize:11,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase" as const}}>{MO[mg.month]} {yg.year}</span>
+                  <span style={{fontSize:11,color:C.muted}}>{fmt(mg.rows.reduce((s: number,pr: any)=>s+pr.amount,0))}</span>
+                </div>
+                {mg.rows.map((pr: any,i: number)=>(
+                  <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo,"revenue")} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap" as const}}>
+                        <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                        <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+                      </div>
+                      <span style={{fontSize:11,color:C.light}}>{fmtD(pr.date)}</span>
+                    </div>
+                    <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+                    <span style={{fontSize:11,color:C.light}}>→</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     );
   }
   if(drill==="month"){
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Revenue by Month</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{nowY} · Jan — {MO[nowM]}</p>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Revenue by Month" count={fmt(thisYearRev)} sub={`${nowY} · Jan — ${MO[nowM]}`}/>
         {[...monthsToShow].reverse().map((m: number)=>{
           const mPaid=paid.filter((pr: any)=>yearOf(pr)===nowY&&monthOf(pr)===m);
           const mRev=mPaid.reduce((s: number,pr: any)=>s+pr.amount,0);
           return(
             <div key={m} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:mPaid.length?8:0}}>
-                <span style={{fontSize:11,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
+                <span style={{fontSize:13,color:m===nowM?C.black:C.muted,fontWeight:m===nowM?"500":"normal"}}>{MO[m]} {nowY}{m===nowM?" · This month":""}</span>
                 <span style={{fontFamily:SERIF,fontSize:20,color:mRev>0?C.black:C.light}}>{mRev>0?fmt(mRev):"—"}</span>
               </div>
               {mPaid.slice(0,3).map((pr: any,i: number)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
-                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName} · {pr.name}</span>
-                  <span style={{fontSize:10.5}}>{fmt(pr.amount)}</span>
+                  <span style={{fontSize:12,color:C.muted}}>{pr.cName} · {pr.name}</span>
+                  <span style={{fontSize:12}}>{fmt(pr.amount)}</span>
                 </div>
               ))}
-              {mPaid.length===0&&<p style={{fontSize:10.5,color:C.light,margin:0}}>No paid projects</p>}
-              {mPaid.length>3&&<p style={{fontSize:10,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
+              {mPaid.length===0&&<p style={{fontSize:12,color:C.light,margin:0}}>No paid projects</p>}
+              {mPaid.length>3&&<p style={{fontSize:11,color:C.light,margin:"4px 0 0"}}>+{mPaid.length-3} more</p>}
             </div>
           );
         })}
@@ -2434,57 +2821,586 @@ function Dashboard({clients,goTo,isMobile,setPendingClientName,setPendingProject
     );
   }
   if(drill==="license"){
+    const setAction=(key: string,val: string)=>setLicenseActions(prev=>({...prev,[key]:val}));
+    const tabPillLS=(active: boolean):any=>({padding:"6px 15px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase" as const,outline:"none"});
+    const usageLics=allLicenses.filter((r: any)=>r.type==="usage");
+    const exclLics=allLicenses.filter((r: any)=>r.type==="excl");
+    const tabLics=licTab==="usage"?usageLics:exclLics;
+    // for dashboard card: only show items needing attention (not ignored/taken down)
+    const actionedStatuses=["ignored","takendown","renewal"];
+    const needsAttention=(r: any)=>!actionedStatuses.includes(licenseActions[r.key]||"");
+    // group rows: expiring (≤7d) + expired-unactioned → active → actioned
+    const expired=(r: any)=>{const d=dLeft(r.end);return d!==null&&d<0;};
+    const expiring=(r: any)=>{const d=dLeft(r.end);return d!==null&&d>=0&&d<=7;};
+    const urgentRows=tabLics.filter((r: any)=>(expired(r)||expiring(r))&&needsAttention(r));
+    const activeRows=tabLics.filter((r: any)=>!expired(r)&&!expiring(r)&&needsAttention(r));
+    const actionedRows=tabLics.filter((r: any)=>!needsAttention(r));
+    const STATUS_LABELS: Record<string,string>={ignored:"Ignored",takendown:"Taken down",renewal:"Renewal pending"};
+    const ACTION_OPTS=[
+      {val:"ignored",label:"Ignore"},
+      {val:"takendown",label:"Mark taken down"},
+      {val:"renewal",label:"Renewal (coming soon)",disabled:true},
+    ];
+    const LicRow=({r}: {r: any})=>{
+      const d=dLeft(r.end);
+      const isExpired=d!==null&&d<0;
+      const isExpiring=d!==null&&d>=0&&d<=7;
+      const act=licenseActions[r.key]||"";
+      const isActioned=actionedStatuses.includes(act);
+      const daysText=isExpired?`+${Math.abs(d!)}d expired`:isExpiring?`${d}d left`:`${d}d`;
+      const dCol=isExpired?C.red:isExpiring?C.amber:C.green;
+      return(
+        <div style={{padding:"10px 0",borderBottom:`1px solid ${C.rule}`,opacity:isActioned?0.5:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {/* days indicator */}
+            <span style={{fontSize:12,color:dCol,fontWeight:"500",flexShrink:0,minWidth:88}}>{daysText}</span>
+            {/* info */}
+            <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>goToProject(r.cName)}>
+              <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{r.cName}</span>
+                <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{r.prName}</span>
+              </div>
+              <span style={{fontSize:11,color:C.light}}>{licTab==="excl"?(isExpired?"Free to work again":"Blocked until"):("Expires")} {fmtD(r.end)}</span>
+            </div>
+            {/* status badge if actioned */}
+            {isActioned&&<span style={{fontSize:11,color:C.muted,border:`1px solid ${C.rule}`,padding:"2px 8px",borderRadius:2,flexShrink:0}}>{STATUS_LABELS[act]}</span>}
+            {/* action buttons — only when not yet actioned and expired/expiring */}
+            {!isActioned&&(isExpired||isExpiring)&&licTab==="usage"&&(
+              <div style={{display:"flex",gap:4,flexShrink:0}}>
+                {ACTION_OPTS.map(o=>(
+                  <button key={o.val} onClick={()=>setAction(r.key,o.val)} disabled={o.disabled}
+                    style={{fontSize:11,padding:"5px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:o.disabled?"not-allowed":"pointer",color:o.disabled?C.light:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap",opacity:o.disabled?0.5:1}}
+                  >{o.label}</button>
+                ))}
+              </div>
+            )}
+            {/* for excl expired — just a note, no action needed */}
+            {!isActioned&&isExpired&&licTab==="excl"&&(
+              <button onClick={()=>setAction(r.key,"ignored")} style={{fontSize:11,padding:"5px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontFamily:SANS,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>Mark noted</button>
+            )}
+          </div>
+        </div>
+      );
+    };
     return(
       <div>
-        <button onClick={()=>setDrill(null)} style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase",background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:16}}>← Dashboard</button>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>License Tracker</h2>
-        <p style={{fontSize:10.5,color:C.muted,margin:"0 0 18px"}}>{allLicenses.length} active license{allLicenses.length!==1?"s":""} · sorted by expiry</p>
-        {allLicenses.length===0&&<p style={{fontSize:11,color:C.muted}}>No active licenses tracked.</p>}
-        {allLicenses.map((r: any,i: number)=>{
-          const d=dLeft(r.end);
-          const urgent=d!==null&&d<=14;
-          const soon=d!==null&&d>14&&d<=30;
-          return(
-            <div key={i} onClick={()=>goToProject(r.cName,r.qNo)} style={{border:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",marginBottom:9,cursor:"pointer",background:urgent?C.redBg:soon?C.amberBg:undefined}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                <div style={{minWidth:0}}>
-                  <p style={{fontSize:13,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{r.cName}</p>
-                  <p style={{fontSize:10.5,color:C.muted,margin:"0 0 5px"}}>{r.prName}</p>
-                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                    {r.label==="Usage"&&r.usageLabel&&<span style={{fontSize:8.5,color:C.amber,border:`1px solid ${C.amberBorder}`,background:C.amberBg,padding:"1px 7px",borderRadius:2}}>📋 {r.usageLabel}</span>}
-                    {r.label==="Excl."&&r.exclLabel&&<span style={{fontSize:8.5,color:"#7a6a9a",border:"1px solid #d8c8e8",background:"#f5f0fc",padding:"1px 7px",borderRadius:2}}>🔒 {r.exclLabel}</span>}
-                  </div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>License Tracker</h2>
+          <div style={{display:"flex"}}>
+            <button onClick={()=>setLicTab("usage")} style={{...tabPillLS(licTab==="usage"),borderRadius:"2px 0 0 2px"}}>Usage Rights <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{usageLics.length}</span></button>
+            <button onClick={()=>setLicTab("excl")} style={{...tabPillLS(licTab==="excl"),borderRadius:"0 2px 2px 0",borderLeft:"none"}}>Exclusivity <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{exclLics.length}</span></button>
+          </div>
+        </div>
+        {licTab==="usage"&&<p style={{fontSize:12,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track when brands' usage rights expire. Expired = they may still be running your content. Mark as ignored, taken down, or flag for renewal.</p>}
+        {licTab==="excl"&&<p style={{fontSize:12,color:C.muted,marginBottom:16,lineHeight:1.6}}>Track exclusivity periods. Active = you cannot work with competing brands. Expired = you are free to work again.</p>}
+        {tabLics.length===0&&<p style={{fontSize:12,color:C.muted}}>No {licTab==="usage"?"usage rights":"exclusivity periods"} tracked.</p>}
+        {urgentRows.length>0&&(
+          <div style={{marginBottom:16}}>
+            <p style={{fontSize:11,color:C.red,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6,fontWeight:"600"}}>Needs attention</p>
+            {urgentRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
+          </div>
+        )}
+        {activeRows.length>0&&(
+          <div style={{marginBottom:16}}>
+            {urgentRows.length>0&&<p style={{fontSize:11,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6,fontWeight:"600",marginTop:20}}>Active</p>}
+            {activeRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
+          </div>
+        )}
+        {actionedRows.length>0&&(
+          <div style={{marginTop:20}}>
+            <p style={{fontSize:11,color:C.light,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6,fontWeight:"600"}}>Handled</p>
+            {actionedRows.map((r: any)=><LicRow key={r.key} r={r}/>)}
+          </div>
+        )}
+      </div>
+    );
+  }
+  // ── Invoices drill-down ──────────────────────────────────
+  if(drill==="invoices"){
+    const allInvRows=buildInvoiceRows(clients);
+    const tabRows=invTab==="unpaid"?allInvRows.filter((r: any)=>!r.pr.paid):allInvRows.filter((r: any)=>r.pr.paid);
+    // build period options: "all", "y:2026", "m:2026:4"
+    const allInvYears=Array.from(new Set(allInvRows.map((r: any)=>r.year))).sort((a: any,b: any)=>b-a) as number[];
+    const periodOptions: {value:string,label:string,indent:boolean}[]=[{value:"all",label:"All periods",indent:false}];
+    allInvYears.forEach(y=>{
+      periodOptions.push({value:`y:${y}`,label:String(y),indent:false});
+      const monthsInYear=Array.from(new Set(allInvRows.filter((r: any)=>r.year===y).map((r: any)=>r.month))).sort((a: any,b: any)=>b-a) as number[];
+      monthsInYear.forEach(m=>periodOptions.push({value:`m:${y}:${m}`,label:`${MO_SHORT[m]} ${y}`,indent:true}));
+    });
+    const filteredInvRows=tabRows.filter((r: any)=>{
+      if(invYear==="all")return true;
+      if(invYear.startsWith("y:"))return String(r.year)===invYear.slice(2);
+      if(invYear.startsWith("m:")){const[,y,m]=invYear.split(":");return String(r.year)===y&&String(r.month)===m;}
+      return true;
+    });
+    // group by year→month, newest first
+    const invGrouped: {year:number,months:{month:number,rows:any[]}[]}[]=[];
+    filteredInvRows.forEach((r: any)=>{
+      let yg=invGrouped.find(g=>g.year===r.year);
+      if(!yg){yg={year:r.year,months:[]};invGrouped.push(yg);}
+      let mg=yg.months.find(m=>m.month===r.month);
+      if(!mg){mg={month:r.month,rows:[]};yg.months.push(mg);}
+      mg.rows.push(r);
+    });
+    invGrouped.sort((a,b)=>b.year-a.year);
+    invGrouped.forEach(yg=>yg.months.sort((a,b)=>b.month-a.month));
+
+    const toggleSel=(key: string)=>setInvSel(prev=>{const n=new Set(prev);n.has(key)?n.delete(key):n.add(key);return n;});
+    const selRows=filteredInvRows.filter((r: any)=>invSel.has(r.iNo));
+
+    const openInvPreview=(r: any)=>{
+      const pr=r.pr;const q=pr.qd;
+      setInvPdfData({data:{brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo:r.iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."},type:"invoice"});
+    };
+
+    const doInvBulk=async(rows: any[])=>{
+      if(!rows.length||invBulkStatus)return;
+      setInvBulkStatus(`Preparing ${rows.length} invoice${rows.length>1?"s":""}…`);
+      const [{default:html2canvas},{default:jsPDF}]=await Promise.all([import("html2canvas"),import("jspdf")]);
+      for(let i=0;i<rows.length;i++){
+        const r=rows[i];const pr=r.pr;const q=pr.qd;
+        const d={brand:q?.brand,contact:q?.contact,date:pr.date||today(),qNo:q?.qNo,iNo:r.iNo,delivery:pr.deliveryDate,ctype:q?.ctype||"Content Creator",lines:q?.lines||[],amendments:pr.amendments||[],total:pr.amount,footer:"Thank you for the pleasure of working together."};
+        setInvBulkStatus(`Saving ${i+1}/${rows.length} — ${r.iNo}`);
+        const wrap=document.createElement("div");
+        wrap.style.cssText="position:fixed;left:-9999px;top:0;width:595px;z-index:-1;background:#faf9f7;";
+        document.body.appendChild(wrap);
+        const {createRoot:cr}=await import("react-dom/client");
+        const root=cr(wrap);
+        await new Promise<void>(res=>{root.render(<A4 d={d} type="invoice" lang="en" settings={settings} extraSigMargin={0} clauseGuards={[]} tRowGuards={[]}/>);setTimeout(res,600);});
+        try{
+          const pages=Array.from(wrap.querySelectorAll("[data-pdf-page]")) as HTMLElement[];
+          const pdf=new (jsPDF as any)({orientation:"portrait",unit:"mm",format:"a4"});
+          const pw=pdf.internal.pageSize.getWidth();const ph=pdf.internal.pageSize.getHeight();
+          for(let p=0;p<pages.length;p++){
+            if(p>0)pdf.addPage();
+            const canvas=await (html2canvas as any)(pages[p],{scale:2,useCORS:true,backgroundColor:"#faf9f7"});
+            pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pw,ph);
+          }
+          pdf.save(`${(pr.date||"").replace(/-/g,"_")} ${r.iNo}.pdf`);
+        }finally{root.unmount();document.body.removeChild(wrap);}
+        if(i<rows.length-1)await new Promise(res=>setTimeout(res,400));
+      }
+      setInvBulkStatus(null);setInvSel(new Set());
+    };
+
+    const exportMonthCsv=(rows: any[],label: string)=>{
+      const headers=["Month","Invoice No.","Client","Project","Type of Work","Collab","TikToks","Reels","Posts","Stories","Income","Expenses","Delivery Date","Payment Status"];
+      const lines=[headers];
+      rows.forEach(r=>{
+        const pr=r.pr;const q=pr.qd;
+        const mo=r.dateStr?`${MO_SHORT[r.month]} ${String(r.year).slice(2)}`:"";
+        const typeOfWork=getTypeOfWork(pr);
+        const isCollab=q?.ctab==="influencer";
+        const ls=q?.lines||[];
+        const collab=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("photo")||l.name?.toLowerCase().includes("carousel")||l.name?.toLowerCase().includes("set")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const tiktoks=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("tiktok")||(l.platforms||[]).includes("TikTok")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const reels=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("reel")||(l.platforms||[]).includes("Instagram")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const stories=isCollab?String(ls.filter((l:any)=>l.name?.toLowerCase().includes("story")||l.name?.toLowerCase().includes("storie")).reduce((s:number,l:any)=>s+(l.qty||1),0)||""):"";
+        const income=pr.amount?`€ ${Number(pr.amount).toFixed(2).replace(".",",")}` :"€ 0,00";
+        lines.push([mo,r.iNo,r.cName,pr.name,typeOfWork,collab,tiktoks,reels,"",stories,income,"€ 0,00",pr.deliveryDate||"",pr.paid?"paid":"invoiced"]);
+      });
+      const csv=lines.map(row=>row.map((v:string)=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+      const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");a.href=url;a.download=`${label.replace(/\s/g,"_")}.csv`;a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    const selBtnS: any={height:26,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.07em",color:C.muted,whiteSpace:"nowrap"};
+    const filterS: any={height:28,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,fontFamily:SANS,fontSize:11,color:C.black,outline:"none"};
+    const allChecked=filteredInvRows.length>0&&filteredInvRows.every((r: any)=>invSel.has(r.iNo));
+    const someChecked=!allChecked&&filteredInvRows.some((r: any)=>invSel.has(r.iNo));
+    const toggleAll=()=>{
+      if(allChecked){setInvSel(new Set());}
+      else{setInvSel(new Set(filteredInvRows.map((r: any)=>r.iNo)));}
+    };
+
+    if(invPdfData)return<PDFModal data={invPdfData.data} type={invPdfData.type} onClose={()=>setInvPdfData(null)} settings={settings}/>;
+
+    const tabPillS=(active: boolean):any=>({
+      padding:"6px 15px",border:`1px solid ${active?C.black:C.rule}`,background:active?C.black:"none",
+      color:active?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:11,letterSpacing:"0.1em",
+      textTransform:"uppercase" as const,outline:"none"
+    });
+
+    return(
+      <div>
+        {/* back */}
+        <DrillBack onClick={()=>{setDrill(null);setInvSel(new Set());}}/>
+
+        {/* title + tabs top right */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:8,flexWrap:"wrap"}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Invoices</h2>
+          <div style={{display:"flex"}}>
+            <button onClick={()=>{setInvTab("unpaid");setInvSel(new Set());}} style={{...tabPillS(invTab==="unpaid"),borderRadius:"2px 0 0 2px"}}>
+              Unpaid <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{allInvRows.filter((r: any)=>!r.pr.paid).length}</span>
+            </button>
+            <button onClick={()=>{setInvTab("paid");setInvSel(new Set());}} style={{...tabPillS(invTab==="paid"),borderRadius:"0 2px 2px 0",borderLeft:"none"}}>
+              Paid <span style={{marginLeft:4,fontSize:10,opacity:0.7}}>{allInvRows.filter((r: any)=>r.pr.paid).length}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* filter + export row — no border */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <select value={invYear} onChange={(e: any)=>{setInvYear(e.target.value);setInvSel(new Set());}} style={filterS}>
+            {periodOptions.map(o=>(
+              <option key={o.value} value={o.value}>
+                {o.indent?`  ${o.label}`:o.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={()=>exportMonthCsv(filteredInvRows,invYear==="all"?"all_invoices":invYear.replace(/[:\s]/g,"_"))}
+            title="Export current view as CSV"
+            style={{height:28,padding:"0 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:SANS,fontSize:11,color:C.muted,letterSpacing:"0.07em"}}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="4" x2="9" y2="4" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="6" x2="9" y2="6" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="8" x2="7" y2="8" stroke={C.muted} strokeWidth="1.1"/></svg>
+            Export CSV
+          </button>
+        </div>
+
+        {filteredInvRows.length===0&&<p style={{fontSize:12,color:C.muted}}>No invoices match this filter.</p>}
+
+        {invGrouped.map((yg,yi)=>(
+          <div key={yg.year}>
+            <p style={{fontSize:12,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:`${yi===0?"0":"20px"} 0 10px`,fontWeight:"600"}}>{yg.year}</p>
+            {yg.months.map(mg=>(
+              <div key={mg.month} style={{marginBottom:20}}>
+                {/* month header — no border, just spacing */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                  <span style={{fontSize:12,color:C.light,letterSpacing:"0.09em",textTransform:"uppercase"}}>{MO_LONG[mg.month]} {yg.year} · {mg.rows.length}</span>
+                  <button
+                    onClick={()=>exportMonthCsv(mg.rows,`${MO_SHORT[mg.month]}_${yg.year}`)}
+                    title={`Download ${MO_LONG[mg.month]} ${yg.year} as CSV`}
+                    style={{height:22,padding:"0 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,cursor:"pointer",display:"flex",alignItems:"center",gap:4,fontFamily:SANS,fontSize:11,color:C.muted,letterSpacing:"0.06em"}}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="4" x2="9" y2="4" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="6" x2="9" y2="6" stroke={C.muted} strokeWidth="1.1"/><line x1="3" y1="8" x2="7" y2="8" stroke={C.muted} strokeWidth="1.1"/></svg>
+                    CSV
+                  </button>
                 </div>
-                <UBadge end={r.end} label={r.label}/>
+
+                {/* select all — right-aligned, directly above checkboxes, no line */}
+                {mg.rows.length>0&&(
+                  <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:6,padding:"4px 0 2px"}}>
+                    <span style={{fontSize:11,color:C.light,letterSpacing:"0.04em"}}>select all</span>
+                    <input type="checkbox"
+                      checked={mg.rows.every((r: any)=>invSel.has(r.iNo))}
+                      ref={(el)=>{if(el)el.indeterminate=!mg.rows.every((r: any)=>invSel.has(r.iNo))&&mg.rows.some((r: any)=>invSel.has(r.iNo));}}
+                      onChange={()=>{
+                        const allCheckedInMonth=mg.rows.every((r: any)=>invSel.has(r.iNo));
+                        setInvSel(prev=>{
+                          const n=new Set(prev);
+                          if(allCheckedInMonth){mg.rows.forEach((r: any)=>n.delete(r.iNo));}
+                          else{mg.rows.forEach((r: any)=>n.add(r.iNo));}
+                          return n;
+                        });
+                      }}
+                      style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
+                    />
+                  </div>
+                )}
+
+                {/* one separator line between month header area and first invoice */}
+                <div style={{borderTop:`1px solid ${C.rule}`}}/>
+
+                {mg.rows.map((r: any,i: number)=>{
+                  const pr=r.pr;
+                  const isChecked=invSel.has(r.iNo);
+                  return(
+                    <div key={r.iNo+i} style={{display:"flex",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.rule}`,gap:10,background:isChecked?"rgba(0,0,0,0.015)":undefined}}>
+                      {/* ↓ plain arrow — download PDF */}
+                      <button
+                        onClick={(e: any)=>{e.stopPropagation();doInvBulk([r]);}}
+                        disabled={!!invBulkStatus}
+                        title="Download PDF"
+                        style={{flexShrink:0,background:"none",border:"none",cursor:invBulkStatus?"not-allowed":"pointer",padding:0,fontSize:14,color:C.light,fontFamily:SANS,opacity:invBulkStatus?0.4:1,lineHeight:1}}
+                      >↓</button>
+                      {/* main info — clickable to preview */}
+                      <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={()=>openInvPreview(r)}>
+                        <div style={{display:"flex",alignItems:"baseline",gap:7,flexWrap:"wrap"}}>
+                          <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{r.iNo}</span>
+                          <span style={{fontSize:12,color:C.muted}}>{r.cName}</span>
+                          <span style={{fontSize:12,color:C.light}}>·</span>
+                          <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?90:200}}>{pr.name}</span>
+                        </div>
+                        <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                          <span style={{fontSize:11,color:C.light,letterSpacing:"0.07em"}}>{fmtD(pr.date)}</span>
+                          <span style={{fontSize:11,color:pr.paid?C.green:C.amber,border:`1px solid ${pr.paid?C.greenBorder:C.amberBorder}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.06em"}}>{pr.paid?"Paid":"Invoiced"}</span>
+                        </div>
+                      </div>
+                      {/* amount */}
+                      <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+                      {/* checkbox right */}
+                      <input type="checkbox" checked={isChecked} onChange={()=>toggleSel(r.iNo)}
+                        style={{flexShrink:0,cursor:"pointer",accentColor:C.black,width:13,height:13}}
+                        onClick={(e: any)=>e.stopPropagation()}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${urgent?C.redBorder:soon?C.amberBorder:C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{r.label} expires</span>
-                <span style={{fontSize:11,color:urgent?C.red:soon?C.amber:C.muted}}>{fmtD(r.end)}</span>
+            ))}
+          </div>
+        ))}
+
+        {/* bulk bar — bottom, appears when rows selected */}
+        {invSel.size>0&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.amberBg,border:`1px solid ${C.amberBorder}`,borderRadius:2,marginTop:12}}>
+            <span style={{fontSize:12,color:C.amber}}>{invSel.size} selected</span>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>setInvSel(new Set())} style={{...selBtnS,color:C.amber,border:`1px solid ${C.amberBorder}`}}>Clear</button>
+              <button onClick={()=>doInvBulk(selRows)} disabled={!!invBulkStatus} style={{...selBtnS,background:C.black,color:C.white,border:"none",opacity:invBulkStatus?0.5:1}}>
+                {invBulkStatus||`↓ Download ${invSel.size} PDF${invSel.size>1?"s":""}`}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Open Quotes drill-down ─────────────────────────────
+  if(drill==="quotes"){
+    const daysColor=(d: number)=>d>=14?C.red:d>=7?C.amber:C.muted;
+    // sort by expiry: expired first, then soonest expiry, then no expiry
+    const sorted=[...openQ].sort((a: any,b: any)=>{
+      const aExp=a.qd?.validUntil?new Date(a.qd.validUntil).getTime():Infinity;
+      const bExp=b.qd?.validUntil?new Date(b.qd.validUntil).getTime():Infinity;
+      return aExp-bExp;
+    });
+    const totalQ=openQ.reduce((s: number,pr: any)=>s+pr.amount,0);
+    return(
+      <div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Open Quotes" count={fmt(totalQ)}/>
+        {sorted.length===0&&<p style={{fontSize:12,color:C.muted}}>No open quotes.</p>}
+        {sorted.map((pr: any,i: number)=>{
+          const daysSent=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+          const expiry=pr.qd?.validUntil;
+          const daysLeft=expiry?Math.ceil((new Date(expiry).getTime()-Date.now())/86400000):null;
+          const expired=daysLeft!==null&&daysLeft<0;
+          const isRev=pr.status==="revised";
+          const expiryCol=expired?C.red:daysLeft!==null&&daysLeft<=7?C.amber:C.green;
+          return(
+            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer"}}>
+              {/* days since sent */}
+              <span style={{fontSize:12,color:daysSent!==null?daysColor(daysSent):C.light,flexShrink:0,minWidth:32,fontWeight:"500"}}>{daysSent!==null?`${daysSent}d`:"—"}</span>
+              {/* info */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                  <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
+                  {isRev&&<span style={{fontSize:10,color:C.amber,border:`1px solid ${C.amberBorder}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.06em"}}>Revised</span>}
+                </div>
+                {expiry&&<div style={{marginTop:3}}>
+                  <span style={{fontSize:11,color:expiryCol}}>{expired?`Expired ${Math.abs(daysLeft!)}d ago`:`Expires in ${daysLeft}d · ${fmtD(expiry)}`}</span>
+                </div>}
               </div>
+              {/* amount */}
+              <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+              <span style={{fontSize:11,color:C.light}}>→</span>
             </div>
           );
         })}
       </div>
     );
   }
+
+  // ── Unsigned Contracts drill-down ───────────────────────
+  if(drill==="contracts"){
+    const unsignedAll=all.filter((pr: any)=>pr.status==="contracted");
+    const sorted=[...unsignedAll].sort((a: any,b: any)=>{
+      const ad=a.date?new Date(a.date).getTime():0;
+      const bd=b.date?new Date(b.date).getTime():0;
+      return ad-bd;
+    });
+    const totalC=unsignedAll.reduce((s: number,pr: any)=>s+pr.amount,0);
+    const hasUrgent=unsignedAll.some((pr: any)=>{
+      const d=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):0;
+      return d>=14;
+    });
+    const daysColor=(d: number)=>d>=14?C.red:d>=7?C.amber:C.muted;
+    return(
+      <div>
+        <DrillBack onClick={()=>setDrill(null)}/>
+        <DrillHeader title="Unsigned Contracts" count={<span style={{color:hasUrgent?C.amber:C.black}}>{fmt(totalC)}</span>}/>
+        {hasUrgent&&<p style={{fontSize:12,color:C.red,marginBottom:16,letterSpacing:"0.03em"}}>One or more contracts waiting 14+ days — follow up now.</p>}
+        {!hasUrgent&&<div style={{marginBottom:16}}/>}
+        {sorted.length===0&&<p style={{fontSize:12,color:C.muted}}>No unsigned contracts.</p>}
+        {sorted.map((pr: any,i: number)=>{
+          const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+          const col=days!==null?daysColor(days):C.muted;
+          return(
+            <div key={i} onClick={()=>goToProject(pr.cName,pr.qd?.qNo)} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.rule}`,gap:10,cursor:"pointer",background:days!==null&&days>=14?"rgba(192,133,122,0.04)":undefined}}>
+              {/* days waiting */}
+              <span style={{fontSize:12,color:col,flexShrink:0,minWidth:32,fontWeight:"500"}}>{days!==null?`${days}d`:"—"}</span>
+              {/* info */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:13,color:C.black,fontWeight:"500"}}>{pr.cName}</span>
+                  <span style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:isMobile?100:220}}>{pr.name}</span>
+                </div>
+                <span style={{fontSize:11,color:col,marginTop:2,display:"block"}}>{days!==null&&days>=14?"Overdue for signature":days!==null&&days>=7?"Waiting a while":"Sent "+fmtD(pr.date)}</span>
+              </div>
+              {/* amount */}
+              <span style={{fontFamily:SERIF,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+              <span style={{fontSize:11,color:C.light}}>→</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const unsignedC=all.filter((pr: any)=>pr.status==="contracted");
   return(
     <div>
       <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Dashboard</h2>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Total Revenue" count={fmt(rev)} sub={`${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length} paying client${clients.filter((c: any)=>c.projects.some((pr: any)=>pr.paid)).length!==1?"s":""}`}/>
-        <Card label="Outstanding" count={fmt(out)} items={unpaid} warm sub={`${unpaid.length} unpaid invoice${unpaid.length!==1?"s":""}`}/>
+
+        {/* 1 — Revenue */}
+        <Card label="Revenue" count={fmt(rev)} onClick={()=>setDrill("revenue")}
+          sub={<>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>{nowY}</span>
+              <span style={{fontSize:10,color:C.black}}>{fmt(thisYearRev)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>{MO[nowM]} {nowY}</span>
+              <span style={{fontSize:10,color:C.black}}>{fmt(thisMonthRev)}</span>
+            </div>
+          </>}
+        />
+
+        {/* 2 — Invoices */}
+        <Card label="Invoices" count={unpaid.length>0?<span style={{color:C.amber}}>{unpaid.length} unpaid</span>:0} onClick={()=>setDrill("invoices")}
+          sub={<>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.amber}}>Unpaid · {unpaid.length}</span>
+              <span style={{fontSize:10,color:C.amber}}>{fmt(out)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:10,color:C.muted}}>Paid · {paid.length}</span>
+              <span style={{fontSize:10,color:C.muted}}>{fmt(rev)}</span>
+            </div>
+          </>}
+        />
+
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label={`${nowY} Revenue`} count={fmt(thisYearRev)} sub={`${thisYearPaid.length} paid project${thisYearPaid.length!==1?"s":""}`} onClick={()=>setDrill("year")}/>
-        <Card label={`${MO[nowM]} Revenue`} count={fmt(thisMonthRev)} sub={`${thisMonthPaid.length} paid project${thisMonthPaid.length!==1?"s":""}`} onClick={()=>setDrill("month")}/>
+
+        {/* 3 — Open Quotes */}
+        <Card label="Open Quotes" count={fmt(openQ.reduce((s: number,pr: any)=>s+pr.amount,0))} warm={openQ.length>0} onClick={()=>setDrill("quotes")}
+          sub={<>
+            {openQ.length===0&&<p style={{fontSize:10,color:C.light,margin:0}}>—</p>}
+            <p style={{fontSize:9.5,color:C.muted,margin:"0 0 4px"}}>{openQ.length} quote{openQ.length!==1?"s":""}</p>
+            {[...openQ].sort((a: any,b: any)=>{const ae=a.qd?.validUntil?new Date(a.qd.validUntil).getTime():Infinity;const be=b.qd?.validUntil?new Date(b.qd.validUntil).getTime():Infinity;return ae-be;}).slice(0,3).map((pr: any,i: number)=>{
+              const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+              const col=days!==null&&days>=14?C.red:days!==null&&days>=7?C.amber:C.light;
+              return(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                  <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{pr.cName}</span>
+                  {days!==null&&<span style={{fontSize:9.5,color:col,fontWeight:days>=7?"500":"normal"}}>{days}d</span>}
+                </div>
+              );
+            })}
+            {openQ.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{openQ.length-3} more</p>}
+          </>}
+        />
+
+        {/* 4 — Unsigned Contracts */}
+        {(()=>{
+          const hasUrgentC=unsignedC.some((pr: any)=>pr.date&&Math.floor((Date.now()-new Date(pr.date).getTime())/86400000)>=14);
+          const totalUC=unsignedC.reduce((s: number,pr: any)=>s+pr.amount,0);
+          return(
+            <div onClick={()=>setDrill("contracts")} style={{border:`1px solid ${hasUrgentC?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",cursor:"pointer",background:hasUrgentC?C.amberBg:undefined}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>Unsigned Contracts</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:unsignedC.length>0?C.black:C.light}}>{fmt(totalUC)}</span>
+              </div>
+              {unsignedC.length===0&&<p style={{fontSize:10,color:C.light,margin:0}}>—</p>}
+              <p style={{fontSize:9.5,color:C.muted,margin:"0 0 4px"}}>{unsignedC.length} contract{unsignedC.length!==1?"s":""}</p>
+              {[...unsignedC].sort((a: any,b: any)=>(a.date||"").localeCompare(b.date||"")).slice(0,3).map((pr: any,i: number)=>{
+                const days=pr.date?Math.floor((Date.now()-new Date(pr.date).getTime())/86400000):null;
+                const col=days!==null&&days>=14?C.red:days!==null&&days>=7?C.amber:C.light;
+                return(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                    <span style={{fontSize:10,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{pr.cName}</span>
+                    {days!==null&&<span style={{fontSize:9.5,color:col,fontWeight:days>=7?"500":"normal"}}>{days}d</span>}
+                  </div>
+                );
+              })}
+              {unsignedC.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{unsignedC.length-3} more</p>}
+            </div>
+          );
+        })()}
+
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Open Quotes" count={openQ.length} items={openQ} warm/>
-        <Card label="Active Projects" count={activeProjects.length} sub={`${fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} in progress`} items={activeProjects} onClick={()=>setDrill("projects")}/>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:9,marginBottom:9}}>
-        <Card label="Unpaid Invoices" count={unpaid.length} items={unpaid} warm/>
-        <Card label="License Tracker" count={allLicenses.length} sub={`${allLicenses.length} active license${allLicenses.length!==1?"s":""} tracked`} onClick={()=>setDrill("license")}/>
+
+        {/* 5 — Active Projects */}
+        <Card label="Active Projects" count={fmt(activeProjects.reduce((s: number,pr: any)=>s+pr.amount,0))} onClick={()=>setDrill("projects")}
+          sub={<>
+            <p style={{fontSize:10,color:C.muted,margin:"0 0 6px"}}>{activeProjects.length} project{activeProjects.length!==1?"s":""} in progress</p>
+            {activeProjects.slice(0,3).map((pr: any,i: number)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <span style={{fontSize:10.5,color:C.muted}}>{pr.cName}</span>
+                  <span style={{fontSize:9.5,color:C.light,display:"block"}}>{pr.name}</span>
+                </div>
+                <span style={{fontSize:10.5,flexShrink:0,marginLeft:8}}>{fmt(pr.amount)}</span>
+              </div>
+            ))}
+            {activeProjects.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{activeProjects.length-3} more</p>}
+          </>}
+        />
+
+        {/* 6 — License Tracker */}
+        {(()=>{
+          const actionedStatuses=["ignored","takendown","renewal"];
+          const needsAtt=(r: any)=>!actionedStatuses.includes(licenseActions[r.key]||"");
+          const attLics=allLicenses.filter((r: any)=>needsAtt(r));
+          const urgentCard=attLics.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<=7;});
+          const expiredCard=urgentCard.filter((r: any)=>{const d=dLeft(r.end);return d!==null&&d<0;});
+          const allClear=attLics.length===0;
+          const hasRed=expiredCard.length>0;
+          const hasAmber=!hasRed&&urgentCard.length>0;
+          const cardBorder=hasRed?C.redBorder:hasAmber?C.amberBorder:C.rule;
+          const cardBg=hasRed?C.redBg:hasAmber?C.amberBg:undefined;
+          // show top 3 needing attention sorted soonest first
+          const toShow=[...attLics].sort((a: any,b: any)=>(dLeft(a.end)??999999)-(dLeft(b.end)??999999)).slice(0,3);
+          return(
+            <div onClick={()=>setDrill("license")} style={{border:`1px solid ${cardBorder}`,borderRadius:2,padding:"13px 15px",cursor:"pointer",background:cardBg}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+                <span style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>License Tracker</span>
+                <span style={{fontFamily:SERIF,fontSize:20,color:allClear?C.green:hasRed?C.red:hasAmber?C.amber:C.black}}>{allClear?"All clear":attLics.length}</span>
+              </div>
+              {allClear&&<p style={{fontSize:10,color:C.green,margin:0}}>No action needed</p>}
+              {!allClear&&<>
+                {toShow.map((r: any,i: number)=>{
+                  const d=dLeft(r.end);
+                  const isExp=d!==null&&d<0;
+                  const isSoon=d!==null&&d>=0&&d<=7;
+                  const col=isExp?C.red:isSoon?C.amber:C.muted;
+                  const txt=isExp?`+${Math.abs(d!)}d`:d!==null?`${d}d`:"—";
+                  return(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"4px 0",borderTop:`1px solid ${C.rule}`}}>
+                      <div style={{minWidth:0,flex:1}}>
+                        <span style={{fontSize:10,color:C.muted}}>{r.cName}</span>
+                        <span style={{fontSize:9,color:C.light,marginLeft:5}}>{r.type==="excl"?"Excl.":"Usage"}</span>
+                      </div>
+                      <span style={{fontSize:9.5,color:col,fontWeight:isExp||isSoon?"500":"normal",flexShrink:0}}>{txt}</span>
+                    </div>
+                  );
+                })}
+                {attLics.length>3&&<p style={{fontSize:9.5,color:C.light,margin:"4px 0 0"}}>+{attLics.length-3} more</p>}
+              </>}
+            </div>
+          );
+        })()}
+
       </div>
     </div>
   );
@@ -2705,17 +3621,19 @@ const initClients=[
 
 function AppInner({initialClients,initialRc,initialSettings}: {initialClients: any[], initialRc: any, initialSettings: any}) {
   const [authed,setAuthed]=useState(()=>sessionStorage.getItem("lh_authed")==="1");
-  const doAuth=(r: string)=>{sessionStorage.setItem("lh_authed","1");setRole(r);setAuthed(true);};
-  const doLogout=()=>{sessionStorage.removeItem("lh_authed");setAuthed(false);setNav(0);setMenuOpen(false);};
-  const [role,setRole]=useState<"manager"|"creator">("manager");
+  const doAuth=(r: string)=>{sessionStorage.setItem("lh_authed","1");sessionStorage.setItem("lh_role",r);setRole(r as "manager"|"creator");setAuthed(true);};
+  const doLogout=()=>{sessionStorage.removeItem("lh_authed");sessionStorage.removeItem("lh_role");setAuthed(false);setNav(0);setMenuOpen(false);};
+  const [role,setRole]=useState<"manager"|"creator">(()=>(sessionStorage.getItem("lh_role")||"manager") as "manager"|"creator");
   const [nav,setNav]=useState(0);
   const [dashReset,setDashReset]=useState(0);
-  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);};
+  const goToDash=()=>{setNav(0);setDashReset(p=>p+1);setDashDrill(null);};
   const [prefill,setPrefill]=useState<any>(null);
   const [clientSelReset,setClientSelReset]=useState(0);
   const [clientSel,setClientSel]=useState<string|null>(null);
   const [pendingClientName,setPendingClientName]=useState<string|null>(null);
   const [pendingProjectQNo,setPendingProjectQNo]=useState<string|null>(null);
+  const [fromDrill,setFromDrill]=useState<string|null>(null);
+  const [dashDrill,setDashDrill]=useState<null|"revenue"|"month"|"license"|"projects"|"invoices"|"quotes"|"contracts">(null);
   const [rc,setRc]=useState(initialRc);
   const [clients,setClients]=useState(initialClients);
   const [settings,setSettings]=useState({...SETTINGS_DEFAULT,...initialSettings});
@@ -2737,7 +3655,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   },[rc,clients,settings]);
 
   if(!authed)return<Auth onAuth={(r)=>doAuth(r)} currentPass={settings.password||PASS}/>;
-  if(role==="creator")return<CreatorPage settings={settings} logout={()=>{doLogout();}}/>;
+  if(role==="creator")return<CreatorPage settings={settings} logout={()=>{doLogout();}} clients={clients} setClients={setClients}/>;
 
   const handleSave=(q: any,brand: string,contact: string,isRev: boolean,revN: number,projName?: string,isAmend?: boolean,amendN?: number,origLines?: any[])=>{
     const ex=clients.find((c: any)=>c.name.toLowerCase()===brand.toLowerCase());
@@ -2777,7 +3695,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     const items=card.sections.filter((s: any)=>isSingle(s.t)).flatMap((s: any)=>s.items);
     const prefillLines=(q?.lines||[]).map((ln: any)=>({
       id:uid(),ck:q?.ctab==="complete"?"influencer":(q?.ctab||"influencer"),
-      ii:Math.max(0,items.findIndex((it: any)=>it.n===ln.name)),
+      ii:Math.max(0,items.findIndex((it: any)=>it.id===ln.id)),
       qty:ln.qty||1,neg:ln.up?String(ln.up):"",vol:false,ui:1,ei:0,ao:[],cLabel:"",cAmt:""
     }));
     setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isRev:true,revN:(q?.rev||0)+1,ctab:q?.ctab||"influencer",lines:prefillLines,origLines:q?.lines||[]});
@@ -2792,7 +3710,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   };
 
   const logout=()=>doLogout();
-  const NAV=["Dashboard","Clients","Calculator","Rate Card"];
+  const NAV=["Dashboard","Clients","Projects","Calculator","Rate Card"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
@@ -2804,7 +3722,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
               <div style={{display:"flex"}}>
-                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i===4?7:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
               </div>
               <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
                 {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
@@ -2842,17 +3760,19 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i===4?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
           </div>
         )}
       </div>
       <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
-        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} settings={settings} resetKey={dashReset}/>}
-        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={setNav} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
+        {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} setFromDrill={setFromDrill} settings={settings} resetKey={dashReset} drill={dashDrill} setDrill={setDashDrill}/>}
+        {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={(n: number)=>{if(n!==1)setFromDrill(null);setNav(n);}} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
+        {nav===1&&fromDrill&&<button onClick={()=>{setFromDrill(null);setNav(0);}} style={{position:"fixed",bottom:24,right:24,zIndex:999,background:C.bg,border:`1px solid ${C.rule}`,borderRadius:20,padding:"7px 18px",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.06em",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.10)",whiteSpace:"nowrap"}}>← Active Projects</button>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
         {nav===7&&<RateCard rc={rc} setRc={setRc} settings={settings}/>}
+        {nav===8&&<div style={{paddingTop:20}}><p style={{fontSize:12,color:C.light,textAlign:"center" as const}}>Projects — coming soon.</p></div>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
@@ -2861,32 +3781,1194 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   );
 }
 
-// ─── CREATOR PAGE (placeholder) ───────────────────────────
-function CreatorPage({settings,logout}: {settings: any,logout:()=>void}) {
-  const [menuOpen,setMenuOpen]=useState(false);
-  const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
+// ─── CREATOR WORKSPACE ────────────────────────────────────
+const WS_STATUSES=["Not started","Created","Reviewed","Delivered","Posted"];
+
+function getWsCategory(lineName: string): string {
+  const n=(lineName||"").toLowerCase();
+  if(n.includes("hero")||n.includes("editorial")||n.includes("photo story")||n.includes("mini set")||n.includes("hero image"))return"Editorial";
+  if(n.includes("ugc")||n.includes("campaign video"))return"UGC";
+  return"Influencer";
+}
+
+function wsStatusIcon(st: string){
+  if(st==="Created")return{icon:"",color:C.black};
+  if(st==="Reviewed")return{icon:"",color:C.amber};
+  if(st==="Delivered")return{icon:"",color:C.green};
+  if(st==="Posted")return{icon:"",color:C.green};
+  return{icon:"",color:C.light};
+}
+
+function wsCatPill(cat: string){
+  if(cat==="UGC")return{bg:"#fdf5ee",border:"#e8d8c8",color:C.amber};
+  if(cat==="Editorial")return{bg:"#f0f5f0",border:"#b8d4b8",color:C.green};
+  return{bg:"#f0f0f5",border:"#c8c8e0",color:"#6a6aaa"};
+}
+
+function getWsItems(clients: any[]): any[] {
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+  const items: any[]=[];
+  clients.forEach((c: any)=>{
+    c.projects.filter((pr: any)=>pr.status==="production").forEach((pr: any)=>{
+      (pr.qd?.lines||[]).forEach((ln: any,li: number)=>{
+        if(!ln.name)return;
+        if(skip.some(s=>ln.name.toLowerCase().includes(s)))return;
+        const qty=parseInt(ln.qty)||1;
+        for(let q=0;q<qty;q++){
+          const id=`${pr.id}_ln${li}_q${q}`;
+          items.push({
+            id,
+            name:(pr.workspaceNames||{})[id]||ln.name+(qty>1?` ${q+1}`:""),
+            defaultName:ln.name+(qty>1?` ${q+1}`:""),
+            lineNote:ln.note||"",
+            clientId:c.id,
+            clientName:c.name,
+            projectId:pr.id,
+            projectName:pr.name,
+            deadline:pr.deliveryDate||null,
+            category:getWsCategory(ln.name),
+            status:(pr.workspaceStatus||{})[id]||"Not started",
+            plannerDate:(pr.workspacePlanner||{})[id]||null,
+            notes:(pr.workspaceNotes||{})[id]||"",
+          });
+        }
+      });
+    });
+  });
+  return items;
+}
+
+function getCatProgress(pr: any, clients: any[]): Record<string,{total:number,created:number,posted:number,allCreated:boolean}> {
+  const cl=clients.find((c:any)=>c.projects.some((p:any)=>p.id===pr.id));
+  if(!cl)return{};
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+  const cats: Record<string,{total:number,created:number,posted:number,allCreated:boolean}>={};
+  (pr.qd?.lines||[]).forEach((ln:any,li:number)=>{
+    if(!ln.name)return;
+    if(skip.some((s:string)=>ln.name.toLowerCase().includes(s)))return;
+    const qty=parseInt(ln.qty)||1;
+    for(let q=0;q<qty;q++){
+      const id=`${pr.id}_ln${li}_q${q}`;
+      const cat=getWsCategory(ln.name);
+      const st=(pr.workspaceStatus||{})[id]||"Not started";
+      if(!cats[cat])cats[cat]={total:0,created:0,posted:0,allCreated:false};
+      cats[cat].total++;
+      if(["Created","Reviewed","Delivered","Posted"].includes(st))cats[cat].created++;
+      if(st==="Posted")cats[cat].posted++;
+    }
+  });
+  Object.keys(cats).forEach(k=>{cats[k].allCreated=cats[k].total>0&&cats[k].created===cats[k].total;});
+  return cats;
+}
+
+function isThisWeek(d: string|null): boolean {
+  if(!d)return false;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const day=now.getDay();
+  const mon=new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1));
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const dt=new Date(d); dt.setHours(0,0,0,0);
+  return dt>=mon&&dt<=sun;
+}
+
+function isOverdue(d: string|null): boolean {
+  if(!d)return false;
+  const now=new Date(); now.setHours(0,0,0,0);
+  return new Date(d)<now;
+}
+
+function fmtDeadline(d: string|null): string {
+  if(!d)return"No deadline";
+  return fmtD(d);
+}
+
+function plannerDayLabel(d: string|null): string|null {
+  if(!d)return null;
+  const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  return days[new Date(d).getDay()];
+}
+
+function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clients:any[],setClients:any}) {
+  const [group,setGroup]=useState<"Urgency"|"Client"|"Category"|"Status">("Urgency");
+  const [search,setSearch]=useState("");
+  const [collapsed,setCollapsed]=useState<Record<string,boolean>>({});
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [editingVal,setEditingVal]=useState("");
+  const [noteId,setNoteId]=useState<string|null>(null);
+  const [noteVal,setNoteVal]=useState("");
+  const [confirmDelete,setConfirmDelete]=useState<{id:string,clientId:string,projectId:string}|null>(null);
+  const [pickerOpen,setPickerOpen]=useState<string|null>(null);
+  const [snackbar,setSnackbar]=useState<{msg:string,undo:()=>void}|null>(null);
+  const snackTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+
+  const allItems=getWsItems(clients);
+
+  const filtered=search
+    ?allItems.filter(it=>it.name.toLowerCase().includes(search.toLowerCase())||it.clientName.toLowerCase().includes(search.toLowerCase()))
+    :allItems;
+
+  // ── mutators ──
+  const showSnackbar=(msg: string,undo: ()=>void)=>{
+    if(snackTimerRef.current)clearTimeout(snackTimerRef.current);
+    setSnackbar({msg,undo});
+    snackTimerRef.current=setTimeout(()=>setSnackbar(null),5000);
+  };
+
+  const setItemStatus=(item: any,next: string)=>{
+    const prev=item.status;
+    setClients((p: any[])=>p.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceStatus:{...(pr.workspaceStatus||{}),[item.id]:next},
+      workspaceStatusHistory:{...(pr.workspaceStatusHistory||{}),[item.id]:[...((pr.workspaceStatusHistory||{})[item.id]||[]),{status:next,date:today()}]}
+    })}));
+    setPickerOpen(null);
+    showSnackbar(`${item.name} → ${next}`,()=>{
+      setClients((p: any[])=>p.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+        workspaceStatus:{...(pr.workspaceStatus||{}),[item.id]:prev}
+      })}));
+      setSnackbar(null);
+    });
+  };
+
+  const saveName=(item: any,val: string)=>{
+    const trimmed=val.trim();
+    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceNames:{...(pr.workspaceNames||{}),[item.id]:trimmed||item.defaultName}
+    })}));
+    setEditingId(null);
+  };
+
+  const saveNote=(item: any,val: string)=>{
+    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceNotes:{...(pr.workspaceNotes||{}),[item.id]:val.trim()}
+    })}));
+    setNoteId(null);
+  };
+
+  const deleteItem=(item: any)=>{
+    setClients((prev: any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceDeleted:[...((pr.workspaceDeleted||[])),item.id]
+    })}));
+    setConfirmDelete(null);
+  };
+
+
+  // Filter out deleted items
+  const activeItems=filtered.filter(it=>{
+    const cl=clients.find((c: any)=>c.id===it.clientId);
+    const pr=cl?.projects.find((p: any)=>p.id===it.projectId);
+    return!(pr?.workspaceDeleted||[]).includes(it.id);
+  });
+
+  // ── grouping ──
+  type GroupDef={key:string,label:string,items:any[]};
+  let groups: GroupDef[]=[];
+
+  if(group==="Urgency"){
+    const overdue=activeItems.filter(it=>!["Delivered","Posted"].includes(it.status)&&isOverdue(it.deadline));
+    const week=activeItems.filter(it=>!["Delivered","Posted"].includes(it.status)&&!isOverdue(it.deadline)&&isThisWeek(it.deadline));
+    const later=activeItems.filter(it=>!["Delivered","Posted"].includes(it.status)&&!isOverdue(it.deadline)&&!isThisWeek(it.deadline));
+    const done=activeItems.filter(it=>["Delivered","Posted"].includes(it.status));
+    groups=[
+      {key:"overdue",label:`OVERDUE`,items:overdue},
+      {key:"week",label:`DUE THIS WEEK`,items:week},
+      {key:"later",label:`LATER`,items:later},
+      {key:"done",label:`DELIVERED`,items:done},
+    ];
+  } else if(group==="Client"){
+    const byClient: Record<string,any[]>={};
+    activeItems.forEach(it=>{
+      const k=`${it.clientName}|${it.projectId}|${it.projectName}`;
+      if(!byClient[k])byClient[k]=[];
+      byClient[k].push(it);
+    });
+    groups=Object.entries(byClient).map(([k,items])=>{
+      const [cn,,pn]=k.split("|");
+      return{key:k,label:`${cn.toUpperCase()} — ${pn}`,items};
+    });
+  } else if(group==="Category"){
+    ["Influencer","UGC","Editorial"].forEach(cat=>{
+      const items=activeItems.filter(it=>it.category===cat);
+      groups.push({key:cat,label:cat.toUpperCase(),items});
+    });
+  } else {
+    WS_STATUSES.forEach(st=>{
+      const items=activeItems.filter(it=>it.status===st);
+      groups.push({key:st,label:st.toUpperCase(),items});
+    });
+  }
+
+  const toggleGroup=(key: string)=>setCollapsed(p=>({...p,[key]:!p[key]}));
+
+  const deadlineColor=(item: any)=>{
+    if(isOverdue(item.deadline))return C.red;
+    if(isThisWeek(item.deadline))return C.amber;
+    return C.muted;
+  };
+
   return(
-    <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
-      <div style={{borderBottom:`1px solid ${C.rule}`,padding:"0 20px",display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",minHeight:56,position:"sticky",top:0,background:C.bg,zIndex:100}}>
-        <div/>
-        <AppLogo/>
-        <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <div style={{position:"relative",display:"flex",alignItems:"center"}}>
-            {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
-            <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",flexShrink:0,position:"relative",zIndex:200}}>{initials}</button>
-            {menuOpen&&<div style={{position:"absolute",right:0,top:"calc(100% + 8px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
-              <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
-                <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
-                <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>Creator · Private</p>
+    <div>
+      {/* Header */}
+      <div style={{marginBottom:16}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 14px"}}>Workspace</h2>
+        {/* Group toggles */}
+        <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:12}}>
+          {(["Urgency","Client","Category","Status"] as const).map(g=>(
+            <button key={g} onClick={()=>setGroup(g)}
+              style={{padding:"5px 14px",border:`1px solid ${group===g?C.black:C.rule}`,borderRadius:2,background:group===g?C.black:"none",color:group===g?C.white:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:10,letterSpacing:"0.08em"}}>
+              {g}
+            </button>
+          ))}
+        </div>
+        {/* Search */}
+        <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}
+          style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}/>
+      </div>
+
+      {/* Empty state */}
+      {allItems.length===0&&(
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const,marginTop:20}}>
+          <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
+          <p style={{fontSize:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
+        </div>
+      )}
+
+      {/* Groups */}
+      {groups.filter(g=>g.items.length>0||(g.key==="overdue"&&group==="Urgency")).map(g=>{
+        const isOpen=!collapsed[g.key];
+        const isOverdueGroup=g.key==="overdue";
+        const isDoneGroup=g.key==="done";
+        return(
+          <div key={g.key} style={{marginBottom:52}}>
+            {/* Group header */}
+            <div onClick={()=>toggleGroup(g.key)}
+              style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,cursor:"pointer",userSelect:"none" as const}}>
+              <span style={{fontSize:11,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:"600"}}>{g.label}</span>
+              <span style={{fontSize:11,color:isOverdueGroup&&g.items.length>0?C.red:C.muted}}>{g.items.length}</span>
+              <span style={{fontSize:11,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
+            </div>
+            <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
+
+            {isOpen&&g.items.map(item=>{
+              const catStyle=wsCatPill(item.category);
+              const isEditing=editingId===item.id;
+              const isNoting=noteId===item.id;
+              const dlColor=deadlineColor(item);
+              const dayTag=plannerDayLabel(item.plannerDate);
+              const isDone=["Delivered","Posted"].includes(item.status);
+              const isCreated=["Created","Reviewed","Delivered","Posted"].includes(item.status);
+              const isPosted=item.status==="Posted";
+
+              // category drives checkbox shape
+              const showPost=item.category==="Influencer";
+
+              // manager status line (read from workspaceStatus by checking history)
+              const mgrStatus=(()=>{
+                const cl=clients.find((c:any)=>c.id===item.clientId);
+                const pr=cl?.projects.find((p:any)=>p.id===item.projectId);
+                const hist=((pr?.workspaceStatusHistory||{})[item.id]||[]);
+                const reviewedEntry=hist.find((h:any)=>h.status==="Reviewed");
+                const deliveredEntry=hist.find((h:any)=>h.status==="Delivered");
+                if(deliveredEntry)return{label:"delivered",date:deliveredEntry.date,color:C.green};
+                if(reviewedEntry)return{label:"reviewed",date:reviewedEntry.date,color:C.amber};
+                return null;
+              })();
+
+              const toggleCreated=()=>setItemStatus(item,isCreated?"Not started":"Created");
+              const togglePosted=()=>{if(!isCreated)return;setItemStatus(item,isPosted?"Created":"Posted");};
+
+              const cbBox=(checked:boolean,color:string)=>({
+                width:isMobile?26:20,height:isMobile?26:20,borderRadius:3,
+                border:`1.5px solid ${checked?color:C.rule}`,
+                background:checked?color:"transparent",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                cursor:"pointer",flexShrink:0,
+              });
+
+              return(
+                <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.6:1}}>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:isMobile?"12px 0":"9px 0"}}>
+
+                    {/* brand */}
+                    <span style={{fontSize:isMobile?13:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
+                      {item.clientName.toUpperCase()}
+                    </span>
+
+                    {/* name + category tag + lineNote + user note + manager status */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {isEditing?(
+                          <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
+                            onBlur={()=>saveName(item,editingVal)}
+                            onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
+                            placeholder={item.defaultName}
+                            style={{fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",flex:1,minWidth:0}}/>
+                        ):(
+                          <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
+                            style={{fontSize:13,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                            {item.name}
+                          </span>
+                        )}
+                        <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
+                          {item.category}
+                        </span>
+                      </div>
+                      {item.lineNote&&<span style={{fontSize:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
+                      {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
+                      {!item.notes&&!isNoting&&!isDone&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:isMobile?12:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
+                      {isCreated&&mgrStatus&&<span style={{fontSize:10,color:mgrStatus.color,display:"block",marginTop:2,letterSpacing:"0.02em"}}>{mgrStatus.label} · {fmtD(mgrStatus.date)}</span>}
+                    </div>
+
+                    {/* day tag */}
+                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0,alignSelf:"flex-start" as const,marginTop:2}}>{dayTag}</span>}
+
+                    {/* right column: deadline + checkboxes aligned */}
+                    <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4,flexShrink:0}}>
+                      <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400"}}>
+                        {fmtDeadline(item.deadline)}
+                      </span>
+                      <div style={{display:"flex",gap:isMobile?4:6}}>
+                        {/* Created */}
+                        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                          <div onClick={toggleCreated} style={cbBox(isCreated,C.black)}>
+                            {isCreated&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                          </div>
+                          {!isMobile&&<span style={{fontSize:9,color:isCreated?C.muted:C.light,letterSpacing:"0.02em"}}>created</span>}
+                        </div>
+                        {/* Post — Influencer only */}
+                        {showPost&&(
+                          <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                            <div onClick={togglePosted} style={{...cbBox(isPosted,C.green),cursor:isCreated?"pointer":"default",opacity:isCreated?1:0.35}}>
+                              {isPosted&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                            </div>
+                            {!isMobile&&<span style={{fontSize:9,color:isPosted?C.muted:C.green,letterSpacing:"0.02em"}}>post</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Note inline input */}
+            {isOpen&&g.items.map(item=>noteId===item.id&&(
+              <div key={`note-${item.id}`} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 0 8px 32px",borderBottom:`1px solid ${C.rule}`}}>
+                <input autoFocus placeholder="Add a note…" value={noteVal} onChange={e=>setNoteVal(e.target.value)}
+                  onBlur={()=>saveNote(item,noteVal)}
+                  onKeyDown={e=>{if(e.key==="Enter")saveNote(item,noteVal);if(e.key==="Escape"){setNoteId(null);}}}
+                  maxLength={120}
+                  style={{flex:1,fontFamily:SANS,fontSize:11,color:C.black,border:"none",borderBottom:`1px solid ${C.rule}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
+                <button onClick={()=>saveNote(item,noteVal)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:"0.06em",padding:0}}>Save</button>
+                <button onClick={()=>setNoteId(null)} style={{fontSize:9,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0}}>✕</button>
               </div>
-              <button onClick={()=>{setMenuOpen(false);logout();}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
-            </div>}
+            ))}
+
           </div>
+        );
+      })}
+
+      {/* Snackbar undo */}
+      {snackbar&&(
+        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:3000,display:"flex",alignItems:"center",gap:16,background:C.black,color:C.white,borderRadius:2,padding:"10px 18px",fontSize:12,boxShadow:"0 4px 20px rgba(0,0,0,0.18)",whiteSpace:"nowrap" as const}}>
+          <span>{snackbar.msg}</span>
+          <button onClick={snackbar.undo} style={{background:"none",border:"none",cursor:"pointer",color:C.amber,fontFamily:SANS,fontSize:12,fontWeight:"500",padding:0}}>Undo</button>
+        </div>
+      )}
+
+      {/* Confirm Delete Dialog */}
+      {confirmDelete&&createPortal(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setConfirmDelete(null)}>
+          <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",maxWidth:320,width:"90%",boxShadow:"0 4px 24px rgba(0,0,0,0.15)"}}
+            onClick={e=>e.stopPropagation()}>
+            <p style={{fontSize:13,color:C.black,margin:"0 0 8px",fontFamily:SERIF}}>Delete this deliverable?</p>
+            <p style={{fontSize:11,color:C.muted,margin:"0 0 20px"}}>Use only if this item was dropped from the contract informally. This cannot be undone.</p>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setConfirmDelete(null)} style={{padding:"6px 16px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.muted}}>Cancel</button>
+              <button onClick={()=>deleteItem(confirmDelete)}
+                style={{padding:"6px 16px",border:`1px solid ${C.red}`,borderRadius:2,background:C.red,cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.white}}>Delete</button>
+            </div>
+          </div>
+        </div>,document.body
+      )}
+    </div>
+  );
+}
+
+// ─── CREATOR PLANNER ──────────────────────────────────────
+function CreatorPlanner({isMobile,clients,setClients}: {isMobile:boolean,clients:any[],setClients:any}) {
+  const [weekOffset,setWeekOffset]=useState(0);
+  const [selectedId,setSelectedId]=useState<string|null>(null);
+  const [overlayId,setOverlayId]=useState<string|null>(null);
+
+  const COLS=[{label:"Wed",day:3},{label:"Thu",day:4},{label:"Fri",day:5},{label:"Sat",day:6},{label:"Sun",day:0}];
+
+  const getWed=(offset:number)=>{
+    const d=new Date();d.setHours(0,0,0,0);
+    const dow=d.getDay();
+    const diffToWed=((3-dow)+7)%7;
+    d.setDate(d.getDate()+diffToWed+offset*7);
+    return d;
+  };
+  const wed=getWed(weekOffset);
+  const weekDays=COLS.map(col=>{
+    const d=new Date(wed);
+    const diff=((col.day-3)+7)%7;
+    d.setDate(wed.getDate()+diff);
+    return{...col,date:d};
+  });
+  const toDateStr=(d:Date)=>d.toISOString().split("T")[0];
+  const isToday=(d:Date)=>{const t=new Date();return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear();};
+  const isPast=(d:Date)=>{const t=new Date();t.setHours(0,0,0,0);return d<t&&!isToday(d);};
+  const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const s=weekDays[0].date;const e=weekDays[4].date;
+  const weekLabel=s.getMonth()===e.getMonth()?`${s.getDate()}–${e.getDate()} ${MO[e.getMonth()]} ${e.getFullYear()}`:`${s.getDate()} ${MO[s.getMonth()]} – ${e.getDate()} ${MO[e.getMonth()]} ${e.getFullYear()}`;
+  const minOffset=(()=>{const t=new Date();t.setHours(0,0,0,0);const jan1=new Date(t.getFullYear(),0,1);return-Math.ceil((t.getTime()-jan1.getTime())/(7*864e5))-1;})();
+
+  const allItems=getWsItems(clients);
+  const pool=allItems.filter((it:any)=>!it.plannerDate).sort((a:any,b:any)=>{
+    const ao=isOverdue(a.deadline)?0:isThisWeek(a.deadline)?1:2;
+    const bo=isOverdue(b.deadline)?0:isThisWeek(b.deadline)?1:2;
+    return ao-bo;
+  });
+  const itemsForDay=(dateStr:string)=>allItems.filter((it:any)=>it.plannerDate===dateStr);
+
+  const assignDay=(itemId:string,dateStr:string|null)=>{
+    const item=allItems.find((it:any)=>it.id===itemId);
+    if(!item)return;
+    setClients((prev:any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr:any)=>pr.id!==item.projectId?pr:{...pr,
+      workspacePlanner:{...(pr.workspacePlanner||{}),[item.id]:dateStr}
+    })}));
+    setSelectedId(null);
+  };
+
+  const setItemStatus=(item:any,next:string)=>{
+    setClients((prev:any[])=>prev.map(c=>c.id!==item.clientId?c:{...c,projects:c.projects.map((pr:any)=>pr.id!==item.projectId?pr:{...pr,
+      workspaceStatus:{...(pr.workspaceStatus||{}),[item.id]:next},
+      workspaceStatusHistory:{...(pr.workspaceStatusHistory||{}),[item.id]:[...((pr.workspaceStatusHistory||{})[item.id]||[]),{status:next,date:today()}]}
+    })}));
+  };
+
+  const deadlineMarkers=(dateStr:string)=>{
+    const marks:{name:string,color:string}[]=[];
+    clients.forEach((c:any)=>c.projects.filter((pr:any)=>pr.status==="production"&&pr.deliveryDate===dateStr).forEach((pr:any)=>{
+      marks.push({name:c.name,color:isOverdue(pr.deliveryDate)?C.red:isThisWeek(pr.deliveryDate)?C.amber:C.muted});
+    }));
+    return marks;
+  };
+
+  const PlannerCard=({item,inPool,readOnly}:{item:any,inPool:boolean,readOnly:boolean})=>{
+    const cs=wsCatPill(item.category);
+    const catLbl=item.category==="Influencer"?"Collab":item.category;
+    const isDelivered=item.status==="Delivered";
+    const borderCol=isDelivered?C.green:item.status==="Reviewed"?C.amber:item.status==="Finished"?C.black:C.rule;
+    const dlColor=isOverdue(item.deadline)?C.red:isThisWeek(item.deadline)?C.amber:C.muted;
+    const isSelected=selectedId===item.id;
+    const isOverlayOpen=overlayId===item.id;
+    const chkFinished=["Finished","Reviewed","Delivered"].includes(item.status);
+    const chkReviewed=["Reviewed","Delivered"].includes(item.status);
+    const chkDelivered=item.status==="Delivered";
+    const toggleCheck=(box:"Finished"|"Reviewed"|"Delivered")=>{
+      let next:string;
+      if(box==="Finished")next=chkFinished?"Not started":"Finished";
+      else if(box==="Reviewed")next=chkReviewed?"Finished":"Reviewed";
+      else next=chkDelivered?"Reviewed":"Delivered";
+      setItemStatus(item,next);
+    };
+    const cbBox=(checked:boolean,color:string):any=>({width:16,height:16,borderRadius:2,border:`1.5px solid ${checked?color:C.rule}`,background:checked?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:readOnly?"default":"pointer",flexShrink:0});
+    return(
+      <div style={{position:"relative" as const}}>
+        <div onClick={e=>{e.stopPropagation();if(inPool&&isMobile){setSelectedId(isSelected?null:item.id);return;}if(!inPool&&!readOnly){setOverlayId(isOverlayOpen?null:item.id);}}}
+          style={{borderLeft:`3px solid ${borderCol}`,border:`1px solid ${isSelected?C.amber:C.rule}`,borderLeft:`3px solid ${borderCol}`,borderRadius:2,padding:"7px 8px",background:C.bg,opacity:isDelivered?0.55:1,cursor:inPool?(isMobile?"pointer":"grab"):"pointer",width:inPool?"160px":"100%",boxSizing:"border-box" as const,flexShrink:0,outline:isSelected?`2px solid ${C.amber}`:"none"}}>
+          <div style={{fontSize:12,color:isDelivered?C.muted:C.black,textDecoration:isDelivered?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginBottom:3}}>{item.name}</div>
+          <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:3}}>
+            <span style={{fontSize:10,color:C.muted,letterSpacing:"0.04em",textTransform:"uppercase" as const,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.clientName}</span>
+            <span style={{fontSize:9,padding:"1px 5px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{catLbl}</span>
+          </div>
+          {item.deadline&&<div style={{fontSize:10,color:dlColor}}>{fmtD(item.deadline)}</div>}
+        </div>
+        {isOverlayOpen&&!inPool&&!readOnly&&(
+          <div onClick={e=>e.stopPropagation()} style={{position:"absolute" as const,top:0,left:0,right:0,zIndex:20,background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"10px 10px 8px",boxShadow:"0 4px 16px rgba(0,0,0,0.12)"}}>
+            <div style={{fontSize:12,fontWeight:"500",color:C.black,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.name}</div>
+            <div style={{fontSize:10,color:C.muted,marginBottom:8}}>{item.clientName} · {fmtD(item.deadline)}</div>
+            <div style={{display:"flex",gap:8,marginBottom:8}}>
+              {(["Finished","Reviewed","Delivered"] as const).map(box=>{
+                const checked=box==="Finished"?chkFinished:box==="Reviewed"?chkReviewed:chkDelivered;
+                const color=box==="Delivered"?C.green:box==="Reviewed"?C.amber:C.black;
+                const canCheck=box==="Finished"?true:box==="Reviewed"?chkFinished:chkReviewed;
+                return(
+                  <div key={box} style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2,opacity:canCheck?1:0.4}}>
+                    <div onClick={()=>canCheck&&toggleCheck(box)} style={cbBox(checked,color)}>
+                      {checked&&<span style={{fontSize:9,color:C.white,lineHeight:1}}>✓</span>}
+                    </div>
+                    <span style={{fontSize:8,color:C.muted}}>{box}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={()=>{assignDay(item.id,null);setOverlayId(null);}} style={{fontSize:9,color:C.muted,background:"none",border:`1px solid ${C.rule}`,borderRadius:2,padding:"3px 8px",cursor:"pointer",fontFamily:"sans-serif",letterSpacing:"0.04em",width:"100%"}}>Remove from day</button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if(allItems.length===0)return(
+    <div>
+      <h2 style={{fontFamily:"Georgia,serif",fontSize:24,fontWeight:"normal",margin:"0 0 20px"}}>Planner</h2>
+      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const}}>
+        <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
+        <p style={{fontSize:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
+      </div>
+    </div>
+  );
+
+  return(
+    <div onClick={()=>{setOverlayId(null);if(!isMobile)setSelectedId(null);}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <h2 style={{fontFamily:"Georgia,serif",fontSize:24,fontWeight:"normal",margin:0}}>Planner</h2>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={()=>setWeekOffset(0)} style={{padding:"4px 10px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:"sans-serif",fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const}}>Today</button>
+          <button onClick={()=>setWeekOffset(w=>Math.max(minOffset,w-1))} disabled={weekOffset<=minOffset} style={{width:26,height:26,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:weekOffset<=minOffset?"default":"pointer",color:weekOffset<=minOffset?C.light:C.muted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <span style={{fontSize:11,color:C.muted,minWidth:isMobile?100:160,textAlign:"center" as const}}>{weekLabel}</span>
+          <button onClick={()=>setWeekOffset(w=>w+1)} style={{width:26,height:26,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",color:C.muted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
       </div>
-      <div style={{maxWidth:840,margin:"0 auto",padding:"80px 20px",textAlign:"center"}}>
-        <p style={{fontFamily:SERIF,fontSize:28,fontWeight:"normal",color:C.black,margin:"0 0 14px"}}>Creator View</p>
-        <p style={{fontSize:11,color:C.muted,letterSpacing:"0.03em",lineHeight:1.7}}>This space is being built.<br/>Check back soon.</p>
+
+      <div style={{marginBottom:14}}>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Unscheduled{pool.length>0?` (${pool.length})`:""}</p>
+        {pool.length===0
+          ?<p style={{fontSize:11,color:C.light}}>All deliverables scheduled.</p>
+          :<div style={{display:"flex",gap:8,overflowX:"auto" as const,paddingBottom:6}}>
+            {pool.map((item:any)=><PlannerCard key={item.id} item={item} inPool={true} readOnly={false}/>)}
+          </div>
+        }
+      </div>
+
+      {isMobile&&selectedId&&<p style={{fontSize:11,color:C.amber,margin:"0 0 8px"}}>Tap a day to schedule</p>}
+
+      <div style={{display:"grid",gridTemplateColumns:`repeat(${COLS.length},minmax(0,1fr))`,gap:1,background:C.rule,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+        {weekDays.map((col,i)=>{
+          const dateStr=toDateStr(col.date);
+          const dayItems=itemsForDay(dateStr);
+          const marks=deadlineMarkers(dateStr);
+          const past=isPast(col.date);
+          return(
+            <div key={i} onClick={e=>{e.stopPropagation();if(isMobile&&selectedId)assignDay(selectedId,dateStr);}}
+              style={{background:C.bg,minHeight:isMobile?100:360,cursor:isMobile&&selectedId?"pointer":"default"}}>
+              <div style={{padding:"8px 6px 6px",borderBottom:`1px solid ${C.rule}`,textAlign:"center" as const,background:isToday(col.date)?"rgba(26,26,26,0.04)":C.bg}}>
+                <p style={{fontSize:9,color:isToday(col.date)?C.black:past?C.light:C.muted,letterSpacing:"0.1em",textTransform:"uppercase" as const,margin:"0 0 2px",fontWeight:isToday(col.date)?"600":"400"}}>{col.label}</p>
+                <p style={{fontFamily:isToday(col.date)?"Georgia,serif":"sans-serif",fontSize:isToday(col.date)?17:12,color:isToday(col.date)?C.black:past?C.light:C.muted,margin:0,lineHeight:1}}>{col.date.getDate()}</p>
+              </div>
+              {marks.map((m,mi)=>(
+                <div key={mi} style={{fontSize:9,color:m.color,padding:"3px 6px",borderBottom:`1px solid ${C.rule}`,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>⚑ {m.name}</div>
+              ))}
+              <div style={{padding:"6px 5px",display:"flex",flexDirection:"column" as const,gap:5}}>
+                {dayItems.map((item:any)=>(
+                  <div key={item.id} onClick={e=>e.stopPropagation()}>
+                    <PlannerCard item={item} inPool={false} readOnly={past}/>
+                  </div>
+                ))}
+                {dayItems.length===0&&!isMobile&&<div style={{textAlign:"center" as const,padding:"20px 0",color:C.light,fontSize:16}}>+</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
+// ─── CREATOR CLIENTS ──────────────────────────────────────
+const PROD_STATUSES=["production","invoiced","paid"];
+
+function ccCatLabel(cat: string){
+  if(cat==="UGC")return"UGC";
+  if(cat==="Editorial")return"Editorial";
+  return"Collab";
+}
+
+function ccCatStyle(cat: string){
+  if(cat==="UGC")return{bg:"#fdf5ee",border:"#e8d8c8",color:C.amber};
+  if(cat==="Editorial")return{bg:"#f0f5f0",border:"#b8d4b8",color:C.green};
+  return{bg:"#f0f0f5",border:"#c8c8e0",color:"#6a6aaa"};
+}
+
+// get line groups for a project: [{lineKey, lineName, category, items[]}]
+function getLineGroups(c: any, pr: any): any[] {
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+  const groups: any[]=[];
+  (pr.qd?.lines||[]).forEach((ln: any, li: number)=>{
+    if(!ln.name)return;
+    if(skip.some((s: string)=>ln.name.toLowerCase().includes(s)))return;
+    const qty=parseInt(ln.qty)||1;
+    const cat=getWsCategory(ln.name);
+    const lineKey=`${li}_${cat}`;
+    let grp=groups.find((g: any)=>g.lineKey===lineKey);
+    if(!grp){grp={lineKey,lineName:ln.name,category:cat,items:[]};groups.push(grp);}
+    for(let q=0;q<qty;q++){
+      const id=`${pr.id}_ln${li}_q${q}`;
+      grp.items.push({
+        id,
+        name:(pr.workspaceNames||{})[id]||ln.name+(qty>1?` ${q+1}`:""),
+        status:(pr.workspaceStatus||{})[id]||"Not started",
+      });
+    }
+  });
+  return groups;
+}
+
+function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:boolean,onSelChange?:(id:string|null)=>void}) {
+  const [sel,setSel]=useState<string|null>(null);
+  const setSel_=(v: string|null)=>{setSel(v);if(onSelChange)onSelChange(v);};
+  const [collapsed,setCollapsed]=useState<Record<string,boolean>>({});
+
+  const activeClients=clients.filter((c: any)=>c.projects.some((pr: any)=>pr.status==="production"));
+  const pastClients=clients.filter((c: any)=>
+    !c.projects.some((pr: any)=>pr.status==="production")&&
+    c.projects.some((pr: any)=>pr.status==="invoiced"||pr.status==="paid")
+  );
+
+  const selClient=sel?clients.find((c: any)=>c.id===sel):null;
+
+  // left card line rows for a client
+  const LineRows=({c}: {c: any})=>{
+    const pr=c.projects.find((p: any)=>p.status==="production");
+    if(!pr)return null;
+    const groups=getLineGroups(c,pr);
+    return(
+      <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:8}}>
+        {groups.map((g: any)=>{
+          const done=g.items.filter((it: any)=>it.status==="Delivered").length;
+          const total=g.items.length;
+          const pct=total>0?done/total:0;
+          const complete=done===total;
+          const cs=ccCatStyle(g.category);
+          const shortName=g.lineName.replace(/,.*$/,"").replace(/short-form/i,"Short video").replace(/voiceover/i,"").trim();
+          return(
+            <div key={g.lineKey} style={{display:"flex",alignItems:"center",gap:5}}>
+              <span style={{fontSize:9,padding:"1px 5px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0,minWidth:42,textAlign:"center" as const}}>{ccCatLabel(g.category)}</span>
+              <span style={{fontSize:11,color:C.muted,width:60,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{shortName}</span>
+              <div style={{flex:1,height:3,background:C.rule,borderRadius:2}}>
+                <div style={{height:3,width:`${pct*100}%`,background:complete?C.green:C.black,borderRadius:2}}/>
+              </div>
+              <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",minWidth:24,textAlign:"right" as const}}>{done}/{total}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // right panel detail
+  const Detail=({c}: {c: any})=>{
+    const pr=c.projects.find((p: any)=>p.status==="production");
+    const pastProjects=c.projects.filter((p: any)=>p.status==="invoiced"||p.status==="paid");
+    const groups=pr?getLineGroups(c,pr):[];
+    const allItems=groups.flatMap((g: any)=>g.items);
+    const totalDone=allItems.filter((it: any)=>it.status==="Delivered").length;
+    const totalAll=allItems.length;
+    const dl=dLeft(pr?.deliveryDate);
+
+    return(
+      <div style={{flex:1,minWidth:0,overflowY:isMobile?undefined:"auto",maxHeight:isMobile?undefined:"calc(100vh - 80px)",paddingLeft:isMobile?0:4}}>
+        {/* header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 4px"}}>{c.name}</h2>
+            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{[c.contact,c.email].filter(Boolean).join(" · ")}</p>
+          </div>
+          <button onClick={()=>setSel_(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px"}}>✕</button>
+        </div>
+
+        {pr&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,padding:"10px 14px",border:`1px solid ${C.rule}`,borderRadius:2}}>
+          <span style={{fontSize:13,fontWeight:"500",color:C.amber}}>{fmtD(pr.deliveryDate)}</span>
+          {dl!==null&&<span style={{fontSize:11,color:C.muted}}>· {dl}d left</span>}
+          <span style={{fontSize:11,color:C.muted,marginLeft:"auto"}}>Progress <strong style={{color:C.black}}>{totalDone}/{totalAll}</strong></span>
+        </div>}
+
+        {pr&&<>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 10px"}}>{pr.name} — Active</p>
+          {groups.map((g: any)=>{
+            const done=g.items.filter((it: any)=>it.status==="Delivered").length;
+            const total=g.items.length;
+            const complete=done===total;
+            const cs=ccCatStyle(g.category);
+            const isOpen=collapsed[g.lineKey]!==true;
+            const toggleKey=`${pr.id}_${g.lineKey}`;
+            return(
+              <div key={g.lineKey} style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
+                <div onClick={()=>setCollapsed(p=>({...p,[toggleKey]:!p[toggleKey]}))}
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"#f7f6f4",cursor:"pointer"}}>
+                  <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{ccCatLabel(g.category)}</span>
+                  <span style={{fontSize:12,color:C.black,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{total}× {g.lineName}</span>
+                  <div style={{display:"flex",gap:3,flexShrink:0}}>
+                    {g.items.map((it: any)=>{
+                      const dotColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.rule;
+                      return <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:dotColor,display:"inline-block"}}/>;
+                    })}
+                  </div>
+                  <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",flexShrink:0}}>{done}/{total}</span>
+                  <span style={{fontSize:10,color:C.light,flexShrink:0}}>{isOpen?"▾":"▸"}</span>
+                </div>
+                {isOpen&&(
+                  <div>
+                    {g.items.map((it: any)=>{
+                      const stColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.light;
+                      return(
+                        <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:`1px solid ${C.rule}`}}>
+                          <span style={{fontSize:13,color:C.black,flex:1}}>{it.name}</span>
+                          <span style={{fontSize:11,color:stColor}}>{it.status}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </>}
+
+        {pastProjects.length>0&&<>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"20px 0 10px"}}>Past Projects</p>
+          {pastProjects.map((p: any)=>(
+            <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:13,color:C.muted}}>{p.name}</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:10,padding:"2px 8px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted}}>Paid</span>
+                <span style={{fontSize:12,color:C.light}}>›</span>
+              </div>
+            </div>
+          ))}
+        </>}
+      </div>
+    );
+  };
+
+  // list view
+  const ClientCard=({c,isActive}: {c: any,isActive: boolean})=>{
+    const pr=c.projects.find((p: any)=>p.status==="production");
+    const dl=dLeft(pr?.deliveryDate);
+    return(
+      <div onClick={()=>setSel_(c.id)}
+        style={{border:`1px solid ${sel===c.id?C.light:C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,cursor:"pointer",background:sel===c.id?"rgba(26,26,26,0.03)":undefined,opacity:isActive?1:0.6}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}}>
+          <span style={{fontSize:13,fontWeight:"500",color:C.black}}>{c.name}</span>
+          {pr?.deliveryDate&&<span style={{fontSize:13,fontWeight:"500",color:C.amber}}>{fmtD(pr.deliveryDate)}</span>}
+        </div>
+        {pr&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px"}}>{pr.name}</p>}
+        {dl!==null&&<p style={{fontSize:10.5,color:C.light,margin:"0 0 0"}}>{dl}d left</p>}
+        {!isActive&&<p style={{fontSize:10.5,color:C.light,margin:"2px 0 0"}}>Paid{c.projects.find((p: any)=>p.status==="paid")?.name?` · ${c.projects.find((p: any)=>p.status==="paid").name}`:""}</p>}
+        {isActive&&<LineRows c={c}/>}
+      </div>
+    );
+  };
+
+  if(selClient&&isMobile){
+    return <div style={{padding:"0 4px"}}><Detail c={selClient}/></div>;
+  }
+
+  return(
+    <div style={{display:selClient&&!isMobile?"flex":"block",gap:28,alignItems:"flex-start"}}>
+      <div style={{flex:selClient&&!isMobile?"0 0 340px":"1 1 100%",minWidth:0,overflowY:selClient&&!isMobile?"auto":undefined,maxHeight:selClient&&!isMobile?"calc(100vh - 80px)":undefined}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Clients</h2>
+        {activeClients.length===0&&pastClients.length===0&&(
+          <p style={{fontSize:11,color:C.muted}}>No active projects yet. Projects appear here once a contract is signed.</p>
+        )}
+        {activeClients.length>0&&<>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 8px"}}>Active</p>
+          {activeClients.map((c: any)=><ClientCard key={c.id} c={c} isActive={true}/>)}
+        </>}
+        {pastClients.length>0&&<>
+          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"16px 0 8px"}}>Past</p>
+          {pastClients.map((c: any)=><ClientCard key={c.id} c={c} isActive={false}/>)}
+        </>}
+      </div>
+      {selClient&&!isMobile&&<Detail c={selClient}/>}
+    </div>
+  );
+}
+
+
+// ─── CREATOR DASHBOARD ────────────────────────────────────
+function CreatorDashboard({isMobile,clients}: {isMobile:boolean,clients:any[]}) {
+  const todayDate=new Date();
+  const todayStr=todayDate.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+  const [drill,setDrill]=useState<"output"|null>(null);
+
+  // ── source of truth: same as Workspace
+  const allItems=getWsItems(clients);
+
+  // ── derived counts
+  const open=allItems.filter((it:any)=>it.status!=="Delivered");
+  const overdue=open.filter((it:any)=>isOverdue(it.deadline));
+  const dueThisWeek=open.filter((it:any)=>!isOverdue(it.deadline)&&isThisWeek(it.deadline));
+
+  // delivered this month — from workspaceStatusHistory
+  const nowY=todayDate.getFullYear();
+  const nowM=todayDate.getMonth();
+  const allDelivered=(()=>{
+    const out: any[]=[];
+    clients.forEach((c:any)=>c.projects.forEach((pr:any)=>{
+      const hist=pr.workspaceStatusHistory||{};
+      Object.entries(hist).forEach(([id,entries]:any)=>{
+        const lastDelivered=[...(entries||[])].reverse().find((e:any)=>e.status==="Delivered");
+        if(lastDelivered){
+          const item=allItems.find((it:any)=>it.id===id);
+          if(item)out.push({...item,deliveredDate:lastDelivered.date});
+        }
+      });
+    }));
+    return out.sort((a:any,b:any)=>new Date(b.deliveredDate).getTime()-new Date(a.deliveredDate).getTime());
+  })();
+  const deliveredThisMonth=allDelivered.filter((it:any)=>{
+    const d=new Date(it.deliveredDate);
+    return d.getFullYear()===nowY&&d.getMonth()===nowM;
+  });
+
+  // velocity — delivered per week last 4 weeks
+  const velocity=(()=>{
+    const weeks=[0,1,2,3].map(w=>{
+      const mon=new Date(todayDate);
+      const day=mon.getDay();
+      mon.setDate(mon.getDate()-(day===0?6:day-1)-w*7);
+      mon.setHours(0,0,0,0);
+      const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+      return{label:`Wk ${4-w}`,from:mon,to:sun,count:0};
+    }).reverse();
+    clients.forEach((c:any)=>c.projects.forEach((pr:any)=>{
+      const hist=pr.workspaceStatusHistory||{};
+      Object.values(hist).forEach((entries:any)=>{
+        (entries||[]).forEach((e:any)=>{
+          if(e.status==="Delivered"){
+            const d=new Date(e.date);
+            weeks.forEach(w=>{if(d>=w.from&&d<=w.to)w.count++;});
+          }
+        });
+      });
+    }));
+    return weeks;
+  })();
+  const velMax=Math.max(...velocity.map(w=>w.count),1);
+
+  // by category
+  const cats=["Influencer","UGC","Editorial"];
+  const catCounts=cats.map(cat=>({cat,count:open.filter((it:any)=>it.category===cat).length}));
+  const catMax=Math.max(...catCounts.map(c=>c.count),1);
+  const catLabel=(cat:string)=>cat==="Influencer"?"Collab":cat;
+
+  // by client
+  const clientNames=[...new Set(open.map((it:any)=>it.clientName))] as string[];
+  const clientCounts=clientNames.map(n=>({name:n,count:open.filter((it:any)=>it.clientName===n).length}))
+    .sort((a,b)=>b.count-a.count).slice(0,5);
+  const clientMax=Math.max(...clientCounts.map(c=>c.count),1);
+
+  // upcoming deadlines — next 5 non-delivered sorted by deadline
+  const upcomingDeadlines=[...open]
+    .filter((it:any)=>it.deadline)
+    .sort((a:any,b:any)=>new Date(a.deadline).getTime()-new Date(b.deadline).getTime())
+    .slice(0,5);
+
+  // recent delivered — last 5 from history sorted by date
+  const recentDelivered=[...deliveredThisMonth]
+    .sort((a:any,b:any)=>new Date(b.deliveredDate).getTime()-new Date(a.deliveredDate).getTime())
+    .slice(0,5);
+
+  const dlColor=(d:string|null)=>{
+    if(!d)return C.muted;
+    if(isOverdue(d))return C.red;
+    if(isThisWeek(d))return C.amber;
+    return C.muted;
+  };
+  const dlBg=(d:string|null)=>{
+    if(!d)return"transparent";
+    if(isOverdue(d))return C.redBg;
+    if(isThisWeek(d))return C.amberBg;
+    return"transparent";
+  };
+  const dlBorder=(d:string|null)=>{
+    if(!d)return C.rule;
+    if(isOverdue(d))return C.redBorder;
+    if(isThisWeek(d))return C.amberBorder;
+    return C.rule;
+  };
+
+  const Card=({label,children}:{label:string,children:any})=>(
+    <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg}}>
+      <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 10px"}}>{label}</p>
+      {children}
+    </div>
+  );
+
+  const cols=isMobile?"1fr":"1fr 1fr";
+
+  // ── output drill view
+  if(drill==="output"){
+    const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const groups: {year:number,month:number,items:any[]}[]=[];
+    allDelivered.forEach((it:any)=>{
+      const d=new Date(it.deliveredDate);
+      const y=d.getFullYear(),m=d.getMonth();
+      let g=groups.find(x=>x.year===y&&x.month===m);
+      if(!g){g={year:y,month:m,items:[]};groups.push(g);}
+      g.items.push(it);
+    });
+    const catLbl=(cat:string)=>cat==="Influencer"?"Collab":cat;
+    return(
+      <div>
+        <button onClick={()=>setDrill(null)} style={{fontSize:12,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,background:"none",border:"none",cursor:"pointer",padding:0,marginBottom:20,fontFamily:SANS}}>← Dashboard</button>
+        <div style={{marginBottom:20}}>
+          <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Output log</h2>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:0}}>{allDelivered.length} delivered total</p>
+        </div>
+        {allDelivered.length===0&&(
+          <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const}}>
+            <p style={{fontSize:12,color:C.muted,margin:0}}>Nothing delivered yet.</p>
+          </div>
+        )}
+        {groups.map(g=>{
+          const byCat: Record<string,number>={};
+          g.items.forEach((it:any)=>{byCat[it.category]=(byCat[it.category]||0)+1;});
+          return(
+            <div key={`${g.year}-${g.month}`} style={{marginBottom:52}}>
+              <div style={{display:"flex",alignItems:"baseline",gap:12,marginBottom:6}}>
+                <span style={{fontSize:13,fontWeight:"500",color:C.black}}>{MO[g.month]} {g.year}</span>
+                <span style={{fontSize:11,color:C.muted}}>{g.items.length} delivered</span>
+                <div style={{display:"flex",gap:5,marginLeft:4,flexWrap:"wrap" as const}}>
+                  {Object.entries(byCat).map(([cat,cnt])=>{
+                    const cs=wsCatPill(cat);
+                    return <span key={cat} style={{fontSize:10,padding:"1px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color}}>{catLbl(cat)} {cnt as number}</span>;
+                  })}
+                </div>
+              </div>
+              <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
+              {g.items.map((it:any)=>{
+                const cs=wsCatPill(it.category);
+                return(
+                  <div key={it.id} style={{display:"flex",alignItems:"center",gap:isMobile?6:10,padding:"9px 0",borderBottom:`1px solid ${C.rule}`}}>
+                    <span style={{fontSize:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{it.clientName.toUpperCase()}</span>
+                    <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:13,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{it.name}</span>
+                      <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{catLbl(it.category)}</span>
+                    </div>
+                    <span style={{fontSize:11,color:C.muted,flexShrink:0}}>{fmtD(it.deliveredDate)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if(allItems.length===0)return(
+    <div>
+      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 6px"}}>Dashboard</h2>
+      <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:"0 0 32px"}}>{todayStr}</p>
+      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const}}>
+        <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active projects yet.</p>
+        <p style={{fontSize:11,color:C.light,margin:0}}>Waiting for your first contract to be signed.</p>
+      </div>
+    </div>
+  );
+
+  return(
+    <div>
+      <div style={{marginBottom:20}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 4px"}}>Dashboard</h2>
+        <p style={{fontSize:10,color:C.muted,letterSpacing:"0.06em",textTransform:"uppercase" as const,margin:0}}>{todayStr}</p>
+      </div>
+
+      {/* overdue banner */}
+      {overdue.length>0&&(
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",background:C.redBg,border:`1px solid ${C.redBorder}`,borderRadius:2,marginBottom:16}}>
+          <span style={{fontSize:12,fontWeight:"500",color:C.red,flexShrink:0}}>{overdue.length} overdue</span>
+          <span style={{fontSize:11,color:C.red,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+            {overdue.slice(0,3).map((it:any)=>`${it.name} · ${it.clientName} · was due ${fmtD(it.deadline)}`).join("  ·  ")}
+          </span>
+        </div>
+      )}
+
+      {/* 4 summary cards */}
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:10}}>
+        <div style={{border:`1px solid ${overdue.length>0?C.redBorder:C.rule}`,borderRadius:2,padding:"13px 15px",background:overdue.length>0?C.redBg:C.bg}}>
+          <p style={{fontSize:10,color:overdue.length>0?C.red:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Overdue</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:overdue.length>0?C.red:C.light,margin:"0 0 3px",lineHeight:1}}>{overdue.length}</p>
+          <p style={{fontSize:10,color:overdue.length>0?C.red:C.light}}>past deadline</p>
+        </div>
+        <div style={{border:`1px solid ${dueThisWeek.length>0?C.amberBorder:C.rule}`,borderRadius:2,padding:"13px 15px",background:dueThisWeek.length>0?C.amberBg:C.bg}}>
+          <p style={{fontSize:10,color:dueThisWeek.length>0?C.amber:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Due this week</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:dueThisWeek.length>0?C.amber:C.light,margin:"0 0 3px",lineHeight:1}}>{dueThisWeek.length}</p>
+          <p style={{fontSize:10,color:dueThisWeek.length>0?C.amber:C.light}}>by Sunday</p>
+        </div>
+        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg}}>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Total open</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:C.black,margin:"0 0 3px",lineHeight:1}}>{open.length}</p>
+          <p style={{fontSize:10,color:C.muted}}>across {clientNames.length} client{clientNames.length!==1?"s":""}</p>
+        </div>
+        <div onClick={()=>setDrill("output")} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"13px 15px",background:C.bg,cursor:"pointer"}}>
+          <p style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 6px"}}>Delivered this month</p>
+          <p style={{fontFamily:SERIF,fontSize:28,color:deliveredThisMonth.length>0?C.green:C.light,margin:"0 0 3px",lineHeight:1}}>{deliveredThisMonth.length}</p>
+          <p style={{fontSize:10,color:deliveredThisMonth.length>0?C.green:C.light}}>{new Date().toLocaleString("en-GB",{month:"long"})} · tap to view all</p>
+        </div>
+      </div>
+
+      {/* 4 visual cards */}
+      <div style={{display:"grid",gridTemplateColumns:cols,gap:10,marginBottom:10}}>
+
+        {/* by category */}
+        <Card label="By category">
+          {catCounts.map((c,i)=>(
+            <div key={c.cat} style={{marginBottom:i<catCounts.length-1?8:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <span style={{fontSize:11,color:C.black}}>{catLabel(c.cat)}</span>
+                <span style={{fontSize:11,color:C.muted}}>{c.count}</span>
+              </div>
+              <div style={{height:3,background:C.rule,borderRadius:2}}>
+                <div style={{height:3,width:`${(c.count/catMax)*100}%`,background:c.cat==="Influencer"?"#185FA5":c.cat==="UGC"?C.amber:C.green,borderRadius:2}}/>
+              </div>
+            </div>
+          ))}
+        </Card>
+
+        {/* by client */}
+        <Card label="By client">
+          {clientCounts.length===0&&<p style={{fontSize:11,color:C.light}}>No open deliverables.</p>}
+          {clientCounts.map((c,i)=>(
+            <div key={c.name} style={{marginBottom:i<clientCounts.length-1?8:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <span style={{fontSize:11,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,maxWidth:"75%"}}>{c.name}</span>
+                <span style={{fontSize:11,color:C.muted}}>{c.count}</span>
+              </div>
+              <div style={{height:3,background:C.rule,borderRadius:2}}>
+                <div style={{height:3,width:`${(c.count/clientMax)*100}%`,background:C.black,borderRadius:2}}/>
+              </div>
+            </div>
+          ))}
+        </Card>
+
+        {/* upcoming deadlines */}
+        <Card label="Upcoming deadlines">
+          {upcomingDeadlines.length===0&&<p style={{fontSize:11,color:C.light}}>No upcoming deadlines.</p>}
+          {upcomingDeadlines.map((it:any,i:number)=>{
+            const d=dLeft(it.deadline);
+            return(
+              <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 7px",marginBottom:4,background:dlBg(it.deadline),border:`1px solid ${dlBorder(it.deadline)}`,borderRadius:2}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <span style={{fontSize:13,fontWeight:"500",color:dlColor(it.deadline),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
+                  <span style={{fontSize:11,color:dlColor(it.deadline),opacity:0.8}}>{it.clientName}</span>
+                </div>
+                <div style={{textAlign:"right" as const,flexShrink:0,marginLeft:8}}>
+                  <span style={{fontSize:11,fontWeight:"600",color:dlColor(it.deadline)}}>{d!==null?(d<0?`${Math.abs(d)}d overdue`:`${d}d`):"—"}</span>
+                  <span style={{fontSize:9,color:dlColor(it.deadline),display:"block",opacity:0.7}}>{fmtD(it.deadline)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+
+        {/* recently delivered */}
+        <Card label="Recently delivered">
+          {recentDelivered.length===0&&<p style={{fontSize:11,color:C.light}}>Nothing delivered this month yet.</p>}
+          {recentDelivered.map((it:any,i:number)=>(
+            <div key={it.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<recentDelivered.length-1?`1px solid ${C.rule}`:"none"}}>
+              <div style={{minWidth:0,flex:1}}>
+                <span style={{fontSize:13,color:C.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,display:"block"}}>{it.name}</span>
+                <span style={{fontSize:11,color:C.muted}}>{it.clientName}</span>
+              </div>
+              <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:8}}>{fmtD(it.deliveredDate)}</span>
+            </div>
+          ))}
+        </Card>
+
+      </div>
+
+      {/* production velocity */}
+      <Card label="Production velocity — delivered per week">
+        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:60,marginTop:4}}>
+          {velocity.map((w,i)=>(
+            <div key={i} style={{flex:1,display:"flex",flexDirection:"column" as const,alignItems:"center",gap:4}}>
+              <span style={{fontSize:9,color:C.muted}}>{w.count}</span>
+              <div style={{width:"100%",background:C.black,borderRadius:2,height:`${Math.max(3,Math.round((w.count/velMax)*44))}px`}}/>
+              <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>{w.label}</span>
+            </div>
+          ))}
+        </div>
+        {velocity.every(w=>w.count===0)&&<p style={{fontSize:11,color:C.light,marginTop:8}}>No deliveries recorded yet.</p>}
+      </Card>
+
+    </div>
+  );
+}
+
+
+// ─── CREATOR PAGE ─────────────────────────────────────────
+function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout:()=>void,clients:any[],setClients:any}) {
+  const [menuOpen,setMenuOpen]=useState(false);
+  const [nav,setNav]=useState(0);
+  const [winW,setWinW]=useState(()=>window.innerWidth);
+  const [creatorClientSel,setCreatorClientSel]=useState<string|null>(null);
+  useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
+  const isMobile=winW<700;
+  const goToDash=()=>setNav(0);
+  const NAV=["Dashboard","Clients","Workspace","Planner"];
+  const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
+
+  const AvatarBtn=({dropLeft=false}:{dropLeft?:boolean})=>(
+    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+      {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
+      <button onClick={()=>setMenuOpen(m=>!m)} title="Account" style={{width:30,height:30,borderRadius:"50%",background:C.black,color:C.white,border:"none",cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.04em",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",zIndex:200,flexShrink:0}}>{initials}</button>
+      {menuOpen&&<div style={{position:"absolute",...(dropLeft?{left:0}:{right:0}),top:"calc(100% + 13px)",background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,boxShadow:"0 4px 20px rgba(0,0,0,0.12)",minWidth:172,zIndex:200}}>
+        <div style={{padding:"10px 14px 8px",borderBottom:`1px solid ${C.rule}`}}>
+          <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
+          <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>Creator · Private</p>
+        </div>
+        <div style={{borderTop:`1px solid ${C.rule}`}}/>
+        <button onClick={()=>{setMenuOpen(false);logout();}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:C.red,letterSpacing:"0.04em",boxSizing:"border-box"}}>Log Out</button>
+      </div>}
+    </div>
+  );
+
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
+      {/* ── NAV ── */}
+      <div style={{borderBottom:`1px solid ${C.rule}`,position:"sticky",top:0,background:C.bg,zIndex:100}}>
+        {isMobile?(
+          <>
+            <div style={{textAlign:"center",padding:"10px 20px 7px",cursor:"pointer"}} onClick={goToDash}>
+              <AppLogo/>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
+              <div style={{display:"flex"}}>
+                {NAV.map((n,i)=><button key={i} onClick={()=>setNav(i)} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+              </div>
+              <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
+                <AvatarBtn dropLeft={false}/>
+              </div>
+            </div>
+          </>
+        ):(
+          <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"0 28px",height:56}}>
+            <div style={{display:"flex",alignItems:"center"}}>
+              <AvatarBtn dropLeft={true}/>
+            </div>
+            <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}>
+              <AppLogo size="web"/>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}>
+              {NAV.map((n,i)=><button key={i} onClick={()=>setNav(i)} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:nav===i?`2px solid ${C.black}`:"2px solid transparent",color:nav===i?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+            </div>
+          </div>
+        )}
+      </div>
+      {/* ── CONTENT ── */}
+      <div style={{maxWidth:(nav===1&&creatorClientSel)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+        {nav===0&&<CreatorDashboard isMobile={isMobile} clients={clients}/>}
+        {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
+        {nav===2&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
+        {nav===3&&<CreatorPlanner isMobile={isMobile} clients={clients} setClients={setClients}/>}
       </div>
     </div>
   );
