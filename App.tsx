@@ -397,7 +397,7 @@ function getUsageMo(qd: any): number|null {
 function ProjectLicenseTracker({pr}: {pr:any}) {
   if(!pr||!pr.qd)return null;
   const mo=getUsageMo(pr.qd);
-  const originalUsageEnd=(pr.usageEndOverride||(pr.deliveryDate&&mo?addM(pr.deliveryDate,mo):null));
+  const originalUsageEnd=(pr.usageEndOverride||(pr.deliveryDate&&mo&&mo>0?addM(pr.deliveryDate,mo):null));
   const usageRenewalDates=(pr.renewals||[]).filter((r: any)=>r&&r.type!=="excl"&&r.endDate).map((r: any)=>r.endDate as string);
   const allUsageDates=[originalUsageEnd,...usageRenewalDates].filter(Boolean) as string[];
   const activeUsageEnd=allUsageDates.length>0?allUsageDates.reduce((a,b)=>a>b?a:b):null;
