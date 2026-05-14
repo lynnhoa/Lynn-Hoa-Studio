@@ -1748,96 +1748,128 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
     upP(cl.id,pr.id,{managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:true,[field+"Date"]:today()}}});
   };
 
-  // build per-line list (same skip logic as getCatProgress)
   const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
-  const lines=(pr.qd?.lines||[]).filter((ln:any)=>ln.name&&!skip.some((s:string)=>ln.name.toLowerCase().includes(s)));
+  const allLines=(pr.qd?.lines||[]).map((ln:any,li:number)=>({...ln,_li:li})).filter((ln:any)=>ln.name&&!skip.some((s:string)=>ln.name.toLowerCase().includes(s)));
 
-  // category pill styling
   const catPill=(cat:string):any=>{
     if(cat==="UGC")return{background:"#fdf5ee",border:`1px solid ${C.amberBorder}`,color:C.amber};
     if(cat==="Editorial")return{background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green};
     return{background:"#f0f0f5",border:"1px solid #c8c8e0",color:"#6a6aaa"};
   };
 
+  const chkBox=(checked:boolean,color:string,readOnly:boolean,onClick:()=>void)=>(
+    <div onClick={!readOnly&&!checked?onClick:undefined}
+      style={{width:isMobile?14:12,height:isMobile?14:12,borderRadius:3,border:`1.5px solid ${checked?color:C.rule}`,background:checked?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:!readOnly&&!checked?"pointer":"default",opacity:readOnly?0.6:1}}>
+      {checked&&<div style={{width:isMobile?7:6,height:isMobile?5:4,borderLeft:`1.5px solid #fff`,borderBottom:`1.5px solid #fff`,transform:"rotate(-45deg) translateY(-1px)"}}/>}
+    </div>
+  );
+
+  const col1W=isMobile?60:72;
+  const col3W=isMobile?110:130;
+
   return(
     <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
-      <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:0,padding:isMobile?"7px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`,background:C.bg}}>Content production</p>
+      {/* header */}
+      <div style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,background:C.bg,borderBottom:`1px solid ${C.rule}`}}>
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Cat.</div>
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Deliverable · progress</div>
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Manager</div>
+      </div>
 
-      {/* ── category summary rows with progress rings (kept) ── */}
-      {catKeys.map(cat=>{
+      {/* category blocks */}
+      {catKeys.map((cat,ci)=>{
         const prog=cats[cat];
         const k=cat.toLowerCase();
         const msc=ms[k]||{};
         const isInfluencer=cat==="Influencer";
+        const isEditorial=cat==="Editorial";
         const canAct=prog.allCreated;
-        const btnStyle=(done:boolean,color:string):any=>({
-          fontSize:isMobile?10:8,padding:isMobile?"6px 10px":"3px 8px",
-          border:`1px solid ${done?color:C.rule}`,borderRadius:2,
-          background:done?color+"22":"none",
-          color:done?color:C.light,
-          cursor:canAct&&!done?"pointer":"default",
-          fontFamily:SANS,letterSpacing:"0.05em",whiteSpace:"nowrap",
-          opacity:canAct||done?1:0.4,
+        const allPosted=prog.total>0&&prog.posted===prog.total;
+        const catLines=allLines.filter((ln:any)=>getWsCategory(ln.name)===cat);
+
+        // per-line circle data
+        const lineCircles=catLines.map((ln:any)=>{
+          const qty=parseInt(ln.qty)||1;
+          const filled=Array.from({length:qty},(_,q)=>{
+            const id=`${pr.id}_ln${ln._li}_q${q}`;
+            const st=(pr.workspaceStatus||{})[id]||"Not started";
+            return["Created","Reviewed","Delivered","Posted"].includes(st);
+          });
+          const postedAll=Array.from({length:qty},(_,q)=>{
+            const id=`${pr.id}_ln${ln._li}_q${q}`;
+            return(pr.workspaceStatus||{})[id]==="Posted";
+          });
+          const lastPostedDate=postedAll.every(Boolean)&&postedAll.length>0?(()=>{
+            let d="";
+            for(let q=0;q<qty;q++){const id=`${pr.id}_ln${ln._li}_q${q}`;const sd=(pr.workspaceStatus||{})[id+"_date"];if(sd&&sd>d)d=sd;}
+            return d;
+          })():null;
+          return{ln,filled,qty,createdCount:filled.filter(Boolean).length,postedAll:postedAll.every(Boolean)&&postedAll.length>0,lastPostedDate};
         });
-        const circ=2*Math.PI*11;
+
         return(
-          <div key={cat} style={{display:"flex",alignItems:"center",gap:isMobile?8:6,padding:isMobile?"8px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`}}>
-            <svg width={isMobile?26:20} height={isMobile?26:20} viewBox="0 0 28 28" style={{flexShrink:0}}>
-              <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
-              {prog.created>0&&<circle cx="14" cy="14" r="11" fill="none" stroke={C.green} strokeWidth="2"
-                strokeDasharray={`${(prog.created/prog.total)*circ} ${circ}`}
-                strokeDashoffset={String(circ*0.25)} strokeLinecap="round" transform="rotate(-90 14 14)"/>}
-              <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.created}/{prog.total}</text>
-            </svg>
-            {isInfluencer&&(
-              <svg width={isMobile?26:20} height={isMobile?26:20} viewBox="0 0 28 28" style={{flexShrink:0}}>
-                <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
-                {prog.posted>0&&<circle cx="14" cy="14" r="11" fill="none" stroke="#6a6aaa" strokeWidth="2"
-                  strokeDasharray={`${(prog.posted/prog.total)*circ} ${circ}`}
-                  strokeDashoffset={String(circ*0.25)} strokeLinecap="round" transform="rotate(-90 14 14)"/>}
-                <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.posted}/{prog.total}</text>
-              </svg>
-            )}
-            {/* category pill */}
-            <span style={{fontSize:isMobile?10:8,padding:isMobile?"3px 9px":"2px 7px",borderRadius:20,flexShrink:0,...catPill(cat)}}>{cat}</span>
-            <div style={{display:"flex",gap:isMobile?6:4,alignItems:"center",flex:1,flexWrap:"wrap" as const}}>
-              <button style={btnStyle(!!msc.reviewed,C.amber)}
-                onClick={()=>{if(canAct&&!msc.reviewed)setMs(cat,"reviewed");}}>
-                {msc.reviewed?`reviewed · ${fmtD(msc.reviewedDate)}`:"review"}
-              </button>
-              {!isInfluencer&&(
-                <button style={btnStyle(!!msc.delivered,C.green)}
-                  onClick={()=>{if(canAct&&!msc.delivered)setMs(cat,"delivered");}}>
-                  {msc.delivered?`delivered · ${fmtD(msc.deliveredDate)}`:"deliver"}
-                </button>
-              )}
-              {isInfluencer&&(
-                <span style={{fontSize:isMobile?10:8,color:prog.posted===prog.total&&prog.total>0?C.green:msc.reviewed?C.amber:C.light,marginLeft:2}}>
-                  {prog.posted===prog.total&&prog.total>0?`${prog.posted} of ${prog.total} posted`:msc.reviewed?"— awaiting post":`${prog.posted} of ${prog.total} posted`}
-                </span>
+          <div key={cat} style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,borderBottom:ci<catKeys.length-1?`1px solid ${C.rule}`:"none"}}>
+
+            {/* col1 — category pill */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:isMobile?10:9,padding:isMobile?"3px 7px":"2px 6px",borderRadius:20,...catPill(cat)}}>{cat}</span>
+            </div>
+
+            {/* col2 — per-line deliverables */}
+            <div style={{borderRight:`1px solid ${C.rule}`,padding:"8px 10px",display:"flex",flexDirection:"column" as const,gap:isMobile?8:6}}>
+              {lineCircles.map(({ln,filled,qty,createdCount},lii)=>(
+                <div key={lii} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
+                  <div style={{minWidth:0,flex:1}}>
+                    <p style={{fontSize:isMobile?12:10,color:C.black,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,fontWeight:"500"}}>{ln.name}</p>
+                    {ln.note&&<p style={{fontSize:isMobile?10:9,color:C.muted,margin:0}}>{ln.note}</p>}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0,flexWrap:"wrap" as const,justifyContent:"flex-end"}}>
+                    {filled.map((f:boolean,fi:number)=>(
+                      <div key={fi} style={{width:isMobile?10:8,height:isMobile?10:8,borderRadius:"50%",background:f?C.black:"transparent",border:`1.5px solid ${f?C.black:C.light}`,flexShrink:0}}/>
+                    ))}
+                    <span style={{fontSize:isMobile?10:9,color:C.muted,marginLeft:2,whiteSpace:"nowrap" as const}}>{createdCount}/{qty}</span>
+                  </div>
+                </div>
+              ))}
+              {/* ready badge when all created */}
+              {canAct&&(
+                <div style={{display:"flex",justifyContent:"flex-end",marginTop:2}}>
+                  <span style={{fontSize:9,padding:"1px 7px",borderRadius:20,background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green}}>ready</span>
+                </div>
               )}
             </div>
+
+            {/* col3 — manager checkboxes */}
+            <div style={{padding:"8px 10px",display:"flex",flexDirection:"column" as const,justifyContent:"center",gap:isMobile?7:5,opacity:canAct||msc.reviewed?1:0.3}}>
+              {/* reviewed */}
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                {chkBox(!!msc.reviewed,C.amber,false,()=>{if(canAct)setMs(cat,"reviewed");})}
+                <span style={{fontSize:isMobile?11:10,color:msc.reviewed?C.amber:C.muted}}>reviewed</span>
+                {msc.reviewed&&<span style={{fontSize:9,color:C.muted}}>{fmtD(msc.reviewedDate)}</span>}
+              </div>
+              {/* delivered — UGC + Editorial */}
+              {!isInfluencer&&(
+                <div style={{display:"flex",alignItems:"center",gap:5}}>
+                  {chkBox(!!msc.delivered,C.green,false,()=>{if(canAct)setMs(cat,"delivered");})}
+                  <span style={{fontSize:isMobile?11:10,color:msc.delivered?C.green:C.muted}}>delivered</span>
+                  {msc.delivered&&<span style={{fontSize:9,color:C.muted}}>{fmtD(msc.deliveredDate)}</span>}
+                </div>
+              )}
+              {/* all posted — Influencer + Editorial, read-only, auto */}
+              {(isInfluencer||isEditorial)&&(
+                <div style={{display:"flex",alignItems:"center",gap:5,opacity:allPosted?1:0.4}}>
+                  {chkBox(allPosted,C.green,true,()=>{})}
+                  <span style={{fontSize:isMobile?11:10,color:allPosted?C.green:C.muted}}>
+                    {allPosted?"all posted":"awaiting post"}
+                  </span>
+                  {allPosted&&prog.posted>0&&<span style={{fontSize:9,color:C.muted}}>{fmtD(lineCircles.find(lc=>lc.lastPostedDate)?.lastPostedDate||null)}</span>}
+                </div>
+              )}
+            </div>
+
           </div>
         );
       })}
-
-      {/* ── individual line items ── */}
-      {lines.length>0&&(
-        <div style={{borderTop:`1px solid ${C.rule}`}}>
-          {lines.map((ln:any,li:number)=>{
-            const cat=getWsCategory(ln.name);
-            return(
-              <div key={li} style={{display:"flex",alignItems:"center",gap:isMobile?8:6,padding:isMobile?"8px 10px":"5px 10px",borderBottom:li<lines.length-1?`1px solid ${C.rule}`:"none"}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontSize:isMobile?12:10,color:C.black,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{ln.name}</p>
-                  {ln.note&&<p style={{fontSize:isMobile?10:8,color:C.muted,margin:0}}>{ln.note}</p>}
-                </div>
-                <span style={{fontSize:isMobile?10:8,padding:isMobile?"3px 9px":"2px 7px",borderRadius:20,flexShrink:0,...catPill(cat)}}>{cat}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
