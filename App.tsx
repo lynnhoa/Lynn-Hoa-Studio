@@ -3739,7 +3739,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   };
 
   const logout=()=>doLogout();
-  const NAV=["Dashboard","Clients","Projects","Calculator","Rate Card"];
+  const NAV=["Dashboard","Clients","Projects","Calculator"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
@@ -3751,7 +3751,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
               <div style={{display:"flex"}}>
-                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i===4?7:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
               </div>
               <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
                 {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
@@ -3761,7 +3761,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                     <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                     <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                   </div>
-                  {([["Creator Profile",4],["Change Password",5],["Service Catalog",3]] as [string,number][]).map(([label,idx])=>(
+                  {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Rate Card",7]] as [string,number][]).map(([label,idx])=>(
                     <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                   ))}
                   <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -3780,7 +3780,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
                   <p style={{fontSize:11,color:C.black,margin:"0 0 1px",fontFamily:SERIF}}>{settings.name||settings.company||"Lynn Hoa"}</p>
                   <p style={{fontSize:7.5,color:C.light,margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}}>{role==="creator"?"Creator":"Manager"} · Private</p>
                 </div>
-                {([["Creator Profile",4],["Change Password",5],["Service Catalog",3]] as [string,number][]).map(([label,idx])=>(
+                {([["Creator Profile",4],["Change Password",5],["Service Catalog",3],["Rate Card",7]] as [string,number][]).map(([label,idx])=>(
                   <button key={idx} onClick={()=>{setNav(idx);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",width:"100%",padding:"10px 14px",background:nav===idx?"rgba(0,0,0,0.03)":"none",border:"none",cursor:"pointer",textAlign:"left",fontFamily:SANS,fontSize:10,color:nav===idx?C.black:C.muted,letterSpacing:"0.04em",boxSizing:"border-box"}}>{label}</button>
                 ))}
                 <div style={{borderTop:`1px solid ${C.rule}`}}/>
@@ -3789,7 +3789,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i===4?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:i===4?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:i===4?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===2?8:i===3?2:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===2?nav===8:i===3?nav===2:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===2?nav===8:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
           </div>
         )}
