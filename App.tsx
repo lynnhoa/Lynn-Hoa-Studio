@@ -3590,7 +3590,7 @@ const initClients=[
 ];
 
 // ─── PROJECTS TAB ─────────────────────────────────────────
-function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,rc}: any) {
+function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,rc,pendingProjectQNo,onPendingClear}: any) {
   const [pdf,setPdf]=useState<any>(null);
   const [renewT,setRenewT]=useState<any>(null);
   const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),{...renewal,signed:true}]})}));setRenewT(null);};
@@ -3602,6 +3602,13 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const [editPrNameVal,setEditPrNameVal]=useState("");
   const [delConfirm,setDelConfirm]=useState<string|null>(null);
   const [statusFilter,setStatusFilter]=useState<string>("all");
+  useEffect(()=>{
+    if(!pendingProjectQNo)return;
+    const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id})));
+    const match=all.find((pr: any)=>pr.qd?.qNo===pendingProjectQNo);
+    if(match)setExpanded(match.id);
+    if(onPendingClear)onPendingClear();
+  },[pendingProjectQNo]);
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>setPdf(null)} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
@@ -3610,8 +3617,8 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const setStatus=(cid: string,pid: string,st: string)=>setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,status:st,paid:st==="paid"})}));
   const FS={projectName:isMobile?15:12,projectDate:isMobile?12:10.5,amountText:isMobile?16:14,statusBadge:isMobile?11:9.5,actionBtn:isMobile?10:8,docBtn:isMobile?10:8,pad:isMobile?"16px 16px":"12px 14px",gap:isMobile?12:10};
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id,_cname:c.name})));
-  const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
-  const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
+  const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>b.date>a.date?-1:1);
+  const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?-1:1);
   const renderCard=(pr: any,isDone?:boolean)=>{
     const cl={id:pr._cid,name:pr._cname};
     const ps=prv(pr.status);
@@ -3812,10 +3819,9 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
     }
     setPrefill(null);
   };
-  const handleAfterSave=(brand: string,qNo?: string)=>{
-    setPendingClientName(brand);
+  const handleAfterSave=(_brand: string,qNo?: string)=>{
     setPendingProjectQNo(qNo||null);
-    setTimeout(()=>setNav(1),100);
+    setTimeout(()=>setNav(8),100);
   };
 
   const handleGoToCalc=(clientName: string)=>{
@@ -3906,7 +3912,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
         {nav===7&&<RateCard rc={rc} setRc={setRc} settings={settings}/>}
-        {nav===8&&<ProjectsTab clients={clients} setClients={setClients} isMobile={appMobile} onRevise={handleRevise} onGoToCalc={handleGoToCalc} settings={settings} rc={rc}/>}
+        {nav===8&&<ProjectsTab clients={clients} setClients={setClients} isMobile={appMobile} onRevise={handleRevise} onGoToCalc={handleGoToCalc} settings={settings} rc={rc} pendingProjectQNo={pendingProjectQNo} onPendingClear={()=>setPendingProjectQNo(null)}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
