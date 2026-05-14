@@ -1571,7 +1571,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
     const ctab=cats.length===1?cats[0]:(cats.length>1?"complete":"influencer");
     // derive usage months from selected usage option on items
     const usageItem=items.find(it=>it.usageLabel);
-    let mo=3; // default organic 3 months
+    let mo: number|null=null; // only set if usage rights explicitly selected
     if(usageItem?.usageLabel){
       const cardKey=usageItem.cat||ctab;
       const cardRef=(rc&&rc[cardKey])||Object.values(rc||{})[0]||{usage:[]};
