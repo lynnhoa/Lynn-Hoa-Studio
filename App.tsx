@@ -1894,7 +1894,7 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
   );
 }
 
-function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight,isMobile}: any) {
+function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight,isMobile,readOnly}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
   // Mobile-scaled sizes
@@ -1978,9 +1978,9 @@ function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,t
       {/* ── COLLABORATION HISTORY ── */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:`0 0 ${isMobile?12:9}px`}}>
         <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:0}}>Projects</p>
-        <B v="sec" s={{fontSize:FS.actionBtn,padding:isMobile?"8px 14px":"5px 10px"}} onClick={()=>{setShowAddP((s: boolean)=>!s);setNewPN("");}}>+ Add Project</B>
+        {!readOnly&&<B v="sec" s={{fontSize:FS.actionBtn,padding:isMobile?"8px 14px":"5px 10px"}} onClick={()=>{setShowAddP((s: boolean)=>!s);setNewPN("");}}>+ Add Project</B>}
       </div>
-      {showAddP&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
+      {!readOnly&&showAddP&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
         <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:9}px`}}>Add Project</p>
         <B s={{width:"100%",textAlign:"center",marginBottom:isMobile?10:8,fontSize:isMobile?11:9.5,padding:isMobile?"11px":"7px 14px"}} onClick={()=>{onGoToCalc(cl.name);setShowAddP(false);}}>Build Quote in Calculator</B>
         <p style={{fontSize:isMobile?12:10,color:C.muted,textAlign:"center",margin:`0 0 ${isMobile?10:8}px`}}>— or add manually —</p>
@@ -1991,8 +1991,18 @@ function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,t
         </div>
       </div>}
 
-      {/* ── PROJECT CARDS ── */}
-      {cl.projects.map((pr: any,i: number)=>{
+      {/* ── PROJECT CARDS (full — projects tab) ── */}
+      {readOnly&&cl.projects.map((pr: any)=>(
+        <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:`${FS.gap/2}px 0`,borderBottom:`1px solid ${C.rule}`}}>
+          <div style={{minWidth:0,flex:1}}>
+            <span style={{fontSize:FS.projectName,color:C.black,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.name}</span>
+            <span style={{fontSize:FS.projectDate,color:C.muted}}>{fmtD(pr.date)}</span>
+          </div>
+          <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase",flexShrink:0,marginLeft:8}}>{pr.paid?"Paid":pr.status}</span>
+        </div>
+      ))}
+      {/* ── PROJECT CARDS (full — projects tab only) ── */}
+      {!readOnly&&cl.projects.map((pr: any,i: number)=>{
         const end=uEnd(pr);const ns=nxt(pr.status);const ps=prv(pr.status);
         const isHighlighted=highlightedProjectQNo&&pr.qd?.qNo===highlightedProjectQNo;
         return(
@@ -2339,7 +2349,7 @@ function RenewalModal({p,onSave,onClose,rc,settings}: any) {
 }
 
 // ─── CLIENTS ──────────────────────────────────────────────
-function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear,pendingProjectQNo}: any) {
+function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,isMobile,rc,selReset,onSelChange,pendingClientName,onPendingClear,pendingProjectQNo,readOnly}: any) {
   const [search,setSearch]=useState("");
   const [statusFilter,setStatusFilter]=useState("all");
   const [typeFilter,setTypeFilter]=useState("all");
@@ -2451,7 +2461,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 
   if(cl&&isMobile){
     return(
-      <ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={true}/>
+      <ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={true} readOnly={readOnly??true}/>
     );
   }
 
@@ -2547,7 +2557,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
         );
       })}
       </div>{/* end left col */}
-      {cl&&!isMobile&&<ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={false}/>}
+      {cl&&!isMobile&&<ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={false} readOnly={readOnly??true}/>}
     </div>
   );
 }
@@ -3772,7 +3782,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
         {nav===7&&<RateCard rc={rc} setRc={setRc} settings={settings}/>}
-        {nav===8&&<div style={{paddingTop:20}}><p style={{fontSize:12,color:C.light,textAlign:"center" as const}}>Projects — coming soon.</p></div>}
+        {nav===8&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={(n: number)=>{if(n!==1)setFromDrill(null);setNav(n);}} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo} readOnly={false}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
