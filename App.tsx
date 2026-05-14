@@ -1975,6 +1975,45 @@ function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,t
         </div>
       )}
 
+      {/* ── PROJECTS READ-ONLY ── */}
+      {cl.projects.length>0&&(
+        <div style={{marginTop:FS.gap}}>
+          <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:9}px`}}>Projects</p>
+          {cl.projects.map((pr: any)=>(
+            <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap,opacity:pr.paid?0.55:1}}>
+              {/* header */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isMobile?10:7}}>
+                <div>
+                  <p style={{fontSize:FS.projectName,color:C.black,margin:"0 0 2px",fontWeight:"500"}}>{pr.name}</p>
+                  <p style={{fontSize:FS.projectDate,color:C.muted,margin:"0 0 5px"}}>{fmtD(pr.date)}</p>
+                  <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:isMobile?"4px 10px":"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>{pr.paid?"Paid":pr.status}</span>
+                </div>
+                <div style={{textAlign:"right" as const}}>
+                  <p style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,margin:"0 0 2px"}}>{fmt(pr.amount)}</p>
+                  {(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:0}}>incl. {pr.amendments.length} amend.</p>}
+                </div>
+              </div>
+              {/* documents */}
+              {(pr.qd||(pr.amendments||[]).length>0||(pr.renewals||[]).length>0)&&(
+                <div style={{display:"flex",gap:isMobile?8:5,flexWrap:"wrap",borderTop:`1px solid ${C.rule}`,paddingTop:isMobile?10:7,marginBottom:isMobile?8:6}}>
+                  {pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"quote","en",cl.id)}>{pr.qd.rev>0?`Quote R${pr.qd.rev}`:"Quote"}</B>}
+                  {["contracted","production","invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"contract","en",cl.id)}>{pr.qd.contractRev>0?`Contract R${pr.qd.contractRev}`:"Contract"}</B>}
+                  {(pr.amendments||[]).map((a: any,ai: number)=>(
+                    <B key={ai} v="sec" s={{fontSize:FS.docBtn,color:a.signed?C.black:C.amber,borderColor:a.signed?C.rule:C.amberBorder,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>setPdf({data:{brand:pr.qd?.brand,contact:pr.qd?.contact,date:today(),ctype:pr.qd?.ctype||"Content Creator",qNo:pr.qd?.qNo,aNo:a.aNo,lines:a.lines||[],amendTotal:a.amendTotal,origTotal:pr.amount-a.amendTotal},type:"amendment",lang:"en"})}>Amend {ai+1}{!a.signed?" · unsigned":""}</B>
+                  ))}
+                  {["invoiced","paid"].includes(pr.status)&&pr.qd&&<B v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px"}} onClick={()=>openPDF(pr,"invoice","en",cl.id)}>Invoice</B>}
+                  {(pr.renewals||[]).map((r: any,ri: number)=>(
+                    r.doc&&<B key={ri} v="sec" s={{fontSize:FS.docBtn,padding:isMobile?"9px 14px":"5px 10px",color:r.paid?C.black:C.green,borderColor:r.paid?C.rule:C.greenBorder}} onClick={()=>setPdf({data:r.doc,type:"renewal",lang:"en"})}>Renewal {ri+1}</B>
+                  ))}
+                </div>
+              )}
+              {/* license tracker */}
+              <ProjectLicenseTracker pr={pr}/>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
@@ -3550,25 +3589,6 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
           <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
         </div>
         {isOpen&&<div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:isMobile?12:8}}>
-            <div style={{flex:1,minWidth:0}}>
-              {editPrName===pr.id
-                ?<input autoFocus value={editPrNameVal} onChange={e=>setEditPrNameVal(e.target.value)} onBlur={()=>{upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}} onKeyDown={e=>{if(e.key==="Enter"){upP(cl.id,pr.id,{name:editPrNameVal||pr.name});setEditPrName(null);}if(e.key==="Escape")setEditPrName(null);}} style={{fontSize:isMobile?15:12,fontFamily:SANS,border:`1px solid ${C.rule}`,borderRadius:2,padding:"4px 8px",background:C.bg,color:C.black,outline:"none",width:"100%",marginBottom:4}}/>
-                :<p onClick={e=>{e.stopPropagation();setEditPrName(pr.id);setEditPrNameVal(pr.name);setDelConfirm(null);}} style={{fontSize:FS.projectName,color:C.black,margin:"0 0 3px",fontWeight:"500",cursor:"text"}} title="Click to rename">{pr.name} <span style={{fontSize:isMobile?11:9,color:C.light}}>✎</span></p>}
-              <p style={{fontSize:FS.projectDate,color:C.muted,margin:"0 0 6px"}}>{fmtD(pr.date)}</p>
-              <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:isMobile?"4px 10px":"2px 8px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>{pr.paid?"Paid":pr.status}</span>
-            </div>
-            <div style={{textAlign:"right" as const,flexShrink:0,marginLeft:isMobile?14:8}}>
-              <p style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,margin:"0 0 3px"}}>{fmt(pr.amount)}</p>
-              {(pr.amendments||[]).length>0&&<p style={{fontSize:10,color:C.muted,margin:"0 0 2px"}}>incl. {pr.amendments.length} amend.</p>}
-              {(pr.renewals||[]).length>0&&<p style={{fontSize:10,color:C.green,margin:0}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</p>}
-              <div style={{marginTop:4}}>
-                {delConfirm===pr.id
-                  ?<span style={{fontSize:isMobile?11:8,color:C.red}}>Delete? <button onClick={()=>{setClients((p: any[])=>p.map(c=>c.id!==cl.id?c:{...c,projects:c.projects.filter((proj: any)=>proj.id!==pr.id)}));setDelConfirm(null);}} style={{color:C.red,background:"none",border:"none",cursor:"pointer",fontSize:isMobile?11:8,padding:"0 3px"}}>Yes</button> <button onClick={()=>setDelConfirm(null)} style={{color:C.muted,background:"none",border:"none",cursor:"pointer",fontSize:isMobile?11:8,padding:"0 3px"}}>No</button></span>
-                  :<button onClick={()=>{setDelConfirm(pr.id);setEditPrName(null);}} style={{fontSize:isMobile?11:9.5,color:C.muted,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS}}>delete</button>}
-              </div>
-            </div>
-          </div>
           {["quoted","revised","contracted","production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:isMobile?12:8}}>
             <span style={{fontSize:isMobile?12:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Delivery</span>
             <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
