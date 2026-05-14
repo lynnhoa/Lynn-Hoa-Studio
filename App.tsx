@@ -1970,22 +1970,6 @@ function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,t
           :<p style={{fontSize:FS.bodyText,color:cl.notes?C.black:C.light,margin:0,lineHeight:1.65}}>{cl.notes||"No notes yet…"}</p>}
       </div>
 
-      {/* ── USAGE RIGHTS TRACKER ── */}
-      {cl.projects.some((pr: any)=>uEnd(pr))&&(
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
-          <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:10}px`}}>Usage Rights Tracker</p>
-          {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
-            <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:`${isMobile?10:5}px 0`,borderBottom:`1px solid ${C.rule}`,gap:8,flexWrap:"wrap"}}>
-              <span style={{fontSize:FS.bodyText}}>{pr.name}</span>
-              <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
-                <UBadge end={uEnd(pr)}/>
-                {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── PROJECTS READ-ONLY ── */}
       {cl.projects.length>0&&(
         <div style={{marginTop:FS.gap}}>
@@ -3620,6 +3604,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>{
     if(sortOrder==="amount")return b.amount-a.amount;
     if(sortOrder==="oldest")return a.date>b.date?1:-1;
+    if(b.createdAt&&a.createdAt)return b.createdAt-a.createdAt;
     return b.date>a.date?1:-1;
   });
   const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
@@ -3824,7 +3809,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.id===existPr.id?{...pr,qd:q,amount:q.total}:pr)}));
       } else {
         const name=projName&&projName.trim()?projName.trim():brand||"Untitled Project";
-        const pr={id:uid(),name,status:"quoted",amount:q.total,paid:false,date:q.date,deliveryDate:"",notes:"",qd:q,amendments:[],renewals:[]};
+        const pr={id:uid(),name,status:"quoted",amount:q.total,paid:false,date:q.date,createdAt:Date.now(),deliveryDate:"",notes:"",qd:q,amendments:[],renewals:[]};
         if(ex) setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:[pr,...c.projects]}));
         else setClients((p: any[])=>[{id:uid(),name:brand||"New Client",contact:contact||"",email:"",agency:"Direct",country:"Germany",tags:[],notes:"",projects:[pr]},...p]);
       }
