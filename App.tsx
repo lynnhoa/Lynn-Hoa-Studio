@@ -1870,6 +1870,86 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
               <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
             </div>}
 
+            {/* ── PRODUCTION — review / deliver ── */}
+            {pr.status==="production"&&(()=>{
+              const cats=getCatProgress(pr,clients);
+              const catKeys=Object.keys(cats).filter(k=>cats[k].total>0);
+              if(catKeys.length===0)return null;
+              const ms=pr.managerStatus||{};
+              const setMs=(cat:string,field:string,val:any)=>{
+                const k=cat.toLowerCase();
+                upP(cl.id,pr.id,{managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:val,[field+"Date"]:today()}}});
+              };
+              return(
+                <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+                  <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:0,padding:isMobile?"7px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`,background:C.bg}}>Content production</p>
+                  {catKeys.map(cat=>{
+                    const prog=cats[cat];
+                    const k=cat.toLowerCase();
+                    const msc=ms[k]||{};
+                    const isInfluencer=cat==="Influencer";
+                    const canAct=prog.allCreated;
+                    const cbStyle=(active:boolean,done:boolean,color:string)=>({
+                      fontSize:isMobile?10:8,padding:isMobile?"6px 10px":"3px 8px",
+                      border:`1px solid ${done||active?color:C.rule}`,borderRadius:2,
+                      background:done||active?color+"22":"none",
+                      color:done||active?color:C.light,
+                      cursor:canAct&&!done?"pointer":"default",
+                      fontFamily:SANS,letterSpacing:"0.05em",whiteSpace:"nowrap" as const,
+                      opacity:canAct||done?1:0.4,
+                    });
+                    return(
+                      <div key={cat} style={{display:"flex",alignItems:"center",gap:isMobile?8:6,padding:isMobile?"8px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`}}>
+                        {/* circles */}
+                        <svg width={isMobile?28:22} height={isMobile?28:22} viewBox="0 0 28 28" style={{flexShrink:0}}>
+                          <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
+                          {prog.created>0&&<circle cx="14" cy="14" r="11" fill="none" stroke={C.green} strokeWidth="2"
+                            strokeDasharray={`${(prog.created/prog.total)*2*Math.PI*11} ${2*Math.PI*11}`}
+                            strokeDashoffset={2*Math.PI*11*0.25}
+                            strokeLinecap="round"
+                            transform="rotate(-90 14 14)"/>}
+                          <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.created}/{prog.total}</text>
+                        </svg>
+                        {isInfluencer&&(
+                          <svg width={isMobile?28:22} height={isMobile?28:22} viewBox="0 0 28 28" style={{flexShrink:0}}>
+                            <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
+                            {prog.posted>0&&<circle cx="14" cy="14" r="11" fill="none" stroke="#6a6aaa" strokeWidth="2"
+                              strokeDasharray={`${(prog.posted/prog.total)*2*Math.PI*11} ${2*Math.PI*11}`}
+                              strokeDashoffset={2*Math.PI*11*0.25}
+                              strokeLinecap="round"
+                              transform="rotate(-90 14 14)"/>}
+                            <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.posted}/{prog.total}</text>
+                          </svg>
+                        )}
+                        {/* category name */}
+                        <span style={{fontSize:isMobile?11:9,color:C.black,fontWeight:"500",minWidth:60,flexShrink:0}}>{cat}</span>
+                        {/* actions */}
+                        <div style={{display:"flex",gap:isMobile?6:4,alignItems:"center",flex:1,flexWrap:"wrap" as const}}>
+                          <button
+                            style={cbStyle(false,!!msc.reviewed,C.amber)}
+                            onClick={()=>{if(canAct&&!msc.reviewed)setMs(cat,"reviewed",true);}}>
+                            {msc.reviewed?`reviewed · ${fmtD(msc.reviewedDate)}`:"review"}
+                          </button>
+                          {!isInfluencer&&(
+                            <button
+                              style={cbStyle(false,!!msc.delivered,C.green)}
+                              onClick={()=>{if(canAct&&!msc.delivered)setMs(cat,"delivered",true);}}>
+                              {msc.delivered?`delivered · ${fmtD(msc.deliveredDate)}`:"deliver"}
+                            </button>
+                          )}
+                          {isInfluencer&&(
+                            <span style={{fontSize:isMobile?10:8,color:prog.posted===prog.total&&prog.total>0?C.green:C.light,marginLeft:2}}>
+                              {prog.posted} of {prog.total} posted
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
             {/* ── LICENSE TRACKER ── */}
             <ProjectLicenseTracker pr={pr}/>
 
@@ -3674,6 +3754,21 @@ function getWsItems(clients: any[]): any[] {
     });
   });
   return items;
+}
+
+function getCatProgress(pr: any, clients: any[]): Record<string,{total:number,created:number,posted:number,allCreated:boolean}> {
+  const cl=clients.find((c:any)=>c.projects.some((p:any)=>p.id===pr.id));
+  if(!cl)return{};
+  const items=getWsItems([{...cl,projects:[pr]}]);
+  const cats: Record<string,{total:number,created:number,posted:number,allCreated:boolean}>={};
+  items.forEach((it:any)=>{
+    if(!cats[it.category])cats[it.category]={total:0,created:0,posted:0,allCreated:false};
+    cats[it.category].total++;
+    if(["Created","Reviewed","Delivered","Posted"].includes(it.status))cats[it.category].created++;
+    if(it.status==="Posted")cats[it.category].posted++;
+  });
+  Object.keys(cats).forEach(k=>{cats[k].allCreated=cats[k].total>0&&cats[k].created===cats[k].total;});
+  return cats;
 }
 
 function isThisWeek(d: string|null): boolean {
