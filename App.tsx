@@ -1736,7 +1736,78 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 }
 
 // ─── CLIENT DETAIL PANEL ─────────────────────────────────
-function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight,isMobile}: any) {
+function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
+  const cats=getCatProgress(pr,clients);
+  const catKeys=Object.keys(cats).filter(k=>cats[k].total>0);
+  if(catKeys.length===0)return null;
+  const ms=pr.managerStatus||{};
+  const setMs=(cat:string,field:string)=>{
+    const k=cat.toLowerCase();
+    upP(cl.id,pr.id,{managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:true,[field+"Date"]:today()}}});
+  };
+  return(
+    <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+      <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:0,padding:isMobile?"7px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`,background:C.bg}}>Content production</p>
+      {catKeys.map(cat=>{
+        const prog=cats[cat];
+        const k=cat.toLowerCase();
+        const msc=ms[k]||{};
+        const isInfluencer=cat==="Influencer";
+        const canAct=prog.allCreated;
+        const btnStyle=(done:boolean,color:string):any=>({
+          fontSize:isMobile?10:8,padding:isMobile?"6px 10px":"3px 8px",
+          border:`1px solid ${done?color:C.rule}`,borderRadius:2,
+          background:done?color+"22":"none",
+          color:done?color:C.light,
+          cursor:canAct&&!done?"pointer":"default",
+          fontFamily:SANS,letterSpacing:"0.05em",whiteSpace:"nowrap",
+          opacity:canAct||done?1:0.4,
+        });
+        const circ=2*Math.PI*11;
+        return(
+          <div key={cat} style={{display:"flex",alignItems:"center",gap:isMobile?8:6,padding:isMobile?"8px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`}}>
+            <svg width={isMobile?26:20} height={isMobile?26:20} viewBox="0 0 28 28" style={{flexShrink:0}}>
+              <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
+              {prog.created>0&&<circle cx="14" cy="14" r="11" fill="none" stroke={C.green} strokeWidth="2"
+                strokeDasharray={`${(prog.created/prog.total)*circ} ${circ}`}
+                strokeDashoffset={String(circ*0.25)} strokeLinecap="round" transform="rotate(-90 14 14)"/>}
+              <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.created}/{prog.total}</text>
+            </svg>
+            {isInfluencer&&(
+              <svg width={isMobile?26:20} height={isMobile?26:20} viewBox="0 0 28 28" style={{flexShrink:0}}>
+                <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
+                {prog.posted>0&&<circle cx="14" cy="14" r="11" fill="none" stroke="#6a6aaa" strokeWidth="2"
+                  strokeDasharray={`${(prog.posted/prog.total)*circ} ${circ}`}
+                  strokeDashoffset={String(circ*0.25)} strokeLinecap="round" transform="rotate(-90 14 14)"/>}
+                <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.posted}/{prog.total}</text>
+              </svg>
+            )}
+            <span style={{fontSize:isMobile?11:9,color:C.black,fontWeight:"500",minWidth:60,flexShrink:0}}>{cat}</span>
+            <div style={{display:"flex",gap:isMobile?6:4,alignItems:"center",flex:1,flexWrap:"wrap" as const}}>
+              <button style={btnStyle(!!msc.reviewed,C.amber)}
+                onClick={()=>{if(canAct&&!msc.reviewed)setMs(cat,"reviewed");}}>
+                {msc.reviewed?`reviewed · ${fmtD(msc.reviewedDate)}`:"review"}
+              </button>
+              {!isInfluencer&&(
+                <button style={btnStyle(!!msc.delivered,C.green)}
+                  onClick={()=>{if(canAct&&!msc.delivered)setMs(cat,"delivered");}}>
+                  {msc.delivered?`delivered · ${fmtD(msc.deliveredDate)}`:"deliver"}
+                </button>
+              )}
+              {isInfluencer&&(
+                <span style={{fontSize:isMobile?10:8,color:prog.posted===prog.total&&prog.total>0?C.green:C.light,marginLeft:2}}>
+                  {prog.posted} of {prog.total} posted
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setTagI,uEnd,showAddP,setShowAddP,newPN,setNewPN,addP,onGoToCalc,upP,setClients,openPDF,openReviseContract,setPdf,onRevise,onAmend,setAmendT,setRenewT,setStatus,nxt,prv,editPrName,setEditPrName,editPrNameVal,setEditPrNameVal,delConfirm,setDelConfirm,setSel,highlightedProjectQNo,onClearHighlight,isMobile}: any) {
   const f=fin(cl);
   const edt=editMode?ed:cl;
   // Mobile-scaled sizes
@@ -1871,84 +1942,7 @@ function ClientDetail({cl,fin,editMode,ed,setEd,upCl,setEditMode,delCl,tagI,setT
             </div>}
 
             {/* ── PRODUCTION — review / deliver ── */}
-            {pr.status==="production"&&(()=>{
-              const cats=getCatProgress(pr,clients);
-              const catKeys=Object.keys(cats).filter(k=>cats[k].total>0);
-              if(catKeys.length===0)return null;
-              const ms=pr.managerStatus||{};
-              const setMs=(cat:string,field:string,val:any)=>{
-                const k=cat.toLowerCase();
-                upP(cl.id,pr.id,{managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:val,[field+"Date"]:today()}}});
-              };
-              return(
-                <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
-                  <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:0,padding:isMobile?"7px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`,background:C.bg}}>Content production</p>
-                  {catKeys.map(cat=>{
-                    const prog=cats[cat];
-                    const k=cat.toLowerCase();
-                    const msc=ms[k]||{};
-                    const isInfluencer=cat==="Influencer";
-                    const canAct=prog.allCreated;
-                    const cbStyle=(active:boolean,done:boolean,color:string)=>({
-                      fontSize:isMobile?10:8,padding:isMobile?"6px 10px":"3px 8px",
-                      border:`1px solid ${done||active?color:C.rule}`,borderRadius:2,
-                      background:done||active?color+"22":"none",
-                      color:done||active?color:C.light,
-                      cursor:canAct&&!done?"pointer":"default",
-                      fontFamily:SANS,letterSpacing:"0.05em",whiteSpace:"nowrap" as const,
-                      opacity:canAct||done?1:0.4,
-                    });
-                    return(
-                      <div key={cat} style={{display:"flex",alignItems:"center",gap:isMobile?8:6,padding:isMobile?"8px 10px":"5px 10px",borderBottom:`1px solid ${C.rule}`}}>
-                        {/* circles */}
-                        <svg width={isMobile?28:22} height={isMobile?28:22} viewBox="0 0 28 28" style={{flexShrink:0}}>
-                          <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
-                          {prog.created>0&&<circle cx="14" cy="14" r="11" fill="none" stroke={C.green} strokeWidth="2"
-                            strokeDasharray={`${(prog.created/prog.total)*2*Math.PI*11} ${2*Math.PI*11}`}
-                            strokeDashoffset={2*Math.PI*11*0.25}
-                            strokeLinecap="round"
-                            transform="rotate(-90 14 14)"/>}
-                          <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.created}/{prog.total}</text>
-                        </svg>
-                        {isInfluencer&&(
-                          <svg width={isMobile?28:22} height={isMobile?28:22} viewBox="0 0 28 28" style={{flexShrink:0}}>
-                            <circle cx="14" cy="14" r="11" fill="none" stroke={C.rule} strokeWidth="2"/>
-                            {prog.posted>0&&<circle cx="14" cy="14" r="11" fill="none" stroke="#6a6aaa" strokeWidth="2"
-                              strokeDasharray={`${(prog.posted/prog.total)*2*Math.PI*11} ${2*Math.PI*11}`}
-                              strokeDashoffset={2*Math.PI*11*0.25}
-                              strokeLinecap="round"
-                              transform="rotate(-90 14 14)"/>}
-                            <text x="14" y="17.5" textAnchor="middle" fontSize="7" fill={C.muted} fontFamily={SANS}>{prog.posted}/{prog.total}</text>
-                          </svg>
-                        )}
-                        {/* category name */}
-                        <span style={{fontSize:isMobile?11:9,color:C.black,fontWeight:"500",minWidth:60,flexShrink:0}}>{cat}</span>
-                        {/* actions */}
-                        <div style={{display:"flex",gap:isMobile?6:4,alignItems:"center",flex:1,flexWrap:"wrap" as const}}>
-                          <button
-                            style={cbStyle(false,!!msc.reviewed,C.amber)}
-                            onClick={()=>{if(canAct&&!msc.reviewed)setMs(cat,"reviewed",true);}}>
-                            {msc.reviewed?`reviewed · ${fmtD(msc.reviewedDate)}`:"review"}
-                          </button>
-                          {!isInfluencer&&(
-                            <button
-                              style={cbStyle(false,!!msc.delivered,C.green)}
-                              onClick={()=>{if(canAct&&!msc.delivered)setMs(cat,"delivered",true);}}>
-                              {msc.delivered?`delivered · ${fmtD(msc.deliveredDate)}`:"deliver"}
-                            </button>
-                          )}
-                          {isInfluencer&&(
-                            <span style={{fontSize:isMobile?10:8,color:prog.posted===prog.total&&prog.total>0?C.green:C.light,marginLeft:2}}>
-                              {prog.posted} of {prog.total} posted
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
+            {pr.status==="production"&&<ProductionSection pr={pr} clients={clients} cl={cl} upP={upP} isMobile={isMobile}/>}
 
             {/* ── LICENSE TRACKER ── */}
             <ProjectLicenseTracker pr={pr}/>
@@ -2370,7 +2364,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
 
   if(cl&&isMobile){
     return(
-      <ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={true}/>
+      <ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={true}/>
     );
   }
 
@@ -2466,7 +2460,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
         );
       })}
       </div>{/* end left col */}
-      {cl&&!isMobile&&<ClientDetail cl={cl} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={false}/>}
+      {cl&&!isMobile&&<ClientDetail cl={cl} clients={clients} fin={fin} editMode={editMode} ed={ed} setEd={setEd} upCl={upCl} setEditMode={setEditMode} delCl={delCl} tagI={tagI} setTagI={setTagI} uEnd={uEnd} showAddP={showAddP} setShowAddP={setShowAddP} newPN={newPN} setNewPN={setNewPN} addP={addP} onGoToCalc={onGoToCalc} upP={upP} setClients={setClients} openPDF={openPDF} openReviseContract={openReviseContract} setPdf={setPdf} onRevise={onRevise} onAmend={onAmend} setAmendT={setAmendT} setRenewT={setRenewT} setStatus={setStatus} nxt={nxt} prv={prv} editPrName={editPrName} setEditPrName={setEditPrName} editPrNameVal={editPrNameVal} setEditPrNameVal={setEditPrNameVal} delConfirm={delConfirm} setDelConfirm={setDelConfirm} setSel={setSel} highlightedProjectQNo={highlightedProjectQNo} onClearHighlight={()=>setHighlightedProjectQNo(null)} isMobile={false}/>}
     </div>
   );
 }
@@ -3759,13 +3753,21 @@ function getWsItems(clients: any[]): any[] {
 function getCatProgress(pr: any, clients: any[]): Record<string,{total:number,created:number,posted:number,allCreated:boolean}> {
   const cl=clients.find((c:any)=>c.projects.some((p:any)=>p.id===pr.id));
   if(!cl)return{};
-  const items=getWsItems([{...cl,projects:[pr]}]);
+  const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
   const cats: Record<string,{total:number,created:number,posted:number,allCreated:boolean}>={};
-  items.forEach((it:any)=>{
-    if(!cats[it.category])cats[it.category]={total:0,created:0,posted:0,allCreated:false};
-    cats[it.category].total++;
-    if(["Created","Reviewed","Delivered","Posted"].includes(it.status))cats[it.category].created++;
-    if(it.status==="Posted")cats[it.category].posted++;
+  (pr.qd?.lines||[]).forEach((ln:any,li:number)=>{
+    if(!ln.name)return;
+    if(skip.some((s:string)=>ln.name.toLowerCase().includes(s)))return;
+    const qty=parseInt(ln.qty)||1;
+    for(let q=0;q<qty;q++){
+      const id=`${pr.id}_ln${li}_q${q}`;
+      const cat=getWsCategory(ln.name);
+      const st=(pr.workspaceStatus||{})[id]||"Not started";
+      if(!cats[cat])cats[cat]={total:0,created:0,posted:0,allCreated:false};
+      cats[cat].total++;
+      if(["Created","Reviewed","Delivered","Posted"].includes(st))cats[cat].created++;
+      if(st==="Posted")cats[cat].posted++;
+    }
   });
   Object.keys(cats).forEach(k=>{cats[k].allCreated=cats[k].total>0&&cats[k].created===cats[k].total;});
   return cats;
