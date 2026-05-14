@@ -3579,14 +3579,8 @@ function Invoices({clients,settings,isMobile,filterTab}: any) {
 
 // ─── APP ROOT ─────────────────────────────────────────────
 const initClients=[
-  {id:"c1",name:"Sephora",contact:"Anna Müller",email:"anna@sephora.de",agency:"Direct",country:"Germany",tags:["Beauty","Fashion"],notes:"Easy approvals. Fast payer. Potential retainer.",
-    projects:[{id:"p1",name:"Spring Campaign 2026",status:"paid",amount:2363,paid:true,date:"2026-04-01",deliveryDate:"2026-05-01",amendments:[],renewals:[],
-      qd:{qNo:"QUO-2026-001",brand:"Sephora",contact:"Anna Müller",date:"2026-04-01",validUntil:"2026-04-15",ctype:"Content Creator",rev:0,mo:3,ctab:"influencer",
-        lines:[{name:"Short-form video, voiceover",note:"Reels / TikTok / YouTube Shorts",qty:3,up:450,amt:1350},{name:"Usage rights — paid ads, 3 months",note:"",qty:1,up:0,amt:675},{name:"Rush delivery",note:"Under 5 business days",qty:1,up:0,amt:338}],total:2363}}]},
-  {id:"c2",name:"Vogue Germany",contact:"Sarah Klein",email:"sarah@vogue.de",agency:"Direct",country:"Germany",tags:["Editorial","Fashion"],notes:"Luxury aesthetic. Needs detailed briefs.",
-    projects:[{id:"p2",name:"Editorial Shoot S/S 2026",status:"quoted",amount:2700,paid:false,date:"2026-03-15",deliveryDate:"",amendments:[],renewals:[],
-      qd:{qNo:"QUO-2026-002",brand:"Vogue Germany",contact:"Sarah Klein",date:"2026-03-15",validUntil:"2026-03-29",ctype:"Editorial Content Creator",rev:0,mo:3,ctab:"editorial",
-        lines:[{name:"Full photo story",note:"6–10 images",qty:1,up:1800,amt:1800},{name:"Hero video",note:"Up to 30 sec · cinematic",qty:1,up:1200,amt:900}],total:2700}}]},
+  {id:"c1",name:"Sephora",contact:"Anna Müller",email:"anna@sephora.de",agency:"Direct",country:"Germany",tags:["Beauty","Fashion"],notes:"Easy approvals. Fast payer. Potential retainer.",projects:[]},
+  {id:"c2",name:"Vogue Germany",contact:"Sarah Klein",email:"sarah@vogue.de",agency:"Direct",country:"Germany",tags:["Editorial","Fashion"],notes:"Luxury aesthetic. Needs detailed briefs.",projects:[]},
 ];
 
 // ─── PROJECTS TAB ─────────────────────────────────────────
@@ -3602,6 +3596,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const [editPrNameVal,setEditPrNameVal]=useState("");
   const [delConfirm,setDelConfirm]=useState<string|null>(null);
   const [statusFilter,setStatusFilter]=useState<string>("all");
+  const [sortOrder,setSortOrder]=useState<string>("newest");
   useEffect(()=>{
     if(!pendingProjectQNo)return;
     const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id})));
@@ -3612,7 +3607,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   useEffect(()=>{
     if(!expanded)return;
     const el=document.querySelector(`[data-prid="${expanded}"]`);
-    if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"start"}),80);
+    if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),80);
   },[expanded]);
   if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>setPdf(null)} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
@@ -3622,8 +3617,12 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const setStatus=(cid: string,pid: string,st: string)=>setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,status:st,paid:st==="paid"})}));
   const FS={projectName:isMobile?15:12,projectDate:isMobile?12:10.5,amountText:isMobile?16:14,statusBadge:isMobile?11:9.5,actionBtn:isMobile?10:8,docBtn:isMobile?10:8,pad:isMobile?"16px 16px":"12px 14px",gap:isMobile?12:10};
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id,_cname:c.name})));
-  const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>b.date>a.date?-1:1);
-  const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?-1:1);
+  const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>{
+    if(sortOrder==="amount")return b.amount-a.amount;
+    if(sortOrder==="oldest")return a.date>b.date?1:-1;
+    return b.date>a.date?1:-1;
+  });
+  const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
   const renderCard=(pr: any,isDone?:boolean)=>{
     const cl={id:pr._cid,name:pr._cname};
     const ps=prv(pr.status);
@@ -3726,6 +3725,14 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
         <span style={{fontSize:11,color:C.muted}}>Invoiced <strong style={{color:C.amber,fontWeight:"500"}}>{byStatus("invoiced")}{invoicedAmt>0?` · ${fmt(invoicedAmt)}`:""}</strong></span>
         {!isMobile&&<><span style={{color:C.light,fontSize:11}}>·</span>
         <span style={{fontSize:11,color:C.muted}}>Quoted <strong style={{color:C.black,fontWeight:"500"}}>{byStatus("quoted")+byStatus("revised")}</strong></span></>}
+      </div>
+
+      {/* sort control */}
+      <div style={{display:"flex",gap:5,marginBottom:10,alignItems:"center",flexWrap:"wrap" as const}}>
+        <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Sort</span>
+        {[["newest","Newest"],["oldest","Oldest"],["amount","Amount"]].map(([val,lbl])=>(
+          <button key={val} onClick={()=>setSortOrder(val)} style={{fontSize:9,padding:"3px 9px",borderRadius:20,border:`1px solid ${sortOrder===val?C.black:C.rule}`,background:sortOrder===val?C.black:C.bg,color:sortOrder===val?C.white:C.muted,cursor:"pointer",letterSpacing:"0.05em",textTransform:"uppercase" as const,fontFamily:SANS}}>{lbl}</button>
+        ))}
       </div>
 
       {/* filter pills */}
