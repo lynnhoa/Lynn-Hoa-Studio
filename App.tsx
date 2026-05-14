@@ -468,7 +468,7 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
     );
   };
   return(
-    <div style={{padding:"120px 62px 90px",fontSize:9.5,lineHeight:1.5,position:"relative",fontFamily:SANS,color:C.black,background:C.bg}}>
+    <div style={{padding:"120px 62px 90px",fontSize:9.5,lineHeight:1.5,position:"relative",minHeight:841,fontFamily:SANS,color:C.black,background:C.bg}}>
       <div style={{margin:"0 0 22px"}}>
         <h1 style={{fontFamily:SERIF,fontSize:19,fontWeight:"normal",margin:"0 0 28px"}}>{titles[type]||type}</h1>
         {type!=="contract"&&<p style={{fontSize:7.5,color:C.muted,margin:0}}>{creatorFullLine}</p>}
