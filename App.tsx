@@ -1790,7 +1790,7 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
   return(
     <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
       {/* header */}
-      <div style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,background:C.bg,borderBottom:`1px solid ${C.rule}`}}>
+      <div style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,background:"#f5f3f0",borderBottom:`1px solid ${C.rule}`}}>
         <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Cat.</div>
         <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Deliverable · progress</div>
         <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Manager</div>
@@ -1840,6 +1840,7 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
               {lineCircles.map(({ln,filled,qty,createdCount},lii)=>(
                 <div key={lii} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
                   <div style={{minWidth:0,flex:1}}>
+                    {isMobile&&(()=>{const cat=getWsCategory(ln.name);const pill=catPill(cat);return<span style={{fontSize:9,padding:"2px 6px",borderRadius:20,...pill,display:"inline-block",marginBottom:3}}>{cat}</span>;})()}
                     <p style={{fontSize:isMobile?13:10,color:C.black,margin:0,fontWeight:"500",whiteSpace:isMobile?"normal":"nowrap" as const,overflow:isMobile?"visible":"hidden",textOverflow:isMobile?"unset":"ellipsis",lineHeight:1.3}}>{ln.name}</p>
                     {ln.note&&<p style={{fontSize:isMobile?11:9,color:C.muted,margin:"2px 0 0"}}>{ln.note}</p>}
                   </div>
@@ -3610,12 +3611,12 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id,_cname:c.name})));
   const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
   const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
-  const renderCard=(pr: any)=>{
+  const renderCard=(pr: any,isDone?:boolean)=>{
     const cl={id:pr._cid,name:pr._cname};
     const ps=prv(pr.status);
     const isOpen=expanded===pr.id;
     return(
-      <div key={pr.id} style={{borderBottom:`1px solid ${C.rule}`}}>
+      <div key={pr.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
         <div onClick={()=>setExpanded(isOpen?null:pr.id)} style={{padding:"10px 0",cursor:"pointer"}}>
           {isMobile?(
             <>
@@ -3628,7 +3629,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
                   <span style={{fontSize:14,color:C.black,fontWeight:"500",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
                   <span style={{fontSize:11,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:3}}>{pr.paid?"Paid":pr.status}</span>
                 </div>
-                <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:12}}>{fmtD(pr.date)}</span>
+                <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:12}}>{pr.deliveryDate?fmtD(pr.deliveryDate):"—"}</span>
               </div>
             </>
           ):(
@@ -3638,12 +3639,12 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
                 <div style={{fontSize:FS.projectName,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</div>
                 <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:2}}>{pr.paid?"Paid":pr.status}</span>
               </div>
-              <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{fmtD(pr.date)}</div>
+              <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{pr.deliveryDate?fmtD(pr.deliveryDate):"—"}</div>
               <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
             </div>
           )}
         </div>
-        {isOpen&&<div style={{padding:FS.pad,paddingTop:4,marginBottom:FS.gap,background:"#f5f3f0"}}>
+        {isOpen&&<div style={{padding:FS.pad,paddingTop:4,marginBottom:FS.gap,background:"transparent"}}>
           {["quoted","revised","contracted","production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:isMobile?12:8}}>
             <span style={{fontSize:isMobile?12:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Delivery</span>
             <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
@@ -3691,13 +3692,62 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
       </div>
     );
   };
+  const activeTotal=active.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const doneTotal=done.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const byStatus=(st: string)=>active.filter((pr: any)=>pr.status===st).length;
+  const invoicedAmt=active.filter((pr: any)=>pr.status==="invoiced").reduce((s: number,pr: any)=>s+pr.amount,0);
+  const [statusFilter,setStatusFilter]=useState<string>("all");
+  const FILTERS=[["all","All"],["production","Production"],["invoiced","Invoiced"],["contracted","Contracted"],["quoted","Quoted"]];
+  const filteredActive=statusFilter==="all"?active:active.filter((pr: any)=>pr.status===statusFilter||(statusFilter==="quoted"&&pr.status==="revised"));
   return(
     <div>
-      {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",marginBottom:8}}>
-        {["Client","Project","Date","Amount"].map((h,i)=><span key={h} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.muted,textAlign:i>=2?"right" as const:"left" as const}}>{h}</span>)}
+      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 12px"}}>Projects</h2>
+
+      {/* stats bar */}
+      <div style={{display:"flex",gap:isMobile?10:16,flexWrap:"wrap" as const,marginBottom:10,alignItems:"center"}}>
+        <span style={{fontSize:11,color:C.muted}}>Active <strong style={{color:C.black,fontWeight:"500"}}>{active.length}</strong></span>
+        <span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Pipeline <strong style={{color:C.amber,fontWeight:"500"}}>{fmt(activeTotal)}</strong></span>
+        <span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Production <strong style={{color:C.black,fontWeight:"500"}}>{byStatus("production")}</strong></span>
+        <span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Invoiced <strong style={{color:C.amber,fontWeight:"500"}}>{byStatus("invoiced")}{invoicedAmt>0?` · ${fmt(invoicedAmt)}`:""}</strong></span>
+        {!isMobile&&<><span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Quoted <strong style={{color:C.black,fontWeight:"500"}}>{byStatus("quoted")+byStatus("revised")}</strong></span></>}
+      </div>
+
+      {/* filter pills */}
+      <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap" as const}}>
+        {FILTERS.map(([val,lbl])=>(
+          <button key={val} onClick={()=>setStatusFilter(val)} style={{fontSize:9,padding:"4px 10px",borderRadius:20,border:`1px solid ${statusFilter===val?C.black:C.rule}`,background:statusFilter===val?C.black:C.bg,color:statusFilter===val?C.white:C.muted,cursor:"pointer",letterSpacing:"0.05em",textTransform:"uppercase" as const,fontFamily:SANS}}>{lbl}</button>
+        ))}
+      </div>
+
+      {/* active section */}
+      {active.length>0&&<>
+        {/* section title above col headers */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingBottom:5}}>
+          <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,fontWeight:"500"}}>Active — {active.length}</span>
+          <span style={{fontSize:9,color:C.black}}>{fmt(activeTotal)}</span>
+        </div>
+        {/* col headers — desktop only, below section title */}
+        {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",padding:"4px 0 6px",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
+          {["Client · Project","","Delivery","Amount"].map((h,i)=><span key={i} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.light,textAlign:i>=2?"right" as const:"left" as const}}>{h}</span>)}
+        </div>}
+        {isMobile&&<div style={{borderBottom:`1px solid ${C.rule}`}}/>}
+        {filteredActive.map(renderCard)}
+        {filteredActive.length===0&&<p style={{fontSize:12,color:C.light,padding:"20px 0"}}>No projects match this filter.</p>}
+      </>}
+
+      {/* done section */}
+      {done.length>0&&<div style={{marginTop:active.length>0?24:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>
+          <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const,fontWeight:"500"}}>Done — {done.length}</span>
+          <span style={{fontSize:9,color:C.muted}}>{fmt(doneTotal)} earned</span>
+        </div>
+        {done.map(pr=>renderCard(pr,true))}
       </div>}
-      {active.length>0&&<><p style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 0",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Active — {active.length}</p>{active.map(renderCard)}</>}
-      {done.length>0&&<><p style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:`${active.length>0?24:0}px 0 0`,paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Done — {done.length}</p><div style={{opacity:0.5}}>{done.map(renderCard)}</div></>}
+
       {active.length===0&&done.length===0&&<p style={{fontSize:12,color:C.light,textAlign:"center" as const,marginTop:40}}>No projects yet.</p>}
     </div>
   );
