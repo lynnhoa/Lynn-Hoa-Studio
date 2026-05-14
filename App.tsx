@@ -1501,7 +1501,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const [bCat,setBCat]=useState("influencer");
   const [bDel,setBDel]=useState(-1); // -1 = sentinel "— Select deliverable —"
-  const [bQty,setBQty]=useState(1);
+  const [bQty,setBQty]=useState<number|string>(1);
   const [bUsage,setBUsage]=useState(0); // 0 = sentinel
   const [bExcl,setBExcl]=useState(0);  // 0 = sentinel
   const [bNeg,setBNeg]=useState("");
@@ -1528,9 +1528,10 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
 
   const computePrice=()=>{
     const item=bDel>=0?deliverables[bDel]:null;
+    const bQtyN=parseInt(String(bQty))||1;
     const base=bNeg!==""?parseFloat(bNeg)||0:(item?.p||0);
-    const lb=base*(bQty||1);
-    let vp=0;if(bVol){if(bCat==="editorial")vp=10;else if(bQty>=10)vp=20;else if(bQty>=3)vp=15;}
+    const lb=base*(bQtyN||1);
+    let vp=0;if(bVol){if(bCat==="editorial")vp=10;else if(bQtyN>=10)vp=20;else if(bQtyN>=3)vp=15;}
     const av=lb*(1-vp/100);
     const usagePct=card.usage[bUsage]?.sentinel?0:(card.usage[bUsage]?.pct||0);
     const exclPct=card.excl[bExcl]?.sentinel?0:(card.excl[bExcl]?.pct||0);
@@ -1550,7 +1551,7 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
     setItems(prev=>[...prev,{
       id:uid(),cat:bCat,
       name:item?.n||"",note:item?.note||"",
-      qty:bQty,up:item?.p||parseFloat(bNeg)||0,amt:price,
+      qty:parseInt(String(bQty))||1,up:item?.p||parseFloat(bNeg)||0,amt:price,
       usageLabel:usageSel?.sentinel?undefined:usageSel?.l,
       exclLabel:exclSel?.sentinel?undefined:exclSel?.l,
       addons:bAddons.map(aid=>addonList.find((x: any)=>x.id===aid)?.n).filter(Boolean),
@@ -1646,7 +1647,11 @@ function Calculator({onSave,prefill,clearPrefill,rc,settings,isMobile,onAfterSav
             <option value={-1}>— Select deliverable —</option>
             {deliverables.map((it: any,i: number)=><option key={i} value={i}>{it.n}{it.p?` — € ${it.p}`:""}</option>)}
           </S></div>
-          <div><Lbl>Qty</Lbl><I type="number" min={1} value={bQty} onChange={(e: any)=>setBQty(parseInt(e.target.value)||1)}/></div>
+          <div><Lbl>Qty</Lbl><div style={{display:"flex",alignItems:"center",gap:4,height:32}}>
+            <button type="button" onClick={()=>setBQty(q=>Math.max(1,(parseInt(String(q))||1)-1))} style={{width:28,height:28,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:15,color:C.black,lineHeight:1,flexShrink:0}}>−</button>
+            <input type="number" min={1} value={bQty} onChange={(e:any)=>setBQty(e.target.value===""?"":(parseInt(e.target.value)||1))} onBlur={(e:any)=>setBQty(parseInt(e.target.value)||1)} style={{width:36,textAlign:"center",fontFamily:SANS,fontSize:13,color:C.black,border:`1px solid ${C.rule}`,borderRadius:2,padding:"4px 2px",background:C.bg,outline:"none"}}/>
+            <button type="button" onClick={()=>setBQty(q=>(parseInt(String(q))||1)+1)} style={{width:28,height:28,border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:15,color:C.black,lineHeight:1,flexShrink:0}}>+</button>
+          </div></div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:9}}>
           <div>
