@@ -1838,17 +1838,21 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
             {/* col2 — per-line deliverables */}
             <div style={{borderRight:`1px solid ${C.rule}`,padding:"8px 10px",display:"flex",flexDirection:"column" as const,gap:isMobile?8:6}}>
               {lineCircles.map(({ln,filled,qty,createdCount},lii)=>(
-                <div key={lii} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
+                <div key={lii} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
                   <div style={{minWidth:0,flex:1}}>
-                    <p style={{fontSize:isMobile?12:10,color:C.black,margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,fontWeight:"500"}}>{ln.name}</p>
-                    {ln.note&&<p style={{fontSize:isMobile?10:9,color:C.muted,margin:0}}>{ln.note}</p>}
+                    <p style={{fontSize:isMobile?13:10,color:C.black,margin:0,fontWeight:"500",whiteSpace:isMobile?"normal":"nowrap" as const,overflow:isMobile?"visible":"hidden",textOverflow:isMobile?"unset":"ellipsis",lineHeight:1.3}}>{ln.name}</p>
+                    {ln.note&&<p style={{fontSize:isMobile?11:9,color:C.muted,margin:"2px 0 0"}}>{ln.note}</p>}
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0,flexWrap:"wrap" as const,justifyContent:"flex-end"}}>
-                    {filled.map((f:boolean,fi:number)=>(
-                      <div key={fi} style={{width:isMobile?10:8,height:isMobile?10:8,borderRadius:"50%",background:f?C.black:"transparent",border:`1.5px solid ${f?C.black:C.light}`,flexShrink:0}}/>
-                    ))}
-                    <span style={{fontSize:isMobile?10:9,color:C.muted,marginLeft:2,whiteSpace:"nowrap" as const}}>{createdCount}/{qty}</span>
-                  </div>
+                  {isMobile?(
+                    <span style={{fontSize:11,fontWeight:"500",padding:"2px 8px",borderRadius:20,background:createdCount===qty?C.greenBg:C.rule,color:createdCount===qty?C.green:C.muted,border:`1px solid ${createdCount===qty?C.greenBorder:C.light}`,whiteSpace:"nowrap" as const,flexShrink:0,marginTop:1}}>{createdCount}/{qty}</span>
+                  ):(
+                    <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0,flexWrap:"wrap" as const,justifyContent:"flex-end"}}>
+                      {filled.map((f:boolean,fi:number)=>(
+                        <div key={fi} style={{width:8,height:8,borderRadius:"50%",background:f?C.black:"transparent",border:`1.5px solid ${f?C.black:C.light}`,flexShrink:0}}/>
+                      ))}
+                      <span style={{fontSize:9,color:C.muted,marginLeft:2,whiteSpace:"nowrap" as const}}>{createdCount}/{qty}</span>
+                    </div>
+                  )}
                 </div>
               ))}
               {/* ready badge when all created */}
