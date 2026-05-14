@@ -3899,7 +3899,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
           </div>
         )}
       </div>
-      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} setFromDrill={setFromDrill} settings={settings} resetKey={dashReset} drill={dashDrill} setDrill={setDashDrill}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={(n: number)=>{if(n!==1)setFromDrill(null);setNav(n);}} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===1&&fromDrill&&<button onClick={()=>{setFromDrill(null);setNav(0);}} style={{position:"fixed",bottom:24,right:24,zIndex:999,background:C.bg,border:`1px solid ${C.rule}`,borderRadius:20,padding:"7px 18px",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.06em",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.10)",whiteSpace:"nowrap"}}>← Active Projects</button>}
