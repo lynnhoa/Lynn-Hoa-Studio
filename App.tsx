@@ -3625,7 +3625,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
   };
 
   const logout=()=>doLogout();
-  const NAV=["Dashboard","Clients","Calculator","Rate Card"];
+  const NAV=["Dashboard","Clients","Calculator","Rate Card","Projects"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
   return(
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:SANS,color:C.black}}>
@@ -3637,7 +3637,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"0 6px",borderTop:`1px solid ${C.rule}`,position:"relative"}}>
               <div style={{display:"flex"}}>
-                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+                {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i===4?8:i);}} style={{padding:"0 10px",height:40,background:"none",border:"none",borderBottom:(i===3?nav===7:i===4?nav===8:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:i===4?nav===8:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
               </div>
               <div style={{position:"absolute",right:6,display:"flex",alignItems:"center"}}>
                 {menuOpen&&<div style={{position:"fixed",inset:0,zIndex:199}} onClick={()=>setMenuOpen(false)}/>}
@@ -3675,7 +3675,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
             </div>
             <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToDash}><AppLogo size="web"/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===3?nav===7:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
+              {NAV.map((n,i)=><button key={i} onClick={()=>{if(i===1)setClientSelReset(p=>p+1);setNav(i===3?7:i===4?8:i);}} style={{padding:"0 14px",height:56,background:"none",border:"none",borderBottom:(i===3?nav===7:i===4?nav===8:nav===i)?`2px solid ${C.black}`:"2px solid transparent",color:(i===3?nav===7:i===4?nav===8:nav===i)?C.black:C.muted,cursor:"pointer",fontFamily:SANS,fontSize:9,letterSpacing:"0.12em",textTransform:"uppercase"}}>{n}</button>)}
             </div>
           </div>
         )}
@@ -3687,6 +3687,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
         {nav===7&&<RateCard rc={rc} setRc={setRc} settings={settings}/>}
+        {nav===8&&<div style={{paddingTop:20}}><p style={{fontSize:12,color:C.light,textAlign:"center" as const}}>Projects — coming soon.</p></div>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
