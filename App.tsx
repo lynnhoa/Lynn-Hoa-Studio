@@ -3580,11 +3580,11 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
     return(
       <div key={pr.id} style={{borderBottom:`1px solid ${C.rule}`}}>
         <div onClick={()=>setExpanded(isOpen?null:pr.id)} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 100px 80px 90px",alignItems:"center",padding:"10px 0",cursor:"pointer"}}>
+          <div style={{fontSize:11,color:C.muted}}>{pr._cname}</div>
           <div style={{minWidth:0}}>
             <div style={{fontSize:FS.projectName,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</div>
             <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:2}}>{pr.paid?"Paid":pr.status}</span>
           </div>
-          <div style={{fontSize:11,color:C.muted}}>{pr._cname}</div>
           <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{fmtD(pr.date)}</div>
           <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
         </div>
@@ -3639,7 +3639,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   return(
     <div>
       <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 100px 80px 90px",marginBottom:8}}>
-        {["Project","Client","Date","Amount"].map((h,i)=><span key={h} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.muted,textAlign:i>=2?"right" as const:"left" as const}}>{h}</span>)}
+        {["Client","Project","Date","Amount"].map((h,i)=><span key={h} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.muted,textAlign:i>=2?"right" as const:"left" as const}}>{h}</span>)}
       </div>
       {active.length>0&&<><p style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 0",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Active — {active.length}</p>{active.map(renderCard)}</>}
       {done.length>0&&<><p style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:`${active.length>0?24:0}px 0 0`,paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Done — {done.length}</p><div style={{opacity:0.5}}>{done.map(renderCard)}</div></>}
