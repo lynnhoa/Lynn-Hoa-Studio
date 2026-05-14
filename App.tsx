@@ -1745,7 +1745,26 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
   const ms=pr.managerStatus||{};
   const setMs=(cat:string,field:string)=>{
     const k=cat.toLowerCase();
-    upP(cl.id,pr.id,{managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:true,[field+"Date"]:today()}}});
+    const base={managerStatus:{...ms,[k]:{...(ms[k]||{}),[field]:true,[field+"Date"]:today()}}};
+    if(field==="delivered"){
+      const skipD=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
+      const newWs={...(pr.workspaceStatus||{})};
+      const newHist={...(pr.workspaceStatusHistory||{})};
+      (pr.qd?.lines||[]).forEach((ln:any,li:number)=>{
+        if(!ln.name)return;
+        if(skipD.some((s:string)=>ln.name.toLowerCase().includes(s)))return;
+        if(getWsCategory(ln.name)!==cat)return;
+        const qty=parseInt(ln.qty)||1;
+        for(let q=0;q<qty;q++){
+          const id=`${pr.id}_ln${li}_q${q}`;
+          newWs[id]="Delivered";
+          newHist[id]=[...((pr.workspaceStatusHistory||{})[id]||[]),{status:"Delivered",date:today()}];
+        }
+      });
+      upP(cl.id,pr.id,{...base,workspaceStatus:newWs,workspaceStatusHistory:newHist});
+    } else {
+      upP(cl.id,pr.id,base);
+    }
   };
 
   const skip=["usage","excl","rush","revision","whitelisting","aspect","raw footage","kill","pinned","link in bio"];
