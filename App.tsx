@@ -1784,15 +1784,15 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
     </div>
   );
 
-  const col1W=isMobile?52:72;
+  const col1W=isMobile?0:72;
   const col3W=isMobile?100:130;
 
   return(
     <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
       {/* header */}
-      <div style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,background:"#f5f3f0",borderBottom:`1px solid ${C.rule}`}}>
-        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Cat.</div>
-        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Deliverable · progress</div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?`1fr ${col3W}px`:`${col1W}px 1fr ${col3W}px`,background:"#f5f3f0",borderBottom:`1px solid ${C.rule}`}}>
+        {!isMobile&&<div style={{padding:"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Cat.</div>}
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:isMobile?"none":`1px solid ${C.rule}`}}>Deliverable · progress</div>
         <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Manager</div>
       </div>
 
@@ -1828,12 +1828,12 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
         });
 
         return(
-          <div key={cat} style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,borderBottom:ci<catKeys.length-1?`1px solid ${C.rule}`:"none"}}>
+          <div key={cat} style={{display:"grid",gridTemplateColumns:isMobile?`1fr ${col3W}px`:`${col1W}px 1fr ${col3W}px`,borderBottom:ci<catKeys.length-1?`1px solid ${C.rule}`:"none"}}>
 
-            {/* col1 — category pill */}
-            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:isMobile?10:9,padding:isMobile?"3px 7px":"2px 6px",borderRadius:20,...catPill(cat)}}>{cat}</span>
-            </div>
+            {/* col1 — category pill (desktop only; mobile shows pill inline per line) */}
+            {!isMobile&&<div style={{display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:9,padding:"2px 6px",borderRadius:20,...catPill(cat)}}>{cat}</span>
+            </div>}
 
             {/* col2 — per-line deliverables */}
             <div style={{borderRight:`1px solid ${C.rule}`,padding:"0",display:"flex",flexDirection:"column" as const}}>
