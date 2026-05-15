@@ -4648,35 +4648,87 @@ function getLineGroups(c: any, pr: any): any[] {
   return groups;
 }
 
-// ─── CREATOR PROJECTS TAB ─────────────────────────────────
-function CreatorProjects({isMobile,clients}: {isMobile:boolean,clients:any[]}) {
-  const activeClients=clients.filter((cl: any)=>cl.projects.some((pr: any)=>pr.status==="production"));
-  const pastClients=clients.filter((cl: any)=>
-    !cl.projects.some((pr: any)=>pr.status==="production")&&
-    cl.projects.some((pr: any)=>pr.status==="invoiced"||pr.status==="paid")
-  );
+// ─── CREATOR PROJECTS ─────────────────────────────────────
+function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
+  const [collapsed,setCollapsed]=useState<Record<string,boolean>>({});
 
-  const LineRows=({c}: {c: any})=>{
-    const pr=c.projects.find((p: any)=>p.status==="production");
-    if(!pr)return null;
+  // Collect all projects across all clients, attach clientName
+  const allProjects: any[]=[];
+  clients.forEach((c: any)=>{
+    (c.projects||[]).forEach((pr: any)=>{
+      allProjects.push({...pr,clientName:c.name,clientId:c.id});
+    });
+  });
+
+  // Active = status "production". Done = status "invoiced" or "paid"
+  const active=allProjects
+    .filter((pr: any)=>pr.status==="production")
+    .sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
+  const done=allProjects
+    .filter((pr: any)=>pr.status==="invoiced"||pr.status==="paid")
+    .sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
+
+  const renderCard=(pr: any,isDone=false)=>{
+    // find client
+    const c=clients.find((cl: any)=>cl.id===pr.clientId)||{};
     const groups=getLineGroups(c,pr);
+    const allItems_=groups.flatMap((g: any)=>g.items);
+    const totalDone=allItems_.filter((it: any)=>it.status==="Delivered").length;
+    const totalAll=allItems_.length;
+    const dl=dLeft(pr.deliveryDate);
+    const isOpen=collapsed[pr.id]!==true;
+
     return(
-      <div style={{display:"flex",flexDirection:"column" as const,gap:5,marginTop:8}}>
-        {groups.map((g: any)=>{
-          const done=g.items.filter((it: any)=>it.status==="Delivered").length;
-          const total=g.items.length;
-          const pct=total>0?done/total:0;
-          const complete=done===total;
+      <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
+        {/* project header row */}
+        <div onClick={()=>setCollapsed(p=>({...p,[pr.id]:!p[pr.id]}))}
+          style={{display:"flex",alignItems:"center",gap:10,padding:"10px 13px",background:"#f7f6f4",cursor:"pointer"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+              <span style={{fontSize:13,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
+              <span style={{fontSize:10.5,color:C.muted,flexShrink:0}}>{pr.clientName}</span>
+            </div>
+            {pr.deliveryDate&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+              <span style={{fontSize:11,color:C.amber}}>{fmtD(pr.deliveryDate)}</span>
+              {dl!==null&&!isDone&&<span style={{fontSize:11,color:C.muted}}>· {dl}d left</span>}
+            </div>}
+          </div>
+          {totalAll>0&&<span style={{fontSize:11,color:totalDone===totalAll?C.green:C.muted,fontWeight:totalDone===totalAll?"500":"400",flexShrink:0}}>{totalDone}/{totalAll}</span>}
+          <span style={{fontSize:10,color:C.light,flexShrink:0}}>{isOpen?"▾":"▸"}</span>
+        </div>
+
+        {/* deliverable groups */}
+        {isOpen&&groups.map((g: any)=>{
+          const done_=g.items.filter((it: any)=>it.status==="Delivered").length;
+          const total_=g.items.length;
+          const complete=done_===total_;
           const cs=ccCatStyle(g.category);
-          const shortName=g.lineName.replace(/,.*$/,"").replace(/short-form/i,"Short video").replace(/voiceover/i,"").trim();
+          const subKey=`${pr.id}_${g.lineKey}`;
+          const subOpen=collapsed[subKey]!==false;
           return(
-            <div key={g.lineKey} style={{display:"flex",alignItems:"center",gap:5}}>
-              <span style={{fontSize:9,padding:"1px 5px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0,minWidth:42,textAlign:"center" as const}}>{ccCatLabel(g.category)}</span>
-              <span style={{fontSize:11,color:C.muted,width:60,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{shortName}</span>
-              <div style={{flex:1,height:3,background:C.rule,borderRadius:2}}>
-                <div style={{height:3,width:`${pct*100}%`,background:complete?C.green:C.black,borderRadius:2}}/>
+            <div key={g.lineKey} style={{borderTop:`1px solid ${C.rule}`}}>
+              <div onClick={e=>{e.stopPropagation();setCollapsed(p=>({...p,[subKey]:!subOpen}));}}
+                style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",cursor:"pointer"}}>
+                <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{ccCatLabel(g.category)}</span>
+                <span style={{fontSize:12,color:C.black,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{total_}× {g.lineName}</span>
+                <div style={{display:"flex",gap:3,flexShrink:0}}>
+                  {g.items.map((it: any)=>{
+                    const dotColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.rule;
+                    return <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:dotColor,display:"inline-block"}}/>;
+                  })}
+                </div>
+                <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",flexShrink:0}}>{done_}/{total_}</span>
+                <span style={{fontSize:10,color:C.light,flexShrink:0}}>{subOpen?"▾":"▸"}</span>
               </div>
-              <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",minWidth:24,textAlign:"right" as const}}>{done}/{total}</span>
+              {subOpen&&g.items.map((it: any)=>{
+                const stColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.light;
+                return(
+                  <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:`1px solid ${C.rule}`}}>
+                    <span style={{fontSize:13,color:C.black,flex:1}}>{it.name}</span>
+                    <span style={{fontSize:11,color:stColor}}>{it.status}</span>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -4684,37 +4736,23 @@ function CreatorProjects({isMobile,clients}: {isMobile:boolean,clients:any[]}) {
     );
   };
 
-  const ClientCard=({c,isActive}: {c: any,isActive: boolean})=>{
-    const pr=c.projects.find((p: any)=>p.status==="production");
-    const dl=dLeft(pr?.deliveryDate);
-    return(
-      <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"11px 13px",marginBottom:8,opacity:isActive?1:0.6}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}}>
-          <span style={{fontSize:13,fontWeight:"500",color:C.black}}>{c.name}</span>
-          {pr?.deliveryDate&&<span style={{fontSize:13,fontWeight:"500",color:C.amber}}>{fmtD(pr.deliveryDate)}</span>}
-        </div>
-        {pr&&<p style={{fontSize:10.5,color:C.muted,margin:"0 0 1px"}}>{pr.name}</p>}
-        {dl!==null&&<p style={{fontSize:10.5,color:C.light,margin:"0 0 0"}}>{dl}d left</p>}
-        {!isActive&&<p style={{fontSize:10.5,color:C.light,margin:"2px 0 0"}}>Paid{c.projects.find((p: any)=>p.status==="paid")?.name?` · ${c.projects.find((p: any)=>p.status==="paid").name}`:""}</p>}
-        {isActive&&<LineRows c={c}/>}
-      </div>
-    );
-  };
-
   return(
     <div>
-      <h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 16px"}}>Projects</h2>
-      {activeClients.length===0&&pastClients.length===0&&(
-        <p style={{fontSize:11,color:C.muted}}>No projects yet. Projects appear here once a contract is signed.</p>
+      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Projects</h2>
+
+      {active.length===0&&done.length===0&&(
+        <p style={{fontSize:11,color:C.muted}}>No projects yet. Projects appear here once a contract is in production.</p>
       )}
-      {activeClients.length>0&&<>
-        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 8px"}}>Active</p>
-        {activeClients.map((c: any)=><ClientCard key={c.id} c={c} isActive={true}/>)}
+
+      {active.length>0&&<>
+        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 8px"}}>Active — {active.length}</p>
+        {active.map(pr=>renderCard(pr,false))}
       </>}
-      {pastClients.length>0&&<>
-        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"16px 0 8px"}}>Past</p>
-        {pastClients.map((c: any)=><ClientCard key={c.id} c={c} isActive={false}/>)}
-      </>}
+
+      {done.length>0&&<div style={{marginTop:active.length>0?24:0}}>
+        <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 8px"}}>Done — {done.length}</p>
+        {done.map(pr=>renderCard(pr,true))}
+      </div>}
     </div>
   );
 }
@@ -4764,11 +4802,9 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
   // right panel detail
   const Detail=({c}: {c: any})=>{
     const pr=c.projects.find((p: any)=>p.status==="production");
-    const pastProjects=c.projects.filter((p: any)=>p.status==="invoiced"||p.status==="paid");
-    const groups=pr?getLineGroups(c,pr):[];
-    const allItems=groups.flatMap((g: any)=>g.items);
-    const totalDone=allItems.filter((it: any)=>it.status==="Delivered").length;
-    const totalAll=allItems.length;
+    const allItems_=getLineGroups(c,pr||{}).flatMap((g: any)=>g.items);
+    const totalDone=allItems_.filter((it: any)=>it.status==="Delivered").length;
+    const totalAll=allItems_.length;
     const dl=dLeft(pr?.deliveryDate);
 
     return(
@@ -4787,61 +4823,6 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
           {dl!==null&&<span style={{fontSize:11,color:C.muted}}>· {dl}d left</span>}
           <span style={{fontSize:11,color:C.muted,marginLeft:"auto"}}>Progress <strong style={{color:C.black}}>{totalDone}/{totalAll}</strong></span>
         </div>}
-
-        {pr&&<>
-          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 10px"}}>{pr.name} — Active</p>
-          {groups.map((g: any)=>{
-            const done=g.items.filter((it: any)=>it.status==="Delivered").length;
-            const total=g.items.length;
-            const complete=done===total;
-            const cs=ccCatStyle(g.category);
-            const isOpen=collapsed[g.lineKey]!==true;
-            const toggleKey=`${pr.id}_${g.lineKey}`;
-            return(
-              <div key={g.lineKey} style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
-                <div onClick={()=>setCollapsed(p=>({...p,[toggleKey]:!p[toggleKey]}))}
-                  style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"#f7f6f4",cursor:"pointer"}}>
-                  <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{ccCatLabel(g.category)}</span>
-                  <span style={{fontSize:12,color:C.black,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{total}× {g.lineName}</span>
-                  <div style={{display:"flex",gap:3,flexShrink:0}}>
-                    {g.items.map((it: any)=>{
-                      const dotColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.rule;
-                      return <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:dotColor,display:"inline-block"}}/>;
-                    })}
-                  </div>
-                  <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",flexShrink:0}}>{done}/{total}</span>
-                  <span style={{fontSize:10,color:C.light,flexShrink:0}}>{isOpen?"▾":"▸"}</span>
-                </div>
-                {isOpen&&(
-                  <div>
-                    {g.items.map((it: any)=>{
-                      const stColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.light;
-                      return(
-                        <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:`1px solid ${C.rule}`}}>
-                          <span style={{fontSize:13,color:C.black,flex:1}}>{it.name}</span>
-                          <span style={{fontSize:11,color:stColor}}>{it.status}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </>}
-
-        {pastProjects.length>0&&<>
-          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"20px 0 10px"}}>Past Projects</p>
-          {pastProjects.map((p: any)=>(
-            <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:13,color:C.muted}}>{p.name}</span>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:10,padding:"2px 8px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted}}>Paid</span>
-                <span style={{fontSize:12,color:C.light}}>›</span>
-              </div>
-            </div>
-          ))}
-        </>}
       </div>
     );
   };
@@ -5267,7 +5248,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
       <div style={{maxWidth:(nav===1&&creatorClientSel)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile} clients={clients}/>}
         {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
-        {nav===2&&<CreatorProjects isMobile={isMobile} clients={clients}/>}
+        {nav===2&&<CreatorProjects clients={clients} isMobile={isMobile}/>}
         {nav===3&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
         {nav===4&&<CreatorPlanner isMobile={isMobile} clients={clients} setClients={setClients}/>}
       </div>
