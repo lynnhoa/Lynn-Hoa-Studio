@@ -36,6 +36,20 @@ const C = {
 const SERIF = "'Georgia','Times New Roman',serif";
 const SANS  = "'Helvetica Neue',Arial,sans-serif";
 
+// ─── GLOBAL TYPOGRAPHY SCALE ──────────────────────────────
+// Desktop sizes. Mobile: H1→20, H2→17, small→12, label→11, micro→11, amount→18
+// Nothing below 11px on mobile. Apply section by section — do not use yet.
+const TYPE = {
+  h1:     {size:22, font:SERIF, weight:"normal"},
+  h2:     {size:18, font:SERIF, weight:"normal"},
+  h3:     {size:15, font:SERIF, weight:"normal"},
+  body:   {size:13, font:SANS,  weight:"normal"},
+  small:  {size:11, font:SANS,  weight:"normal"},
+  label:  {size:10, font:SANS,  weight:"500"   },
+  micro:  {size:9,  font:SANS,  weight:"normal"},
+  amount: {size:20, font:SERIF, weight:"normal"},
+};
+
 // ─── HELPERS ──────────────────────────────────────────────
 const fmt   = (n: number | null | undefined) => `€ ${Number(n||0).toLocaleString("de-DE")}`;
 const today = () => new Date().toISOString().split("T")[0];
