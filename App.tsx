@@ -4223,7 +4223,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
       {allItems.length===0&&(
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const,marginTop:20}}>
           <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
-          <p style={{fontSize:isMobile?12:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
+          <p style={{fontSize:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
         </div>
       )}
 
@@ -4237,8 +4237,8 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
             {/* Group header */}
             <div onClick={()=>toggleGroup(g.key)}
               style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,cursor:"pointer",userSelect:"none" as const}}>
-              <span style={{fontSize:isMobile?12:10,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:"500"}}>{g.label}</span>
-              <span style={{fontSize:isMobile?12:11,color:isOverdueGroup&&g.items.length>0?C.red:C.muted}}>{g.items.length}</span>
+              <span style={{fontSize:11,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:"600"}}>{g.label}</span>
+              <span style={{fontSize:11,color:isOverdueGroup&&g.items.length>0?C.red:C.muted}}>{g.items.length}</span>
               <span style={{fontSize:11,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
             </div>
             <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
@@ -4281,14 +4281,56 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
 
               return(
                 <div key={item.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.6:1}}>
-                  <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:isMobile?"12px 0":"9px 0"}}>
-
-                    {/* brand */}
-                    <span style={{fontSize:isMobile?13:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:isMobile?90:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
+                  {isMobile?(
+                    <div style={{padding:"11px 0"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                        <div style={{display:"flex",alignItems:"center",gap:7,minWidth:0,flex:1}}>
+                          <span style={{fontSize:10,fontWeight:"500",color:C.black,letterSpacing:"0.07em",textTransform:"uppercase" as const,flexShrink:0}}>{item.clientName}</span>
+                          <span style={{fontSize:10,padding:"1px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>{item.category}</span>
+                        </div>
+                        <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400",flexShrink:0,marginLeft:8}}>{fmtDeadline(item.deadline)}</span>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                        <div style={{flex:1,minWidth:0,marginRight:12}}>
+                          {isEditing?(
+                            <input autoFocus value={editingVal} onChange={e=>setEditingVal(e.target.value)}
+                              onBlur={()=>saveName(item,editingVal)}
+                              onKeyDown={e=>{if(e.key==="Enter")saveName(item,editingVal);if(e.key==="Escape"){setEditingId(null);}}}
+                              placeholder={item.defaultName}
+                              style={{fontFamily:SANS,fontSize:13,color:C.black,border:"none",borderBottom:`1px solid ${C.black}`,background:"transparent",outline:"none",padding:"0 0 1px",width:"100%"}}/>
+                          ):(
+                            <span onClick={()=>{if(!isDone){setEditingId(item.id);setEditingVal(item.name);}}}
+                              style={{fontSize:13,color:C.black,cursor:isDone?"default":"text",textDecoration:isDone?"line-through":"none",display:"block",marginBottom:2}}>{item.name}</span>
+                          )}
+                          {item.lineNote&&<span style={{fontSize:11,color:C.muted,display:"block",marginBottom:2}}>{item.lineNote}</span>}
+                          {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:11,color:C.amber,display:"block",marginBottom:2,cursor:"pointer"}}>{item.notes}</span>}
+                          {!item.notes&&!isNoting&&!isDone&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:11,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,letterSpacing:"0.02em"}}>+ note</button>}
+                          {isCreated&&mgrStatus&&<span style={{fontSize:11,color:mgrStatus.color,display:"block",marginTop:1,letterSpacing:"0.02em"}}>{mgrStatus.label} · {fmtD(mgrStatus.date)}</span>}
+                          {dayTag&&<span style={{fontSize:11,color:C.muted,display:"inline-block",marginTop:3,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.white}}>{dayTag}</span>}
+                        </div>
+                        <div style={{display:"flex",gap:12,flexShrink:0}}>
+                          <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
+                            <span style={{fontSize:11,color:C.light,letterSpacing:"0.04em"}}>created</span>
+                            <div onClick={toggleCreated} style={cbBox(isCreated,C.black)}>
+                              {isCreated&&<span style={{fontSize:13,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                            </div>
+                          </div>
+                          {showPost&&(
+                            <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
+                              <span style={{fontSize:11,color:C.light,letterSpacing:"0.04em"}}>posted</span>
+                              <div onClick={togglePosted} style={{...cbBox(isPosted,C.green),cursor:isCreated?"pointer":"default",opacity:isCreated?1:0.35}}>
+                                {isPosted&&<span style={{fontSize:13,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ):(
+                  <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 0"}}>
+                    <span style={{fontSize:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
                       {item.clientName.toUpperCase()}
                     </span>
-
-                    {/* name + category tag + lineNote + user note + manager status */}
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
                         {isEditing?(
@@ -4303,44 +4345,36 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                             {item.name}
                           </span>
                         )}
-                        <span style={{fontSize:isMobile?11:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
+                        <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
                           {item.category}
                         </span>
                       </div>
-                      {item.lineNote&&<span style={{fontSize:isMobile?12:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
-                      {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:isMobile?12:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
-                      {!item.notes&&!isNoting&&!isDone&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:isMobile?12:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
-                      {isCreated&&mgrStatus&&<span style={{fontSize:isMobile?11:10,color:mgrStatus.color,display:"block",marginTop:2,letterSpacing:"0.02em"}}>{mgrStatus.label} · {fmtD(mgrStatus.date)}</span>}
+                      {item.lineNote&&<span style={{fontSize:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
+                      {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
+                      {!item.notes&&!isNoting&&!isDone&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
+                      {isCreated&&mgrStatus&&<span style={{fontSize:10,color:mgrStatus.color,display:"block",marginTop:2,letterSpacing:"0.02em"}}>{mgrStatus.label} · {fmtD(mgrStatus.date)}</span>}
                     </div>
-
-                    {/* day tag */}
-                    {dayTag&&<span style={{fontSize:isMobile?12:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0,alignSelf:"flex-start" as const,marginTop:2}}>{dayTag}</span>}
-
-                    {/* right column: deadline + checkboxes aligned */}
+                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0,alignSelf:"flex-start" as const,marginTop:2}}>{dayTag}</span>}
                     <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4,flexShrink:0}}>
-                      <span style={{fontSize:isMobile?12:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400"}}>
-                        {fmtDeadline(item.deadline)}
-                      </span>
-                      <div style={{display:"flex",gap:isMobile?10:12}}>
-                        {/* Created */}
+                      <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400"}}>{fmtDeadline(item.deadline)}</span>
+                      <div style={{display:"flex",gap:12}}>
                         <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
-                          <span style={{fontSize:isMobile?11:9,color:C.light,letterSpacing:"0.04em"}}>created</span>
+                          <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>created</span>
                           <div onClick={toggleCreated} style={cbBox(isCreated,C.black)}>
-                            {isCreated&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                            {isCreated&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                           </div>
                         </div>
-                        {/* Post — Influencer only */}
                         {showPost&&(
                           <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
-                            <span style={{fontSize:isMobile?11:9,color:C.light,letterSpacing:"0.04em"}}>posted</span>
+                            <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>posted</span>
                             <div onClick={togglePosted} style={{...cbBox(isPosted,C.green),cursor:isCreated?"pointer":"default",opacity:isCreated?1:0.35}}>
-                              {isPosted&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
+                              {isPosted&&<span style={{fontSize:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </div>)}
                 </div>
               );
             })}
@@ -4352,7 +4386,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                   onBlur={()=>saveNote(item,noteVal)}
                   onKeyDown={e=>{if(e.key==="Enter")saveNote(item,noteVal);if(e.key==="Escape"){setNoteId(null);}}}
                   maxLength={120}
-                  style={{flex:1,fontFamily:SANS,fontSize:isMobile?12:11,color:C.black,border:"none",borderBottom:`1px solid ${C.rule}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
+                  style={{flex:1,fontFamily:SANS,fontSize:11,color:C.black,border:"none",borderBottom:`1px solid ${C.rule}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
                 <button onClick={()=>saveNote(item,noteVal)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:"0.06em",padding:0}}>Save</button>
                 <button onClick={()=>setNoteId(null)} style={{fontSize:9,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0}}>✕</button>
               </div>
