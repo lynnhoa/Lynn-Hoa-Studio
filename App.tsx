@@ -4736,9 +4736,26 @@ function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
     );
   };
 
+  const allProjectIds=[...active,...done].map((pr: any)=>pr.id);
+  const allCollapsed=allProjectIds.length>0&&allProjectIds.every((id: string)=>collapsed[id]===true);
+  const toggleAll=()=>{
+    if(allCollapsed){
+      setCollapsed(p=>{const n={...p};allProjectIds.forEach((id: string)=>delete n[id]);return n;});
+    } else {
+      setCollapsed(p=>{const n={...p};allProjectIds.forEach((id: string)=>{n[id]=true;});return n;});
+    }
+  };
+
   return(
     <div>
-      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 16px"}}>Projects</h2>
+      <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:16}}>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:0}}>Projects</h2>
+        {allProjectIds.length>0&&(
+          <button onClick={toggleAll} style={{background:"none",border:"none",cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.06em",padding:0}}>
+            {allCollapsed?"Expand all":"Collapse all"}
+          </button>
+        )}
+      </div>
 
       {active.length===0&&done.length===0&&(
         <p style={{fontSize:11,color:C.muted}}>No projects yet. Projects appear here once a contract is in production.</p>
