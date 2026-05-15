@@ -3757,19 +3757,18 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
         <span style={{fontSize:11,color:C.muted}}>Quoted <strong style={{color:C.black,fontWeight:"500"}}>{byStatus("quoted")+byStatus("revised")}</strong></span></>}
       </div>
 
-      {/* sort control */}
-      <div style={{display:"flex",gap:5,marginBottom:10,alignItems:"center",flexWrap:"wrap" as const}}>
-        <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Sort</span>
-        {[["newest","Newest"],["oldest","Oldest"],["amount","Amount"]].map(([val,lbl])=>(
-          <button key={val} onClick={()=>setSortOrder(val)} style={{fontSize:9,padding:"3px 9px",borderRadius:20,border:`1px solid ${sortOrder===val?C.black:C.rule}`,background:sortOrder===val?C.black:C.bg,color:sortOrder===val?C.white:C.muted,cursor:"pointer",letterSpacing:"0.05em",textTransform:"uppercase" as const,fontFamily:SANS}}>{lbl}</button>
-        ))}
-      </div>
-
-      {/* filter pills */}
-      <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap" as const}}>
-        {FILTERS.map(([val,lbl])=>(
-          <button key={val} onClick={()=>setStatusFilter(val)} style={{fontSize:9,padding:"4px 10px",borderRadius:20,border:`1px solid ${statusFilter===val?C.black:C.rule}`,background:statusFilter===val?C.black:C.bg,color:statusFilter===val?C.white:C.muted,cursor:"pointer",letterSpacing:"0.05em",textTransform:"uppercase" as const,fontFamily:SANS}}>{lbl}</button>
-        ))}
+      {/* sort + filter dropdowns */}
+      <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
+        <select value={sortOrder} onChange={(e: any)=>setSortOrder(e.target.value)} style={{fontSize:10,padding:"5px 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,color:C.black,fontFamily:SANS,cursor:"pointer",outline:"none"}}>
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="amount">Amount</option>
+        </select>
+        <select value={statusFilter} onChange={(e: any)=>setStatusFilter(e.target.value)} style={{fontSize:10,padding:"5px 8px",border:`1px solid ${C.rule}`,borderRadius:2,background:C.bg,color:C.black,fontFamily:SANS,cursor:"pointer",outline:"none"}}>
+          {FILTERS.map(([val,lbl])=>(
+            <option key={val} value={val}>{lbl}</option>
+          ))}
+        </select>
       </div>
 
       {/* active section */}
