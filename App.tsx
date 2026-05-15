@@ -1784,15 +1784,15 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
     </div>
   );
 
-  const col1W=isMobile?52:72;
+  const col1W=isMobile?0:72;
   const col3W=isMobile?100:130;
 
   return(
     <div style={{marginBottom:isMobile?12:8,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
       {/* header */}
-      <div style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,background:C.bg,borderBottom:`1px solid ${C.rule}`}}>
-        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Cat.</div>
-        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Deliverable · progress</div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?`1fr ${col3W}px`:`${col1W}px 1fr ${col3W}px`,background:"#f5f3f0",borderBottom:`1px solid ${C.rule}`}}>
+        {!isMobile&&<div style={{padding:"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Cat.</div>}
+        <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:isMobile?"none":`1px solid ${C.rule}`}}>Deliverable · progress</div>
         <div style={{padding:isMobile?"5px 8px":"4px 8px",fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,borderLeft:`1px solid ${C.rule}`}}>Manager</div>
       </div>
 
@@ -1828,19 +1828,20 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
         });
 
         return(
-          <div key={cat} style={{display:"grid",gridTemplateColumns:`${col1W}px 1fr ${col3W}px`,borderBottom:ci<catKeys.length-1?`1px solid ${C.rule}`:"none"}}>
+          <div key={cat} style={{display:"grid",gridTemplateColumns:isMobile?`1fr ${col3W}px`:`${col1W}px 1fr ${col3W}px`,borderBottom:ci<catKeys.length-1?`1px solid ${C.rule}`:"none"}}>
 
-            {/* col1 — category pill */}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:isMobile?10:9,padding:isMobile?"3px 7px":"2px 6px",borderRadius:20,...catPill(cat)}}>{cat}</span>
-            </div>
+            {/* col1 — category pill (desktop only; mobile shows pill inline per line) */}
+            {!isMobile&&<div style={{display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"8px 6px",borderRight:`1px solid ${C.rule}`}}>
+              <span style={{fontSize:9,padding:"2px 6px",borderRadius:20,...catPill(cat)}}>{cat}</span>
+            </div>}
 
             {/* col2 — per-line deliverables */}
-            <div style={{borderRight:`1px solid ${C.rule}`,padding:"8px 10px",display:"flex",flexDirection:"column" as const,gap:isMobile?8:6}}>
+            <div style={{borderRight:`1px solid ${C.rule}`,padding:"0",display:"flex",flexDirection:"column" as const}}>
               {lineCircles.map(({ln,filled,qty,createdCount},lii)=>(
-                <div key={lii} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
+                <div key={lii} style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6,padding:isMobile?"8px 10px":"6px 10px",borderTop:lii>0?`1px solid ${C.rule}`:"none"}}>
                   <div style={{minWidth:0,flex:1}}>
-                    <p style={{fontSize:isMobile?13:10,color:C.black,margin:0,fontWeight:"500",whiteSpace:isMobile?"normal":"nowrap" as const,overflow:isMobile?"visible":"hidden",textOverflow:isMobile?"unset":"ellipsis",lineHeight:1.3}}>{ln.name}</p>
+                    {isMobile&&(()=>{const cat=getWsCategory(ln.name);const pill=catPill(cat);return<span style={{fontSize:9,padding:"2px 6px",borderRadius:20,...pill,display:"inline-block",marginBottom:3}}>{cat}</span>;})()}
+                    <p style={{fontSize:isMobile?13:10,color:C.black,margin:0,fontWeight:"500",whiteSpace:"normal" as const,lineHeight:1.3}}>{ln.name}</p>
                     {ln.note&&<p style={{fontSize:isMobile?11:9,color:C.muted,margin:"2px 0 0"}}>{ln.note}</p>}
                   </div>
                   {isMobile?(
@@ -1857,14 +1858,14 @@ function ProductionSection({pr,clients,cl,upP,isMobile}: any) {
               ))}
               {/* ready badge when all created */}
               {canAct&&(
-                <div style={{display:"flex",justifyContent:"flex-end",marginTop:2}}>
+                <div style={{display:"flex",justifyContent:"flex-end",padding:"3px 10px 5px"}}>
                   <span style={{fontSize:9,padding:"1px 7px",borderRadius:20,background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green}}>ready</span>
                 </div>
               )}
             </div>
 
             {/* col3 — manager checkboxes */}
-            <div style={{padding:"8px 10px",display:"flex",flexDirection:"column" as const,justifyContent:"center",gap:isMobile?7:5,opacity:canAct||msc.reviewed?1:0.3}}>
+            <div style={{padding:"8px 10px",display:"flex",flexDirection:"column" as const,justifyContent:"flex-start",gap:isMobile?7:5,opacity:canAct||msc.reviewed?1:0.3}}>
               {/* reviewed */}
               <div style={{display:"flex",alignItems:"center",gap:5}}>
                 {chkBox(!!msc.reviewed,C.amber,false,()=>{if(canAct)setMs(cat,"reviewed");})}
@@ -1968,22 +1969,6 @@ function ClientDetail({cl,clients,fin,editMode,ed,setEd,upCl,setEditMode,delCl,t
           ?<textarea value={edt.notes||""} onChange={(e: any)=>setEd((p: any)=>({...p,notes:e.target.value}))} style={{width:"100%",minHeight:isMobile?80:50,padding:isMobile?"10px 12px":"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:isMobile?14:11,color:C.black,borderRadius:2,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
           :<p style={{fontSize:FS.bodyText,color:cl.notes?C.black:C.light,margin:0,lineHeight:1.65}}>{cl.notes||"No notes yet…"}</p>}
       </div>
-
-      {/* ── USAGE RIGHTS TRACKER ── */}
-      {cl.projects.some((pr: any)=>uEnd(pr))&&(
-        <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:FS.pad,marginBottom:FS.gap}}>
-          <p style={{fontSize:FS.sectionLabel,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",margin:`0 0 ${isMobile?12:10}px`}}>Usage Rights Tracker</p>
-          {cl.projects.filter((pr: any)=>uEnd(pr)).map((pr: any)=>(
-            <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:`${isMobile?10:5}px 0`,borderBottom:`1px solid ${C.rule}`,gap:8,flexWrap:"wrap"}}>
-              <span style={{fontSize:FS.bodyText}}>{pr.name}</span>
-              <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
-                <UBadge end={uEnd(pr)}/>
-                {(pr.renewals||[]).length>0&&<span style={{fontSize:9.5,color:C.green,border:`1px solid ${C.greenBorder}`,padding:"2px 7px",borderRadius:2}}>{pr.renewals.length} renewal{pr.renewals.length>1?"s":""}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* ── PROJECTS READ-ONLY ── */}
       {cl.projects.length>0&&(
@@ -2379,7 +2364,7 @@ function Clients({clients,setClients,onRevise,onAmend,goTo,settings,onGoToCalc,i
     setPdf({cid,pid:pr.id,data,type:"contract",lang:"en",isRevision:true,nextContractRev:nextRev});
   };
 
-  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
+  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>{setRenewT(null);setScrollTrigger(t=>t+1);}} rc={rc} settings={settings}/>;
   if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);setRevInvT(null);}} settings={settings}
     onSave={revInvT
       ?(doc: any)=>{const tot=(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP(revInvT.cid,revInvT.pid,{qd:{...revInvT.p.qd,lines:doc.lines},amount:tot});}
@@ -3578,18 +3563,12 @@ function Invoices({clients,settings,isMobile,filterTab}: any) {
 
 // ─── APP ROOT ─────────────────────────────────────────────
 const initClients=[
-  {id:"c1",name:"Sephora",contact:"Anna Müller",email:"anna@sephora.de",agency:"Direct",country:"Germany",tags:["Beauty","Fashion"],notes:"Easy approvals. Fast payer. Potential retainer.",
-    projects:[{id:"p1",name:"Spring Campaign 2026",status:"paid",amount:2363,paid:true,date:"2026-04-01",deliveryDate:"2026-05-01",amendments:[],renewals:[],
-      qd:{qNo:"QUO-2026-001",brand:"Sephora",contact:"Anna Müller",date:"2026-04-01",validUntil:"2026-04-15",ctype:"Content Creator",rev:0,mo:3,ctab:"influencer",
-        lines:[{name:"Short-form video, voiceover",note:"Reels / TikTok / YouTube Shorts",qty:3,up:450,amt:1350},{name:"Usage rights — paid ads, 3 months",note:"",qty:1,up:0,amt:675},{name:"Rush delivery",note:"Under 5 business days",qty:1,up:0,amt:338}],total:2363}}]},
-  {id:"c2",name:"Vogue Germany",contact:"Sarah Klein",email:"sarah@vogue.de",agency:"Direct",country:"Germany",tags:["Editorial","Fashion"],notes:"Luxury aesthetic. Needs detailed briefs.",
-    projects:[{id:"p2",name:"Editorial Shoot S/S 2026",status:"quoted",amount:2700,paid:false,date:"2026-03-15",deliveryDate:"",amendments:[],renewals:[],
-      qd:{qNo:"QUO-2026-002",brand:"Vogue Germany",contact:"Sarah Klein",date:"2026-03-15",validUntil:"2026-03-29",ctype:"Editorial Content Creator",rev:0,mo:3,ctab:"editorial",
-        lines:[{name:"Full photo story",note:"6–10 images",qty:1,up:1800,amt:1800},{name:"Hero video",note:"Up to 30 sec · cinematic",qty:1,up:1200,amt:900}],total:2700}}]},
+  {id:"c1",name:"Sephora",contact:"Anna Müller",email:"anna@sephora.de",agency:"Direct",country:"Germany",tags:["Beauty","Fashion"],notes:"Easy approvals. Fast payer. Potential retainer.",projects:[]},
+  {id:"c2",name:"Vogue Germany",contact:"Sarah Klein",email:"sarah@vogue.de",agency:"Direct",country:"Germany",tags:["Editorial","Fashion"],notes:"Luxury aesthetic. Needs detailed briefs.",projects:[]},
 ];
 
 // ─── PROJECTS TAB ─────────────────────────────────────────
-function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,rc}: any) {
+function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,rc,pendingProjectQNo,onPendingClear}: any) {
   const [pdf,setPdf]=useState<any>(null);
   const [renewT,setRenewT]=useState<any>(null);
   const saveRenewal=(cid: string,pid: string,renewal: any)=>{setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,renewals:[...(pr.renewals||[]),{...renewal,signed:true}]})}));setRenewT(null);};
@@ -3600,22 +3579,41 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
   const [editPrName,setEditPrName]=useState<string|null>(null);
   const [editPrNameVal,setEditPrNameVal]=useState("");
   const [delConfirm,setDelConfirm]=useState<string|null>(null);
-  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>setRenewT(null)} rc={rc} settings={settings}/>;
-  if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>setPdf(null)} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
+  const [statusFilter,setStatusFilter]=useState<string>("all");
+  const [sortOrder,setSortOrder]=useState<string>("newest");
+  const [scrollTrigger,setScrollTrigger]=useState(0);
+  useEffect(()=>{
+    if(!pendingProjectQNo)return;
+    const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id})));
+    const match=all.find((pr: any)=>pr.qd?.qNo===pendingProjectQNo);
+    if(match)setExpanded(match.id);
+    if(onPendingClear)onPendingClear();
+  },[pendingProjectQNo]);
+  useEffect(()=>{
+    if(!expanded)return;
+    const el=document.querySelector(`[data-prid="${expanded}"]`);
+    if(el)setTimeout(()=>el.scrollIntoView({behavior:"smooth",block:"center"}),80);
+  },[expanded,scrollTrigger]);
+  if(renewT)return<RenewalModal p={renewT.p} onSave={(r: any)=>saveRenewal(renewT.cid,renewT.pid,r)} onClose={()=>{setRenewT(null);setScrollTrigger(t=>t+1);}} rc={rc} settings={settings}/>;
+  if(pdf)return<PDFModal data={pdf.data} type={pdf.type} onClose={()=>{setPdf(null);setScrollTrigger(t=>t+1);}} settings={settings} onSave={(pdf.cid&&pdf.pid&&pdf.isRevision)?(doc: any)=>upP2(pdf.cid,pdf.pid,{qd:{...doc,contractRev:pdf.nextContractRev,clauses:doc.clauses||[]}}):(pdf.cid&&pdf.pid)?(doc: any)=>{const tot=doc.total||(doc.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);upP2(pdf.cid,pdf.pid,{qd:{...doc,clauses:doc.clauses||[]},amount:tot});}:undefined}/>;
   const nxt=(s: string)=>{const i=STATUS.indexOf(s);return i<STATUS.length-1?STATUS[i+1]:null;};
   const prv=(s: string)=>{const i=STATUS.indexOf(s);return i>0?STATUS[i-1]:null;};
   const upP=(cid: string,pid: string,data: any)=>setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,...data})}));
   const setStatus=(cid: string,pid: string,st: string)=>setClients((p: any[])=>p.map(c=>c.id!==cid?c:{...c,projects:c.projects.map((pr: any)=>pr.id!==pid?pr:{...pr,status:st,paid:st==="paid"})}));
   const FS={projectName:isMobile?15:12,projectDate:isMobile?12:10.5,amountText:isMobile?16:14,statusBadge:isMobile?11:9.5,actionBtn:isMobile?10:8,docBtn:isMobile?10:8,pad:isMobile?"16px 16px":"12px 14px",gap:isMobile?12:10};
   const all=clients.flatMap((c: any)=>c.projects.map((pr: any)=>({...pr,_cid:c.id,_cname:c.name})));
-  const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
+  const active=all.filter((pr: any)=>!pr.paid).sort((a: any,b: any)=>{
+    if(sortOrder==="amount")return b.amount-a.amount;
+    if(sortOrder==="oldest")return a.date>b.date?1:-1;
+    return (b.createdAt||0)-(a.createdAt||0);
+  });
   const done=all.filter((pr: any)=>pr.paid).sort((a: any,b: any)=>b.date>a.date?1:-1);
-  const renderCard=(pr: any)=>{
+  const renderCard=(pr: any,isDone?:boolean)=>{
     const cl={id:pr._cid,name:pr._cname};
     const ps=prv(pr.status);
     const isOpen=expanded===pr.id;
     return(
-      <div key={pr.id} style={{borderBottom:`1px solid ${C.rule}`}}>
+      <div key={pr.id} data-prid={pr.id} style={{borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.55:1}}>
         <div onClick={()=>setExpanded(isOpen?null:pr.id)} style={{padding:"10px 0",cursor:"pointer"}}>
           {isMobile?(
             <>
@@ -3628,27 +3626,27 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
                   <span style={{fontSize:14,color:C.black,fontWeight:"500",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
                   <span style={{fontSize:11,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:3}}>{pr.paid?"Paid":pr.status}</span>
                 </div>
-                <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:12}}>{fmtD(pr.date)}</span>
+                <span style={{fontSize:11,color:C.muted,flexShrink:0,marginLeft:12}}>{pr.deliveryDate?fmtD(pr.deliveryDate):"—"}</span>
               </div>
             </>
           ):(
-            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",alignItems:"center"}}>
-              <div style={{fontSize:11,color:C.muted}}>{pr._cname}</div>
-              <div style={{minWidth:0}}>
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 110px 100px",alignItems:"center"}}>
+              <div style={{minWidth:0,paddingRight:12}}>
+                <div style={{fontSize:10,color:C.muted,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr._cname}</div>
                 <div style={{fontSize:FS.projectName,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</div>
-                <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:2}}>{pr.paid?"Paid":pr.status}</span>
+                <span style={{fontSize:FS.statusBadge,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"2px 7px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,display:"inline-block",marginTop:3}}>{pr.paid?"Paid":pr.status}</span>
               </div>
-              <div style={{fontSize:11,color:C.muted,textAlign:"right" as const}}>{fmtD(pr.date)}</div>
+              <div style={{fontSize:10,color:C.muted,textAlign:"right" as const,paddingRight:12}}>{pr.deliveryDate?fmtD(pr.deliveryDate):"—"}</div>
               <div style={{fontFamily:SERIF,fontSize:FS.amountText,color:C.black,textAlign:"right" as const}}>{fmt(pr.amount)}</div>
             </div>
           )}
         </div>
-        {isOpen&&<div style={{padding:FS.pad,paddingTop:4,marginBottom:FS.gap,background:"#f5f3f0"}}>
+        {isOpen&&<div style={{padding:FS.pad,paddingTop:4,marginBottom:FS.gap,background:"transparent"}}>
           {["quoted","revised","contracted","production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:isMobile?12:8}}>
             <span style={{fontSize:isMobile?12:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Delivery</span>
             <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
           </div>}
-          {pr.status==="production"&&<ProductionSection pr={pr} clients={clients} cl={cl} upP={upP} isMobile={isMobile}/>}
+          {pr.status==="production"&&<><div style={{fontSize:9,color:C.muted,letterSpacing:"0.09em",textTransform:"uppercase" as const,marginBottom:5}}>Production</div><ProductionSection pr={pr} clients={clients} cl={cl} upP={upP} isMobile={isMobile}/></>}
           <ProjectLicenseTracker pr={pr}/>
           {pr.notes&&<p style={{fontSize:isMobile?12:9,color:C.muted,margin:"0 0 7px",lineHeight:1.6}}>{pr.notes}</p>}
           <div style={{display:"flex",gap:isMobile?8:5,flexWrap:"wrap",marginBottom:isMobile?10:7}}>
@@ -3672,7 +3670,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
               <B v="sec" s={{fontSize:FS.actionBtn}} onClick={()=>openReviseContract(pr,cl.id)}>Revise Contract</B>
               <B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,"production")}>Mark Signed</B>
             </>}
-            {pr.status==="production"&&<B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>{setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>}
+            {pr.status==="production"&&<B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px",opacity:pr.deliveryDate?1:0.35,cursor:pr.deliveryDate?"pointer":"not-allowed"}} title={pr.deliveryDate?"":"Set a delivery date first"} onClick={()=>{if(!pr.deliveryDate)return;setStatus(cl.id,pr.id,"invoiced");openPDF({...pr,status:"invoiced"},"invoice","en",cl.id);}}>Create Invoice</B>}
             {pr.status==="invoiced"&&!pr.paid&&<B s={{fontSize:FS.actionBtn,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setStatus(cl.id,pr.id,"paid")}>Mark Paid</B>}
             {pr.paid&&<>
               <B v="sec" s={{fontSize:FS.actionBtn,color:C.green,borderColor:C.greenBorder,padding:isMobile?"10px 18px":"7px 14px"}} onClick={()=>setRenewT({p:pr,cid:cl.id,pid:pr.id})}>Add Renewal</B>
@@ -3691,13 +3689,69 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
       </div>
     );
   };
+  const activeTotal=active.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const doneTotal=done.reduce((s: number,pr: any)=>s+pr.amount,0);
+  const byStatus=(st: string)=>active.filter((pr: any)=>pr.status===st).length;
+  const invoicedAmt=active.filter((pr: any)=>pr.status==="invoiced").reduce((s: number,pr: any)=>s+pr.amount,0);
+  const FILTERS=[["all","All"],["production","Production"],["invoiced","Invoiced"],["contracted","Contracted"],["quoted","Quoted"]];
+  const filteredActive=statusFilter==="all"?active:active.filter((pr: any)=>pr.status===statusFilter||(statusFilter==="quoted"&&pr.status==="revised"));
   return(
     <div>
-      {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 80px 90px",marginBottom:8}}>
-        {["Client","Project","Date","Amount"].map((h,i)=><span key={h} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.muted,textAlign:i>=2?"right" as const:"left" as const}}>{h}</span>)}
+      <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 12px"}}>Projects</h2>
+
+      {/* stats bar */}
+      <div style={{display:"flex",gap:isMobile?10:16,flexWrap:"wrap" as const,marginBottom:10,alignItems:"center"}}>
+        <span style={{fontSize:11,color:C.muted}}>Active <strong style={{color:C.black,fontWeight:"500"}}>{active.length}</strong></span>
+        <span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Pipeline <strong style={{color:C.amber,fontWeight:"500"}}>{fmt(activeTotal)}</strong></span>
+        <span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Production <strong style={{color:C.black,fontWeight:"500"}}>{byStatus("production")}</strong></span>
+        <span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Invoiced <strong style={{color:C.amber,fontWeight:"500"}}>{byStatus("invoiced")}{invoicedAmt>0?` · ${fmt(invoicedAmt)}`:""}</strong></span>
+        {!isMobile&&<><span style={{color:C.light,fontSize:11}}>·</span>
+        <span style={{fontSize:11,color:C.muted}}>Quoted <strong style={{color:C.black,fontWeight:"500"}}>{byStatus("quoted")+byStatus("revised")}</strong></span></>}
+      </div>
+
+      {/* sort control */}
+      <div style={{display:"flex",gap:5,marginBottom:10,alignItems:"center",flexWrap:"wrap" as const}}>
+        <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Sort</span>
+        {[["newest","Newest"],["oldest","Oldest"],["amount","Amount"]].map(([val,lbl])=>(
+          <button key={val} onClick={()=>setSortOrder(val)} style={{fontSize:9,padding:"3px 9px",borderRadius:20,border:`1px solid ${sortOrder===val?C.black:C.rule}`,background:sortOrder===val?C.black:C.bg,color:sortOrder===val?C.white:C.muted,cursor:"pointer",letterSpacing:"0.05em",textTransform:"uppercase" as const,fontFamily:SANS}}>{lbl}</button>
+        ))}
+      </div>
+
+      {/* filter pills */}
+      <div style={{display:"flex",gap:5,marginBottom:16,flexWrap:"wrap" as const}}>
+        {FILTERS.map(([val,lbl])=>(
+          <button key={val} onClick={()=>setStatusFilter(val)} style={{fontSize:9,padding:"4px 10px",borderRadius:20,border:`1px solid ${statusFilter===val?C.black:C.rule}`,background:statusFilter===val?C.black:C.bg,color:statusFilter===val?C.white:C.muted,cursor:"pointer",letterSpacing:"0.05em",textTransform:"uppercase" as const,fontFamily:SANS}}>{lbl}</button>
+        ))}
+      </div>
+
+      {/* active section */}
+      {active.length>0&&<>
+        {/* section title above col headers */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingBottom:5}}>
+          <span style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,fontWeight:"500"}}>Active — {active.length}</span>
+          <span style={{fontSize:9,color:C.black}}>{fmt(activeTotal)}</span>
+        </div>
+        {/* col headers — desktop only, below section title */}
+        {!isMobile&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 110px 100px",padding:"4px 0 6px",borderBottom:`1px solid ${C.rule}`,marginBottom:0}}>
+          {["Client · Project","Delivery","Amount"].map((h,i)=><span key={i} style={{fontSize:9,letterSpacing:"0.07em",textTransform:"uppercase" as const,color:C.light,textAlign:i>=1?"right" as const:"left" as const}}>{h}</span>)}
+        </div>}
+        {isMobile&&<div style={{borderBottom:`1px solid ${C.rule}`}}/>}
+        {filteredActive.map(pr=>renderCard(pr))}
+        {filteredActive.length===0&&<p style={{fontSize:12,color:C.light,padding:"20px 0"}}>No projects match this filter.</p>}
+      </>}
+
+      {/* done section */}
+      {done.length>0&&<div style={{marginTop:active.length>0?24:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>
+          <span style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const,fontWeight:"500"}}>Done — {done.length}</span>
+          <span style={{fontSize:9,color:C.muted}}>{fmt(doneTotal)} earned</span>
+        </div>
+        {done.map(pr=>renderCard(pr,true))}
       </div>}
-      {active.length>0&&<><p style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 0",paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Active — {active.length}</p>{active.map(renderCard)}</>}
-      {done.length>0&&<><p style={{fontSize:9,color:C.light,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:`${active.length>0?24:0}px 0 0`,paddingBottom:6,borderBottom:`1px solid ${C.rule}`}}>Done — {done.length}</p><div style={{opacity:0.5}}>{done.map(renderCard)}</div></>}
+
       {active.length===0&&done.length===0&&<p style={{fontSize:12,color:C.light,textAlign:"center" as const,marginTop:40}}>No projects yet.</p>}
     </div>
   );
@@ -3755,17 +3809,16 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
         setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.id===existPr.id?{...pr,qd:q,amount:q.total}:pr)}));
       } else {
         const name=projName&&projName.trim()?projName.trim():brand||"Untitled Project";
-        const pr={id:uid(),name,status:"quoted",amount:q.total,paid:false,date:q.date,deliveryDate:"",notes:"",qd:q,amendments:[],renewals:[]};
+        const pr={id:uid(),name,status:"quoted",amount:q.total,paid:false,date:q.date,createdAt:Date.now(),deliveryDate:"",notes:"",qd:q,amendments:[],renewals:[]};
         if(ex) setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:[pr,...c.projects]}));
         else setClients((p: any[])=>[{id:uid(),name:brand||"New Client",contact:contact||"",email:"",agency:"Direct",country:"Germany",tags:[],notes:"",projects:[pr]},...p]);
       }
     }
     setPrefill(null);
   };
-  const handleAfterSave=(brand: string,qNo?: string)=>{
-    setPendingClientName(brand);
+  const handleAfterSave=(_brand: string,qNo?: string)=>{
     setPendingProjectQNo(qNo||null);
-    setTimeout(()=>setNav(nav===8?8:1),100);
+    setTimeout(()=>setNav(8),100);
   };
 
   const handleGoToCalc=(clientName: string)=>{
@@ -3849,14 +3902,14 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
           </div>
         )}
       </div>
-      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
+      <div style={{maxWidth:nav===1&&clientSel&&!appMobile?1200:840,margin:"0 auto",padding:appMobile?"20px 12px":"28px 20px"}}>
         {nav===0&&<Dashboard clients={clients} goTo={setNav} isMobile={appMobile} setPendingClientName={setPendingClientName} setPendingProjectQNo={setPendingProjectQNo} setFromDrill={setFromDrill} settings={settings} resetKey={dashReset} drill={dashDrill} setDrill={setDashDrill}/>}
         {nav===1&&<Clients clients={clients} setClients={setClients} onRevise={handleRevise} onAmend={handleAmend} goTo={(n: number)=>{if(n!==1)setFromDrill(null);setNav(n);}} settings={settings} onGoToCalc={handleGoToCalc} isMobile={appMobile} rc={rc} selReset={clientSelReset} onSelChange={setClientSel} pendingClientName={pendingClientName} onPendingClear={()=>{setPendingClientName(null);setPendingProjectQNo(null);}} pendingProjectQNo={pendingProjectQNo}/>}
         {nav===1&&fromDrill&&<button onClick={()=>{setFromDrill(null);setNav(0);}} style={{position:"fixed",bottom:24,right:24,zIndex:999,background:C.bg,border:`1px solid ${C.rule}`,borderRadius:20,padding:"7px 18px",fontFamily:SANS,fontSize:10,color:C.muted,letterSpacing:"0.06em",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.10)",whiteSpace:"nowrap"}}>← Active Projects</button>}
         {nav===2&&<Calculator onSave={handleSave} prefill={prefill} clearPrefill={()=>setPrefill(null)} rc={rc} settings={settings} isMobile={appMobile} onAfterSave={handleAfterSave}/>}
         {nav===3&&<ServiceCatalog rc={rc} setRc={setRc}/>}
         {nav===7&&<RateCard rc={rc} setRc={setRc} settings={settings}/>}
-        {nav===8&&<ProjectsTab clients={clients} setClients={setClients} isMobile={appMobile} onRevise={handleRevise} onGoToCalc={handleGoToCalc} settings={settings} rc={rc}/>}
+        {nav===8&&<ProjectsTab clients={clients} setClients={setClients} isMobile={appMobile} onRevise={handleRevise} onGoToCalc={handleGoToCalc} settings={settings} rc={rc} pendingProjectQNo={pendingProjectQNo} onPendingClear={()=>setPendingProjectQNo(null)}/>}
         {nav===4&&<Settings settings={settings} setSettings={setSettings} isMobile={appMobile}/>}
         {nav===5&&<ChangePassword settings={settings} setSettings={setSettings}/>}
         {nav===6&&<Invoices clients={clients} settings={settings} isMobile={appMobile}/>}
