@@ -5125,4 +5125,4 @@ const loadedSettings=data?.settings&&Object.keys(data.settings as any).length>0
 :SETTINGS_DEFAULT;
 
 return <AppInner initialClients={loadedClients} initialRc={loadedRc} initialSettings={loadedSettings}/>;
-}
+} 
