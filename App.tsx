@@ -3644,7 +3644,7 @@ function ProjectsTab({clients,setClients,isMobile,onRevise,onGoToCalc,settings,r
         {isOpen&&<div style={{padding:FS.pad,paddingTop:4,marginBottom:FS.gap,background:"transparent"}}>
           {["quoted","revised","contracted","production","invoiced","paid"].includes(pr.status)&&<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:isMobile?12:8}}>
             <span style={{fontSize:isMobile?12:10,color:C.muted,whiteSpace:"nowrap",letterSpacing:"0.07em",textTransform:"uppercase" as const}}>Delivery</span>
-            <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>upP(cl.id,pr.id,{deliveryDate:e.target.value})} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
+            <I type="date" value={pr.deliveryDate||""} onChange={(e: any)=>{const nv=e.target.value;if(!nv)return;if(!pr.deliveryDate||nv>pr.deliveryDate)upP(cl.id,pr.id,{deliveryDate:nv});}} s={{width:isMobile?160:138,fontSize:isMobile?13:10,padding:isMobile?"9px 10px":"5px 8px"}}/>
           </div>}
           {pr.status==="production"&&<><div style={{fontSize:9,color:C.muted,letterSpacing:"0.09em",textTransform:"uppercase" as const,marginBottom:5}}>Production</div><ProductionSection pr={pr} clients={clients} cl={cl} upP={upP} isMobile={isMobile}/></>}
           <ProjectLicenseTracker pr={pr}/>
@@ -3802,7 +3802,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       const amendTotal=(q.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
       setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===prefill?.qNo?{...pr,amendments:[...(pr.amendments||[]),{id:uid(),aNo,lines:q.lines||[],amendTotal,origTotal:pr.amount,signed:false,doc:q}],amount:pr.amount+amendTotal}:pr)}));
     } else if(isRev&&ex){
-      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===q.qNo?{...pr,qd:q,status:"revised",amount:q.total}:pr)}));
+      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===prefill?.qNo?{...pr,qd:q,status:"revised",amount:q.total}:pr)}));
     } else {
       const existPr=ex?.projects?.find((pr: any)=>pr.qd?.qNo===q.qNo);
       if(existPr&&ex){
