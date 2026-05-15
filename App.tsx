@@ -36,19 +36,6 @@ const C = {
 const SERIF = "'Georgia','Times New Roman',serif";
 const SANS  = "'Helvetica Neue',Arial,sans-serif";
 
-// ─── TYPE SCALE ───────────────────────────────────────────
-const TS = {
-  title:    24,    // page headings — serif only
-  body:     13,    // primary content: names, project titles
-  secondary:11,    // meta info: dates, descriptions, notes
-  label:     9,    // uppercase section labels, badges, button text
-  micro:   7.5,    // fine print, sub-details inside cards
-  // mobile equivalents (+2 on each)
-  mBody:   15,
-  mSecondary:13,
-  mLabel:  11,
-};
-
 // ─── HELPERS ──────────────────────────────────────────────
 const fmt   = (n: number | null | undefined) => `€ ${Number(n||0).toLocaleString("de-DE")}`;
 const today = () => new Date().toISOString().split("T")[0];
