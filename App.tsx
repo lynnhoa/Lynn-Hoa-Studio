@@ -4650,7 +4650,16 @@ function getLineGroups(c: any, pr: any): any[] {
 
 // ─── CREATOR PROJECTS ─────────────────────────────────────
 function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
-  const [collapsed,setCollapsed]=useState<Record<string,boolean>>({});
+  const initCollapsed=()=>{
+    const init: Record<string,boolean>={};
+    clients.forEach((c: any)=>{
+      (c.projects||[]).forEach((pr: any)=>{
+        if(pr.status==="invoiced"||pr.status==="paid") init[pr.id]=true;
+      });
+    });
+    return init;
+  };
+  const [collapsed,setCollapsed]=useState<Record<string,boolean>>(initCollapsed);
 
   const allProjects: any[]=[];
   clients.forEach((c: any)=>{
@@ -4731,9 +4740,9 @@ function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
             {totalAll>0&&renderDots(allItems_)}
             {totalAll>0&&<span style={{fontSize:11,color:totalDone===totalAll?C.green:C.muted,fontWeight:totalDone===totalAll?"500":"400",flexShrink:0}}>{totalDone}/{totalAll}</span>}
             <span style={{flex:1}}/>
-            {pr.deliveryDate&&!isOverdueFlag&&<span style={{fontSize:11,color:C.amber,flexShrink:0,whiteSpace:"nowrap" as const}}>{fmtD(pr.deliveryDate)}</span>}
-            {pr.deliveryDate&&!isOverdueFlag&&dl!==null&&!isDone&&<span style={{fontSize:11,color:C.muted,flexShrink:0}}>· {dl}d left</span>}
-            {isOverdueFlag&&<span style={{fontSize:11,color:C.red,fontWeight:"500",flexShrink:0}}>Overdue</span>}
+            {pr.deliveryDate&&<span style={{fontSize:11,color:isOverdueFlag?C.red:C.amber,fontWeight:isOverdueFlag?"500":"400",flexShrink:0,whiteSpace:"nowrap" as const}}>{fmtD(pr.deliveryDate)}</span>}
+            {pr.deliveryDate&&dl!==null&&!isDone&&!isOverdueFlag&&<span style={{fontSize:11,color:C.muted,flexShrink:0}}>· {dl}d left</span>}
+            {isOverdueFlag&&<span style={{fontSize:11,color:C.red,fontWeight:"500",flexShrink:0}}>· Overdue</span>}
           </div>
 
         </div>
