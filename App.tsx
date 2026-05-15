@@ -4204,7 +4204,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
     <div>
       {/* Header */}
       <div style={{marginBottom:16}}>
-        <h2 style={{fontFamily:SERIF,fontSize:TYPE.h1.size,fontWeight:TYPE.h1.weight,margin:"0 0 14px"}}>Workspace</h2>
+        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 14px"}}>Workspace</h2>
         {/* Group toggles */}
         <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:12}}>
           {(["Urgency","Client","Category","Status"] as const).map(g=>(
@@ -4216,14 +4216,14 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
         </div>
         {/* Search */}
         <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}
-          style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:TYPE.body.size,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}/>
+          style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}/>
       </div>
 
       {/* Empty state */}
       {allItems.length===0&&(
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const,marginTop:20}}>
-          <p style={{fontSize:TYPE.body.size,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
-          <p style={{fontSize:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
+          <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
+          <p style={{fontSize:isMobile?12:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
         </div>
       )}
 
@@ -4237,8 +4237,8 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
             {/* Group header */}
             <div onClick={()=>toggleGroup(g.key)}
               style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,cursor:"pointer",userSelect:"none" as const}}>
-              <span style={{fontSize:TYPE.label.size,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:TYPE.label.weight}}>{g.label}</span>
-              <span style={{fontSize:11,color:isOverdueGroup&&g.items.length>0?C.red:C.muted}}>{g.items.length}</span>
+              <span style={{fontSize:isMobile?12:10,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:"500"}}>{g.label}</span>
+              <span style={{fontSize:isMobile?12:11,color:isOverdueGroup&&g.items.length>0?C.red:C.muted}}>{g.items.length}</span>
               <span style={{fontSize:11,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
             </div>
             <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:4}}/>
@@ -4284,7 +4284,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                   <div style={{display:"flex",alignItems:"flex-start",gap:isMobile?6:10,padding:isMobile?"12px 0":"9px 0"}}>
 
                     {/* brand */}
-                    <span style={{fontSize:isMobile?13:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
+                    <span style={{fontSize:isMobile?13:11,fontWeight:"500",color:C.black,letterSpacing:"0.04em",width:isMobile?90:64,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,marginTop:2}}>
                       {item.clientName.toUpperCase()}
                     </span>
 
@@ -4303,28 +4303,28 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                             {item.name}
                           </span>
                         )}
-                        <span style={{fontSize:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
+                        <span style={{fontSize:isMobile?11:10,padding:"2px 7px",border:`1px solid ${catStyle.border}`,borderRadius:10,color:catStyle.color,background:catStyle.bg,flexShrink:0,letterSpacing:"0.04em"}}>
                           {item.category}
                         </span>
                       </div>
-                      {item.lineNote&&<span style={{fontSize:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
-                      {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
+                      {item.lineNote&&<span style={{fontSize:isMobile?12:11,color:C.muted,display:"block",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{item.lineNote}</span>}
+                      {item.notes&&!isNoting&&<span onClick={()=>{setNoteId(item.id);setNoteVal(item.notes);}} style={{fontSize:isMobile?12:11,color:C.amber,display:"block",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const,cursor:"pointer"}}>{item.notes}</span>}
                       {!item.notes&&!isNoting&&!isDone&&<button onClick={()=>{setNoteId(item.id);setNoteVal("");}} style={{fontSize:isMobile?12:10,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:SANS,marginTop:2,letterSpacing:"0.02em"}}>+ note</button>}
-                      {isCreated&&mgrStatus&&<span style={{fontSize:10,color:mgrStatus.color,display:"block",marginTop:2,letterSpacing:"0.02em"}}>{mgrStatus.label} · {fmtD(mgrStatus.date)}</span>}
+                      {isCreated&&mgrStatus&&<span style={{fontSize:isMobile?11:10,color:mgrStatus.color,display:"block",marginTop:2,letterSpacing:"0.02em"}}>{mgrStatus.label} · {fmtD(mgrStatus.date)}</span>}
                     </div>
 
                     {/* day tag */}
-                    {dayTag&&<span style={{fontSize:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0,alignSelf:"flex-start" as const,marginTop:2}}>{dayTag}</span>}
+                    {dayTag&&<span style={{fontSize:isMobile?12:11,padding:"1px 5px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted,background:C.white,flexShrink:0,alignSelf:"flex-start" as const,marginTop:2}}>{dayTag}</span>}
 
                     {/* right column: deadline + checkboxes aligned */}
                     <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:4,flexShrink:0}}>
-                      <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400"}}>
+                      <span style={{fontSize:isMobile?12:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400"}}>
                         {fmtDeadline(item.deadline)}
                       </span>
                       <div style={{display:"flex",gap:isMobile?10:12}}>
                         {/* Created */}
                         <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
-                          <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>created</span>
+                          <span style={{fontSize:isMobile?11:9,color:C.light,letterSpacing:"0.04em"}}>created</span>
                           <div onClick={toggleCreated} style={cbBox(isCreated,C.black)}>
                             {isCreated&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                           </div>
@@ -4332,7 +4332,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                         {/* Post — Influencer only */}
                         {showPost&&(
                           <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
-                            <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>posted</span>
+                            <span style={{fontSize:isMobile?11:9,color:C.light,letterSpacing:"0.04em"}}>posted</span>
                             <div onClick={togglePosted} style={{...cbBox(isPosted,C.green),cursor:isCreated?"pointer":"default",opacity:isCreated?1:0.35}}>
                               {isPosted&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                             </div>
@@ -4352,7 +4352,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                   onBlur={()=>saveNote(item,noteVal)}
                   onKeyDown={e=>{if(e.key==="Enter")saveNote(item,noteVal);if(e.key==="Escape"){setNoteId(null);}}}
                   maxLength={120}
-                  style={{flex:1,fontFamily:SANS,fontSize:11,color:C.black,border:"none",borderBottom:`1px solid ${C.rule}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
+                  style={{flex:1,fontFamily:SANS,fontSize:isMobile?12:11,color:C.black,border:"none",borderBottom:`1px solid ${C.rule}`,background:"transparent",outline:"none",padding:"0 0 1px"}}/>
                 <button onClick={()=>saveNote(item,noteVal)} style={{fontSize:9,color:C.muted,background:"none",border:"none",cursor:"pointer",letterSpacing:"0.06em",padding:0}}>Save</button>
                 <button onClick={()=>setNoteId(null)} style={{fontSize:9,color:C.light,background:"none",border:"none",cursor:"pointer",padding:0}}>✕</button>
               </div>
@@ -4364,7 +4364,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
 
       {/* Snackbar undo */}
       {snackbar&&(
-        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:3000,display:"flex",alignItems:"center",gap:16,background:C.black,color:C.white,borderRadius:2,padding:"10px 18px",fontSize:TYPE.body.size,boxShadow:"0 4px 20px rgba(0,0,0,0.18)",whiteSpace:"nowrap" as const}}>
+        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:3000,display:"flex",alignItems:"center",gap:16,background:C.black,color:C.white,borderRadius:2,padding:"10px 18px",fontSize:12,boxShadow:"0 4px 20px rgba(0,0,0,0.18)",whiteSpace:"nowrap" as const}}>
           <span>{snackbar.msg}</span>
           <button onClick={snackbar.undo} style={{background:"none",border:"none",cursor:"pointer",color:C.amber,fontFamily:SANS,fontSize:12,fontWeight:"500",padding:0}}>Undo</button>
         </div>
@@ -4376,7 +4376,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
           onClick={()=>setConfirmDelete(null)}>
           <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",maxWidth:320,width:"90%",boxShadow:"0 4px 24px rgba(0,0,0,0.15)"}}
             onClick={e=>e.stopPropagation()}>
-            <p style={{fontSize:TYPE.h3.size,color:C.black,margin:"0 0 8px",fontFamily:TYPE.h3.font}}>Delete this deliverable?</p>
+            <p style={{fontSize:13,color:C.black,margin:"0 0 8px",fontFamily:SERIF}}>Delete this deliverable?</p>
             <p style={{fontSize:11,color:C.muted,margin:"0 0 20px"}}>Use only if this item was dropped from the contract informally. This cannot be undone.</p>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button onClick={()=>setConfirmDelete(null)} style={{padding:"6px 16px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.muted}}>Cancel</button>
