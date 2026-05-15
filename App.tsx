@@ -4652,7 +4652,6 @@ function getLineGroups(c: any, pr: any): any[] {
 function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
   const [collapsed,setCollapsed]=useState<Record<string,boolean>>({});
 
-  // Collect all projects across all clients, attach clientName
   const allProjects: any[]=[];
   clients.forEach((c: any)=>{
     (c.projects||[]).forEach((pr: any)=>{
@@ -4660,7 +4659,6 @@ function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
     });
   });
 
-  // Active = status "production". Done = status "invoiced" or "paid"
   const active=allProjects
     .filter((pr: any)=>pr.status==="production")
     .sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
@@ -4668,36 +4666,79 @@ function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
     .filter((pr: any)=>pr.status==="invoiced"||pr.status==="paid")
     .sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
 
+  const DOT_CAP=12;
+
+  const dotColor=(status: string)=>
+    status==="Delivered"?C.green:status==="Reviewed"?C.amber:status==="Finished"?C.black:C.rule;
+
+  const stColor=(status: string)=>
+    status==="Delivered"?C.green:status==="Reviewed"?C.amber:status==="Finished"?C.black:C.light;
+
+  const renderDots=(items: any[])=>{
+    const capped=items.slice(0,DOT_CAP);
+    const overflow=items.length-DOT_CAP;
+    return(
+      <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0,flexWrap:"nowrap" as const}}>
+        {capped.map((it: any)=>(
+          <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:dotColor(it.status),display:"inline-block",flexShrink:0}}/>
+        ))}
+        {overflow>0&&(
+          <span style={{fontSize:9,color:C.muted,border:`1px solid ${C.rule}`,borderRadius:8,padding:"0 4px",lineHeight:"14px",flexShrink:0}}>+{overflow}</span>
+        )}
+      </div>
+    );
+  };
+
   const renderCard=(pr: any,isDone=false)=>{
-    // find client
     const c=clients.find((cl: any)=>cl.id===pr.clientId)||{};
     const groups=getLineGroups(c,pr);
     const allItems_=groups.flatMap((g: any)=>g.items);
     const totalDone=allItems_.filter((it: any)=>it.status==="Delivered").length;
     const totalAll=allItems_.length;
     const dl=dLeft(pr.deliveryDate);
+    const isOverdueFlag=!isDone&&pr.deliveryDate&&dl!==null&&dl<0;
     const isOpen=collapsed[pr.id]!==true;
+    const statusLabel=pr.paid?"Paid":pr.status;
+    const statusColor=scol(pr.paid?"paid":pr.status);
+    // scope summary line
+    const scopeSummary=groups.map((g: any)=>`${g.items.length}× ${g.lineName.replace(/,.*$/,"").trim()}`).join(" · ");
 
     return(
-      <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
-        {/* project header row */}
+      <div key={pr.id} style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:8,overflow:"hidden",opacity:isDone?0.75:1}}>
+
+        {/* ── HEADER (always visible) ── */}
         <div onClick={()=>setCollapsed(p=>({...p,[pr.id]:!p[pr.id]}))}
-          style={{display:"flex",alignItems:"center",gap:10,padding:"10px 13px",background:"#f7f6f4",cursor:"pointer"}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-              <span style={{fontSize:13,color:C.black,fontWeight:"500",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
-              <span style={{fontSize:10.5,color:C.muted,flexShrink:0}}>{pr.clientName}</span>
-            </div>
-            {pr.deliveryDate&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
-              <span style={{fontSize:11,color:C.amber}}>{fmtD(pr.deliveryDate)}</span>
-              {dl!==null&&!isDone&&<span style={{fontSize:11,color:C.muted}}>· {dl}d left</span>}
-            </div>}
+          style={{padding:isMobile?"11px 12px":"10px 13px",background:"#f7f6f4",cursor:"pointer"}}>
+
+          {/* Row 1: project name · client · status badge · chevron */}
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+            <span style={{fontSize:isMobile?13:13,color:C.black,fontWeight:"500",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
+            <span style={{fontSize:11,color:C.muted,flexShrink:0,whiteSpace:"nowrap" as const}}>{pr.clientName}</span>
+            <span style={{fontSize:9,color:statusColor,border:`1px solid ${statusColor}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,flexShrink:0,whiteSpace:"nowrap" as const}}>{statusLabel}</span>
+            <span style={{fontSize:10,color:C.light,flexShrink:0}}>{isOpen?"▾":"▸"}</span>
           </div>
-          {totalAll>0&&<span style={{fontSize:11,color:totalDone===totalAll?C.green:C.muted,fontWeight:totalDone===totalAll?"500":"400",flexShrink:0}}>{totalDone}/{totalAll}</span>}
-          <span style={{fontSize:10,color:C.light,flexShrink:0}}>{isOpen?"▾":"▸"}</span>
+
+          {/* Row 2: scope summary · amount */}
+          {scopeSummary&&(
+            <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:5}}>
+              <span style={{fontSize:11,color:C.muted,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{scopeSummary}</span>
+              {pr.amount>0&&<span style={{fontSize:12,color:C.black,fontWeight:"500",flexShrink:0,whiteSpace:"nowrap" as const}}>{fmt(pr.amount)}</span>}
+            </div>
+          )}
+
+          {/* Row 3: dots · count · date · days left / overdue */}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {totalAll>0&&renderDots(allItems_)}
+            {totalAll>0&&<span style={{fontSize:11,color:totalDone===totalAll?C.green:C.muted,fontWeight:totalDone===totalAll?"500":"400",flexShrink:0}}>{totalDone}/{totalAll}</span>}
+            <span style={{flex:1}}/>
+            {pr.deliveryDate&&!isOverdueFlag&&<span style={{fontSize:11,color:C.amber,flexShrink:0,whiteSpace:"nowrap" as const}}>{fmtD(pr.deliveryDate)}</span>}
+            {pr.deliveryDate&&!isOverdueFlag&&dl!==null&&!isDone&&<span style={{fontSize:11,color:C.muted,flexShrink:0}}>· {dl}d left</span>}
+            {isOverdueFlag&&<span style={{fontSize:11,color:C.red,fontWeight:"500",flexShrink:0}}>Overdue</span>}
+          </div>
+
         </div>
 
-        {/* deliverable groups */}
+        {/* ── EXPANDED BODY ── */}
         {isOpen&&groups.map((g: any)=>{
           const done_=g.items.filter((it: any)=>it.status==="Delivered").length;
           const total_=g.items.length;
@@ -4707,31 +4748,30 @@ function CreatorProjects({clients,isMobile}: {clients:any[],isMobile:boolean}) {
           const subOpen=collapsed[subKey]!==false;
           return(
             <div key={g.lineKey} style={{borderTop:`1px solid ${C.rule}`}}>
+
+              {/* group row */}
               <div onClick={e=>{e.stopPropagation();setCollapsed(p=>({...p,[subKey]:!subOpen}));}}
-                style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",cursor:"pointer"}}>
-                <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{ccCatLabel(g.category)}</span>
-                <span style={{fontSize:12,color:C.black,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{total_}× {g.lineName}</span>
-                <div style={{display:"flex",gap:3,flexShrink:0}}>
-                  {g.items.map((it: any)=>{
-                    const dotColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.rule;
-                    return <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:dotColor,display:"inline-block"}}/>;
-                  })}
-                </div>
-                <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",flexShrink:0}}>{done_}/{total_}</span>
+                style={{display:"flex",alignItems:"center",gap:8,padding:isMobile?"9px 12px":"9px 13px",cursor:"pointer",background:subOpen?"#f7f6f4":C.white}}>
+                <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0,whiteSpace:"nowrap" as const}}>{ccCatLabel(g.category)}</span>
+                <span style={{fontSize:isMobile?12:12,color:C.black,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{total_}× {g.lineName}</span>
+                {renderDots(g.items)}
+                <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",flexShrink:0,minWidth:28,textAlign:"right" as const}}>{done_}/{total_}</span>
                 <span style={{fontSize:10,color:C.light,flexShrink:0}}>{subOpen?"▾":"▸"}</span>
               </div>
-              {subOpen&&g.items.map((it: any)=>{
-                const stColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.light;
-                return(
-                  <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:`1px solid ${C.rule}`}}>
-                    <span style={{fontSize:13,color:C.black,flex:1}}>{it.name}</span>
-                    <span style={{fontSize:11,color:stColor}}>{it.status}</span>
-                  </div>
-                );
-              })}
+
+              {/* item rows */}
+              {subOpen&&g.items.map((it: any)=>(
+                <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:isMobile?"8px 12px 8px 28px":"7px 13px 7px 32px",borderTop:`1px solid ${C.rule}`,background:C.white}}>
+                  <span style={{width:6,height:6,borderRadius:"50%",background:dotColor(it.status),display:"inline-block",flexShrink:0}}/>
+                  <span style={{fontSize:isMobile?13:12,color:C.black,flex:1}}>{it.name}</span>
+                  <span style={{fontSize:11,color:stColor(it.status),flexShrink:0,whiteSpace:"nowrap" as const}}>{it.status}</span>
+                </div>
+              ))}
+
             </div>
           );
         })}
+
       </div>
     );
   };
