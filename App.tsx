@@ -4867,28 +4867,74 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
 
   // right panel detail
   const Detail=({c}: {c: any})=>{
-    const pr=c.projects.find((p: any)=>p.status==="production");
-    const allItems_=getLineGroups(c,pr||{}).flatMap((g: any)=>g.items);
-    const totalDone=allItems_.filter((it: any)=>it.status==="Delivered").length;
-    const totalAll=allItems_.length;
-    const dl=dLeft(pr?.deliveryDate);
+    const allPr=(c.projects||[]).slice().sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
+    const totalProjects=allPr.length;
+    const totalEarned=allPr.filter((p: any)=>p.status==="paid").reduce((s: number,p: any)=>s+(p.amount||0),0);
+    const activeProjects=allPr.filter((p: any)=>p.status==="production");
 
     return(
       <div style={{flex:1,minWidth:0,overflowY:isMobile?undefined:"auto",maxHeight:isMobile?undefined:"calc(100vh - 80px)",paddingLeft:isMobile?0:4}}>
-        {/* header */}
+
+        {/* ── header ── */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
           <div>
             <h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 4px"}}>{c.name}</h2>
-            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{[c.contact,c.email].filter(Boolean).join(" · ")}</p>
+            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{[c.contact,c.email,c.agency&&c.agency!=="Direct"?c.agency:null].filter(Boolean).join(" · ")}</p>
           </div>
           <button onClick={()=>setSel_(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px"}}>✕</button>
         </div>
 
-        {pr&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,padding:"10px 14px",border:`1px solid ${C.rule}`,borderRadius:2}}>
-          <span style={{fontSize:13,fontWeight:"500",color:C.amber}}>{fmtD(pr.deliveryDate)}</span>
-          {dl!==null&&<span style={{fontSize:11,color:C.muted}}>· {dl}d left</span>}
-          <span style={{fontSize:11,color:C.muted,marginLeft:"auto"}}>Progress <strong style={{color:C.black}}>{totalDone}/{totalAll}</strong></span>
-        </div>}
+        {/* ── stats row ── */}
+        <div style={{display:"flex",gap:0,marginBottom:20,border:`1px solid ${C.rule}`,borderRadius:2,overflow:"hidden"}}>
+          {[
+            {label:"Projects",value:String(totalProjects)},
+            {label:"Earned",value:totalEarned>0?fmt(totalEarned):"—"},
+            {label:"Active",value:activeProjects.length>0?String(activeProjects.length):"—"},
+          ].map((s,i)=>(
+            <div key={i} style={{flex:1,padding:"10px 12px",borderRight:i<2?`1px solid ${C.rule}`:"none",textAlign:"center" as const}}>
+              <p style={{fontSize:9,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase" as const,margin:"0 0 3px"}}>{s.label}</p>
+              <p style={{fontSize:15,fontFamily:SERIF,color:C.black,fontWeight:"normal",margin:0}}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── project rows ── */}
+        {totalProjects===0&&<p style={{fontSize:11,color:C.muted}}>No projects yet.</p>}
+        {allPr.map((pr: any,i: number)=>{
+          const groups=getLineGroups(c,pr);
+          const allItems_=groups.flatMap((g: any)=>g.items);
+          const totalDone=allItems_.filter((it: any)=>it.status==="Delivered").length;
+          const totalAll=allItems_.length;
+          const statusLabel=pr.paid?"Paid":pr.status;
+          const statusColor=scol(pr.paid?"paid":pr.status);
+          const hasDate=!!(pr.deliveryDate&&pr.deliveryDate.length>0);
+          const dl=dLeft(pr.deliveryDate);
+          const isOverdueFlag=pr.status==="production"&&hasDate&&dl!==null&&dl<0;
+          return(
+            <div key={pr.id} style={{padding:"10px 0",borderBottom:i<allPr.length-1?`1px solid ${C.rule}`:"none"}}>
+              {/* name + status */}
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                <span style={{fontSize:13,color:C.black,fontWeight:"500",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
+                <span style={{fontSize:9,color:statusColor,border:`1px solid ${statusColor}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,flexShrink:0}}>{statusLabel}</span>
+              </div>
+              {/* scope summary */}
+              {groups.length>0&&(
+                <p style={{fontSize:11,color:C.muted,margin:"0 0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                  {groups.map((g: any)=>`${g.items.length}× ${g.lineName.replace(/,.*$/,"").trim()}`).join(" · ")}
+                </p>
+              )}
+              {/* date · amount · progress */}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {hasDate&&<span style={{fontSize:11,color:isOverdueFlag?C.red:C.amber,fontWeight:isOverdueFlag?"500":"400",flexShrink:0}}>{fmtD(pr.deliveryDate)}{isOverdueFlag?" · Overdue":""}</span>}
+                {!hasDate&&pr.status==="production"&&<span style={{fontSize:11,color:C.light}}>No due date</span>}
+                <span style={{flex:1}}/>
+                {pr.amount>0&&<span style={{fontSize:11,color:C.muted,flexShrink:0}}>{fmt(pr.amount)}</span>}
+                {totalAll>0&&<span style={{fontSize:11,color:totalDone===totalAll?C.green:C.muted,flexShrink:0,fontWeight:totalDone===totalAll?"500":"400"}}>{totalDone}/{totalAll}</span>}
+              </div>
+            </div>
+          );
+        })}
+
       </div>
     );
   };
