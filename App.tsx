@@ -423,9 +423,13 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
   const platformsList=allPlat.length>0?allPlat.join(", "):null;
   const amendLines=(type==="invoice")?(d.amendments||[]).flatMap((a: any)=>a.lines||[]):[];
   const allLines=[...baseLines,...amendLines];
+  const linesSum=allLines.reduce((s: number,ln: any)=>s+(parseFloat(ln.amt)||0),0);
+  const retainerMonthly=d.retainer&&d.retMo?Math.round(linesSum*(1-20/100)):0;
   const total=type==="amendment"
     ?(d.amendTotal||0)
-    :allLines.reduce((s: number,ln: any)=>s+(parseFloat(ln.amt)||0),0);
+    :(d.retainer&&d.retMo&&["quote","revised","contract"].includes(type))
+      ?Math.round(retainerMonthly*d.retMo)
+      :linesSum;
   const cNo=`CON-${(d.qNo||"").replace("QUO","").trim()||"001"}`;
   const iNo=d.iNo||`INV-${(d.qNo||"").replace("QUO","").trim()||"001"}`;
   const countryDisplay=l?(s.country==="Germany"?"Deutschland":s.country):(s.country==="Deutschland"?"Germany":s.country);
@@ -522,10 +526,23 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
           </div>
           :<div data-sig-anchor="true" style={{marginTop:22+(extraSigMargin||0)}}>
             <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
-              <div style={{textAlign:"right"}}><p style={{fontSize:6.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 3px"}}>{l?"Gesamt (EUR)":"Total (EUR)"}</p><p style={{fontFamily:SERIF,fontSize:15,margin:0}}>€ {Number(total).toLocaleString("de-DE")}</p></div>
+              {d.retainer&&d.retMo&&["quote","revised","contract"].includes(type)?(
+                <div style={{width:175}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{l?"Mtl. Zwischensumme":"Monthly subtotal"}</span><span>€ {Number(linesSum).toLocaleString("de-DE")}</span></div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{l?"Retainer-Rabatt −20%":"Retainer discount −20%"}</span><span>−€ {Number(linesSum-retainerMonthly).toLocaleString("de-DE")}</span></div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8,borderTop:`1px solid ${C.rule}`,paddingTop:4}}><span style={{color:C.muted}}>{l?"Monatliche Rate":"Monthly fee"}</span><span>€ {Number(retainerMonthly).toLocaleString("de-DE")}</span></div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:8}}><span style={{color:C.muted}}>× {d.retMo} {l?"Monate":"months"}</span><span></span></div>
+                  <div style={{borderTop:`1px solid ${C.rule}`,paddingTop:6,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                    <span style={{fontSize:6.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase"}}>{l?"Gesamt (EUR)":"Total (EUR)"}</span>
+                    <span style={{fontFamily:SERIF,fontSize:15}}>€ {Number(total).toLocaleString("de-DE")}</span>
+                  </div>
+                </div>
+              ):(
+                <div style={{textAlign:"right"}}><p style={{fontSize:6.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",margin:"0 0 3px"}}>{l?"Gesamt (EUR)":"Total (EUR)"}</p><p style={{fontFamily:SERIF,fontSize:15,margin:0}}>€ {Number(total).toLocaleString("de-DE")}</p></div>
+              )}
             </div>
             {["quote","revised"].includes(type)&&<div style={{paddingTop:14,borderTop:`1px solid ${C.rule}`}}>
-              <p style={{fontSize:8,color:C.muted,lineHeight:1.75,margin:"0 0 6px"}}>{l?"Dieses Angebot ist 14 Tage gültig. Preise basieren auf dem vereinbarten Umfang. Produkt von der Marke gestellt. Nutzungsrechte zeitlich begrenzt. 1 Korrektur je Leistung inklusive.":"This quote is valid for 14 days. Prices based on agreed scope. Product provided by brand. Usage rights time-limited. One revision included per deliverable."}</p>
+              <p style={{fontSize:8,color:C.muted,lineHeight:1.75,margin:"0 0 6px"}}>{l?"Dieses Angebot ist 14 Tage gültig. Preise basieren auf dem vereinbarten Umfang. Produkt von der Marke gestellt. Nutzungsrechte zeitlich begrenzt. 1 Korrektur je Leistung inklusive.":"This quote is valid for 14 days. Prices based on agreed scope. Product provided by brand. Usage rights time-limited. One revision included per deliverable."}{d.retainer&&d.retMo?` ${l?`Retainer-Vereinbarung über ${d.retMo} Monate · monatliche Abrechnung · −20% Retainer-Rabatt inklusive.`:`Retainer agreement — ${d.retMo} months · invoiced monthly · −20% retainer discount applied.`}`:""}</p>
               <p style={{fontSize:9,fontStyle:"italic",margin:"14px 0 0"}}>{d.footer||"Looking forward to working together."}</p>
             </div>}
             {["invoice","renewal"].includes(type)&&<div style={{paddingTop:14,borderTop:`1px solid ${C.rule}`}}>
