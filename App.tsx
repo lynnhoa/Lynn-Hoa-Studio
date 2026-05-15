@@ -4307,21 +4307,21 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
                       <span style={{fontSize:11,color:dlColor,fontWeight:dlColor===C.red?"600":"400"}}>
                         {fmtDeadline(item.deadline)}
                       </span>
-                      <div style={{display:"flex",gap:isMobile?4:6}}>
+                      <div style={{display:"flex",gap:isMobile?10:12}}>
                         {/* Created */}
-                        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                        <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
+                          <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>created</span>
                           <div onClick={toggleCreated} style={cbBox(isCreated,C.black)}>
                             {isCreated&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                           </div>
-                          {!isMobile&&<span style={{fontSize:9,color:isCreated?C.muted:C.light,letterSpacing:"0.02em"}}>created</span>}
                         </div>
                         {/* Post — Influencer only */}
                         {showPost&&(
-                          <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:2}}>
+                          <div style={{display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3}}>
+                            <span style={{fontSize:9,color:C.light,letterSpacing:"0.04em"}}>posted</span>
                             <div onClick={togglePosted} style={{...cbBox(isPosted,C.green),cursor:isCreated?"pointer":"default",opacity:isCreated?1:0.35}}>
                               {isPosted&&<span style={{fontSize:isMobile?13:11,color:C.white,lineHeight:1,fontWeight:"500"}}>✓</span>}
                             </div>
-                            {!isMobile&&<span style={{fontSize:9,color:isPosted?C.muted:C.green,letterSpacing:"0.02em"}}>post</span>}
                           </div>
                         )}
                       </div>
