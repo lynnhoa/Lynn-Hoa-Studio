@@ -5194,7 +5194,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
   useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   const isMobile=winW<700;
   const goToDash=()=>setNav(0);
-  const NAV=["Dashboard","Clients","Projects","Workspace","Planner"];
+  const NAV=["Dashboard","Clients","Projects","Workspace"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
 
   const AvatarBtn=({dropLeft=false}:{dropLeft?:boolean})=>(
@@ -5250,7 +5250,6 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
         {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
         {nav===2&&<CreatorProjects clients={clients} isMobile={isMobile}/>}
         {nav===3&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
-        {nav===4&&<CreatorPlanner isMobile={isMobile} clients={clients} setClients={setClients}/>}
       </div>
     </div>
   );
