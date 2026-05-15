@@ -3802,7 +3802,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       const amendTotal=(q.lines||[]).reduce((s: number,l: any)=>s+(parseFloat(l.amt)||0),0);
       setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===prefill?.qNo?{...pr,amendments:[...(pr.amendments||[]),{id:uid(),aNo,lines:q.lines||[],amendTotal,origTotal:pr.amount,signed:false,doc:q}],amount:pr.amount+amendTotal}:pr)}));
     } else if(isRev&&ex){
-      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.qd?.qNo===prefill?.qNo?{...pr,qd:q,status:"revised",amount:q.total}:pr)}));
+      setClients((p: any[])=>p.map(c=>c.id!==ex.id?c:{...c,projects:c.projects.map((pr: any)=>pr.id===prefill?.pid?{...pr,qd:q,status:"revised",amount:q.total}:pr)}));
     } else {
       const existPr=ex?.projects?.find((pr: any)=>pr.qd?.qNo===q.qNo);
       if(existPr&&ex){
@@ -3835,7 +3835,7 @@ function AppInner({initialClients,initialRc,initialSettings}: {initialClients: a
       ii:Math.max(0,items.findIndex((it: any)=>it.id===ln.id)),
       qty:ln.qty||1,neg:ln.up?String(ln.up):"",vol:false,ui:1,ei:0,ao:[],cLabel:"",cAmt:""
     }));
-    setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,isRev:true,revN:(q?.rev||0)+1,ctab:q?.ctab||"influencer",lines:prefillLines,origLines:q?.lines||[]});
+    setPrefill({brand:q?.brand,contact:q?.contact,qNo:q?.qNo,pid:pr.id,cid:cl.id,isRev:true,revN:(q?.rev||0)+1,ctab:q?.ctab||"influencer",lines:prefillLines,origLines:q?.lines||[]});
     setNav(2);
   };
 
