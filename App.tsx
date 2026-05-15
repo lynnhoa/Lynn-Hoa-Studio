@@ -4204,7 +4204,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
     <div>
       {/* Header */}
       <div style={{marginBottom:16}}>
-        <h2 style={{fontFamily:SERIF,fontSize:24,fontWeight:"normal",margin:"0 0 14px"}}>Workspace</h2>
+        <h2 style={{fontFamily:SERIF,fontSize:TYPE.h1.size,fontWeight:TYPE.h1.weight,margin:"0 0 14px"}}>Workspace</h2>
         {/* Group toggles */}
         <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:12}}>
           {(["Urgency","Client","Category","Status"] as const).map(g=>(
@@ -4216,13 +4216,13 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
         </div>
         {/* Search */}
         <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}
-          style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:12,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}/>
+          style={{width:"100%",padding:"7px 10px",border:`1px solid ${C.rule}`,background:C.bg,fontFamily:SANS,fontSize:TYPE.body.size,color:C.black,borderRadius:2,outline:"none",boxSizing:"border-box" as const}}/>
       </div>
 
       {/* Empty state */}
       {allItems.length===0&&(
         <div style={{border:`1px solid ${C.rule}`,borderRadius:2,padding:"40px 20px",textAlign:"center" as const,marginTop:20}}>
-          <p style={{fontSize:12,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
+          <p style={{fontSize:TYPE.body.size,color:C.muted,margin:"0 0 6px"}}>No active deliverables.</p>
           <p style={{fontSize:11,color:C.light,margin:0}}>Projects appear here once a contract is signed.</p>
         </div>
       )}
@@ -4237,7 +4237,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
             {/* Group header */}
             <div onClick={()=>toggleGroup(g.key)}
               style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,cursor:"pointer",userSelect:"none" as const}}>
-              <span style={{fontSize:11,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:"600"}}>{g.label}</span>
+              <span style={{fontSize:TYPE.label.size,letterSpacing:"0.12em",color:isOverdueGroup&&g.items.length>0?C.red:C.black,fontWeight:TYPE.label.weight}}>{g.label}</span>
               <span style={{fontSize:11,color:isOverdueGroup&&g.items.length>0?C.red:C.muted}}>{g.items.length}</span>
               <span style={{fontSize:11,color:C.light,marginLeft:"auto"}}>{isOpen?"▾":"▸"}</span>
             </div>
@@ -4364,7 +4364,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
 
       {/* Snackbar undo */}
       {snackbar&&(
-        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:3000,display:"flex",alignItems:"center",gap:16,background:C.black,color:C.white,borderRadius:2,padding:"10px 18px",fontSize:12,boxShadow:"0 4px 20px rgba(0,0,0,0.18)",whiteSpace:"nowrap" as const}}>
+        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:3000,display:"flex",alignItems:"center",gap:16,background:C.black,color:C.white,borderRadius:2,padding:"10px 18px",fontSize:TYPE.body.size,boxShadow:"0 4px 20px rgba(0,0,0,0.18)",whiteSpace:"nowrap" as const}}>
           <span>{snackbar.msg}</span>
           <button onClick={snackbar.undo} style={{background:"none",border:"none",cursor:"pointer",color:C.amber,fontFamily:SANS,fontSize:12,fontWeight:"500",padding:0}}>Undo</button>
         </div>
@@ -4376,7 +4376,7 @@ function CreatorWorkspace({isMobile,clients,setClients}: {isMobile:boolean,clien
           onClick={()=>setConfirmDelete(null)}>
           <div style={{background:C.bg,border:`1px solid ${C.rule}`,borderRadius:2,padding:"24px 28px",maxWidth:320,width:"90%",boxShadow:"0 4px 24px rgba(0,0,0,0.15)"}}
             onClick={e=>e.stopPropagation()}>
-            <p style={{fontSize:13,color:C.black,margin:"0 0 8px",fontFamily:SERIF}}>Delete this deliverable?</p>
+            <p style={{fontSize:TYPE.h3.size,color:C.black,margin:"0 0 8px",fontFamily:TYPE.h3.font}}>Delete this deliverable?</p>
             <p style={{fontSize:11,color:C.muted,margin:"0 0 20px"}}>Use only if this item was dropped from the contract informally. This cannot be undone.</p>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button onClick={()=>setConfirmDelete(null)} style={{padding:"6px 16px",border:`1px solid ${C.rule}`,borderRadius:2,background:"none",cursor:"pointer",fontFamily:SANS,fontSize:10,color:C.muted}}>Cancel</button>
