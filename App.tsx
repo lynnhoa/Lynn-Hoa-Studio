@@ -4648,6 +4648,99 @@ function getLineGroups(c: any, pr: any): any[] {
   return groups;
 }
 
+// ─── CREATOR PROJECTS TAB ─────────────────────────────────
+function CreatorProjects({isMobile,clients}: {isMobile:boolean,clients:any[]}) {
+  const all: any[]=[];
+  clients.forEach((cl: any)=>{
+    (cl.projects||[]).forEach((pr: any)=>{
+      all.push({...pr,_cname:cl.name,_cid:cl.id});
+    });
+  });
+  const active=all.filter((pr: any)=>!pr.paid&&["production","contracted","invoiced","quoted","revised","lead"].includes(pr.status))
+    .sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
+  const done=all.filter((pr: any)=>pr.paid)
+    .sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
+
+  const PrRow=({pr}: {pr: any})=>{
+    const groups=getLineGroups({id:pr._cid},pr);
+    const allItems=groups.flatMap((g: any)=>g.items);
+    const totalDone=allItems.filter((it: any)=>["Created","Reviewed","Delivered","Posted"].includes(it.status)).length;
+    const totalAll=allItems.length;
+    const dl=dLeft(pr.deliveryDate);
+    const isDone=pr.paid;
+    return(
+      <div style={{padding:isMobile?"11px 0":"9px 0",borderBottom:`1px solid ${C.rule}`,opacity:isDone?0.5:1}}>
+        {isMobile?(
+          <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:7,minWidth:0,flex:1}}>
+                <span style={{fontSize:TYPE.label.size,fontWeight:TYPE.label.weight,color:C.black,letterSpacing:"0.07em",textTransform:"uppercase" as const,flexShrink:0}}>{pr._cname}</span>
+                <span style={{fontSize:TYPE.label.size,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,flexShrink:0}}>{pr.paid?"Paid":pr.status}</span>
+              </div>
+              {pr.deliveryDate&&<span style={{fontSize:TYPE.small.size,color:dl!==null&&dl<0?C.red:dl!==null&&dl<=7?C.amber:C.muted,flexShrink:0,marginLeft:8}}>{fmtD(pr.deliveryDate)}</span>}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div style={{flex:1,minWidth:0,marginRight:12}}>
+                <span style={{fontSize:TYPE.body.size,color:C.black,display:"block",textDecoration:isDone?"line-through":"none",marginBottom:2}}>{pr.name}</span>
+                {totalAll>0&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
+                  <div style={{flex:1,height:3,background:C.rule,borderRadius:2,maxWidth:120}}>
+                    <div style={{height:3,width:`${totalAll>0?(totalDone/totalAll)*100:0}%`,background:totalDone===totalAll&&totalAll>0?C.green:C.black,borderRadius:2}}/>
+                  </div>
+                  <span style={{fontSize:TYPE.micro.size,color:totalDone===totalAll&&totalAll>0?C.green:C.muted}}>{totalDone}/{totalAll}</span>
+                </div>}
+              </div>
+              <span style={{fontFamily:TYPE.amount.font,fontSize:15,color:C.black,flexShrink:0}}>{fmt(pr.amount)}</span>
+            </div>
+          </>
+        ):(
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:TYPE.label.size,fontWeight:TYPE.label.weight,color:C.black,letterSpacing:"0.07em",textTransform:"uppercase" as const,width:90,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr._cname}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:totalAll>0?3:0}}>
+                <span style={{fontSize:TYPE.body.size,color:C.black,textDecoration:isDone?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
+                <span style={{fontSize:TYPE.micro.size,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"1px 6px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,flexShrink:0}}>{pr.paid?"Paid":pr.status}</span>
+              </div>
+              {totalAll>0&&<div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:80,height:3,background:C.rule,borderRadius:2}}>
+                  <div style={{height:3,width:`${totalAll>0?(totalDone/totalAll)*100:0}%`,background:totalDone===totalAll&&totalAll>0?C.green:C.black,borderRadius:2}}/>
+                </div>
+                <span style={{fontSize:TYPE.micro.size,color:totalDone===totalAll&&totalAll>0?C.green:C.muted}}>{totalDone}/{totalAll}</span>
+              </div>}
+            </div>
+            {pr.deliveryDate&&<span style={{fontSize:TYPE.small.size,color:dl!==null&&dl<0?C.red:dl!==null&&dl<=7?C.amber:C.muted,flexShrink:0}}>{fmtD(pr.deliveryDate)}</span>}
+            <span style={{fontFamily:TYPE.amount.font,fontSize:15,color:C.black,flexShrink:0,minWidth:64,textAlign:"right" as const}}>{fmt(pr.amount)}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return(
+    <div>
+      <h2 style={{fontFamily:TYPE.h1.font,fontSize:TYPE.h1.size,fontWeight:TYPE.h1.weight,margin:"0 0 16px"}}>Projects</h2>
+      {active.length===0&&done.length===0&&(
+        <p style={{fontSize:TYPE.small.size,color:C.muted}}>No projects yet. Projects appear here once a contract is signed.</p>
+      )}
+      {active.length>0&&<>
+        <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:5}}>
+          <span style={{fontSize:TYPE.label.size,fontWeight:TYPE.label.weight,letterSpacing:"0.09em",textTransform:"uppercase" as const,color:C.black}}>Active</span>
+          <span style={{fontSize:TYPE.small.size,color:C.muted}}>{active.length}</span>
+        </div>
+        <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:0}}/>
+        {active.map((pr: any)=><PrRow key={pr.id} pr={pr}/>)}
+      </>}
+      {done.length>0&&<>
+        <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:5,marginTop:24}}>
+          <span style={{fontSize:TYPE.label.size,fontWeight:TYPE.label.weight,letterSpacing:"0.09em",textTransform:"uppercase" as const,color:C.muted}}>Done</span>
+          <span style={{fontSize:TYPE.small.size,color:C.light}}>{done.length}</span>
+        </div>
+        <div style={{borderTop:`1px solid ${C.rule}`,marginBottom:0}}/>
+        {done.map((pr: any)=><PrRow key={pr.id} pr={pr}/>)}
+      </>}
+    </div>
+  );
+}
+
 function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:boolean,onSelChange?:(id:string|null)=>void}) {
   const [sel,setSel]=useState<string|null>(null);
   const setSel_=(v: string|null)=>{setSel(v);if(onSelChange)onSelChange(v);};
@@ -4690,86 +4783,56 @@ function CreatorClients({clients,isMobile,onSelChange}: {clients:any[],isMobile:
     );
   };
 
-  // right panel detail
+  // right panel detail — read-only: key info + all projects
   const Detail=({c}: {c: any})=>{
-    const pr=c.projects.find((p: any)=>p.status==="production");
-    const pastProjects=c.projects.filter((p: any)=>p.status==="invoiced"||p.status==="paid");
-    const groups=pr?getLineGroups(c,pr):[];
-    const allItems=groups.flatMap((g: any)=>g.items);
-    const totalDone=allItems.filter((it: any)=>it.status==="Delivered").length;
-    const totalAll=allItems.length;
-    const dl=dLeft(pr?.deliveryDate);
-
+    const allProjects=[...c.projects].sort((a: any,b: any)=>(b.createdAt||0)-(a.createdAt||0));
     return(
       <div style={{flex:1,minWidth:0,overflowY:isMobile?undefined:"auto",maxHeight:isMobile?undefined:"calc(100vh - 80px)",paddingLeft:isMobile?0:4}}>
-        {/* header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
           <div>
-            <h2 style={{fontFamily:SERIF,fontSize:22,fontWeight:"normal",margin:"0 0 4px"}}>{c.name}</h2>
-            <p style={{fontSize:10.5,color:C.muted,margin:0}}>{[c.contact,c.email].filter(Boolean).join(" · ")}</p>
+            <h2 style={{fontFamily:TYPE.h2.font,fontSize:TYPE.h2.size,fontWeight:TYPE.h2.weight,margin:"0 0 4px"}}>{c.name}</h2>
+            <p style={{fontSize:TYPE.small.size,color:C.muted,margin:0}}>{[c.contact,c.email].filter(Boolean).join(" · ")}</p>
+            {c.tags?.length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap" as const,marginTop:6}}>{c.tags.map((t: string)=><span key={t} style={{fontSize:TYPE.micro.size,padding:"1px 6px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted}}>{t}</span>)}</div>}
+            {c.notes&&<p style={{fontSize:TYPE.small.size,color:C.muted,margin:"6px 0 0",fontStyle:"italic"}}>{c.notes}</p>}
           </div>
           <button onClick={()=>setSel_(null)} style={{background:"none",border:"none",cursor:"pointer",color:C.light,fontSize:18,lineHeight:1,padding:"2px 0 0 4px"}}>✕</button>
         </div>
-
-        {pr&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,padding:"10px 14px",border:`1px solid ${C.rule}`,borderRadius:2}}>
-          <span style={{fontSize:13,fontWeight:"500",color:C.amber}}>{fmtD(pr.deliveryDate)}</span>
-          {dl!==null&&<span style={{fontSize:11,color:C.muted}}>· {dl}d left</span>}
-          <span style={{fontSize:11,color:C.muted,marginLeft:"auto"}}>Progress <strong style={{color:C.black}}>{totalDone}/{totalAll}</strong></span>
-        </div>}
-
-        {pr&&<>
-          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"0 0 10px"}}>{pr.name} — Active</p>
-          {groups.map((g: any)=>{
-            const done=g.items.filter((it: any)=>it.status==="Delivered").length;
-            const total=g.items.length;
-            const complete=done===total;
-            const cs=ccCatStyle(g.category);
-            const isOpen=collapsed[g.lineKey]!==true;
-            const toggleKey=`${pr.id}_${g.lineKey}`;
+        {allProjects.length===0&&<p style={{fontSize:TYPE.small.size,color:C.light}}>No projects yet.</p>}
+        {allProjects.length>0&&<>
+          <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:5}}>
+            <span style={{fontSize:TYPE.label.size,fontWeight:TYPE.label.weight,letterSpacing:"0.09em",textTransform:"uppercase" as const,color:C.muted}}>Projects</span>
+            <span style={{fontSize:TYPE.small.size,color:C.light}}>{allProjects.length}</span>
+          </div>
+          <div style={{borderTop:`1px solid ${C.rule}`}}/>
+          {allProjects.map((pr: any)=>{
+            const groups=getLineGroups(c,pr);
+            const allItems=groups.flatMap((g: any)=>g.items);
+            const totalDone=allItems.filter((it: any)=>["Created","Reviewed","Delivered","Posted"].includes(it.status)).length;
+            const totalAll=allItems.length;
+            const dl=dLeft(pr.deliveryDate);
             return(
-              <div key={g.lineKey} style={{border:`1px solid ${C.rule}`,borderRadius:2,marginBottom:8,overflow:"hidden"}}>
-                <div onClick={()=>setCollapsed(p=>({...p,[toggleKey]:!p[toggleKey]}))}
-                  style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"#f7f6f4",cursor:"pointer"}}>
-                  <span style={{fontSize:10,padding:"2px 7px",borderRadius:10,border:`1px solid ${cs.border}`,background:cs.bg,color:cs.color,flexShrink:0}}>{ccCatLabel(g.category)}</span>
-                  <span style={{fontSize:12,color:C.black,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{total}× {g.lineName}</span>
-                  <div style={{display:"flex",gap:3,flexShrink:0}}>
-                    {g.items.map((it: any)=>{
-                      const dotColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.rule;
-                      return <span key={it.id} style={{width:7,height:7,borderRadius:"50%",background:dotColor,display:"inline-block"}}/>;
-                    })}
+              <div key={pr.id} style={{padding:"9px 0",borderBottom:`1px solid ${C.rule}`,opacity:pr.paid?0.5:1}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:totalAll>0?4:0}}>
+                      <span style={{fontSize:TYPE.body.size,color:C.black,textDecoration:pr.paid?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{pr.name}</span>
+                      <span style={{fontSize:TYPE.micro.size,color:scol(pr.paid?"paid":pr.status),border:`1px solid ${scol(pr.paid?"paid":pr.status)}`,padding:"1px 5px",borderRadius:2,letterSpacing:"0.07em",textTransform:"uppercase" as const,flexShrink:0}}>{pr.paid?"Paid":pr.status}</span>
+                    </div>
+                    {totalAll>0&&<div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{width:80,height:3,background:C.rule,borderRadius:2}}>
+                        <div style={{height:3,width:`${(totalDone/totalAll)*100}%`,background:totalDone===totalAll?C.green:C.black,borderRadius:2}}/>
+                      </div>
+                      <span style={{fontSize:TYPE.micro.size,color:totalDone===totalAll?C.green:C.muted}}>{totalDone}/{totalAll}</span>
+                    </div>}
                   </div>
-                  <span style={{fontSize:11,color:complete?C.green:C.muted,fontWeight:complete?"500":"400",flexShrink:0}}>{done}/{total}</span>
-                  <span style={{fontSize:10,color:C.light,flexShrink:0}}>{isOpen?"▾":"▸"}</span>
+                  <div style={{textAlign:"right" as const,flexShrink:0}}>
+                    <span style={{fontFamily:TYPE.amount.font,fontSize:13,color:C.black,display:"block"}}>{fmt(pr.amount)}</span>
+                    {pr.deliveryDate&&<span style={{fontSize:TYPE.micro.size,color:dl!==null&&dl<0?C.red:dl!==null&&dl<=7?C.amber:C.muted}}>{fmtD(pr.deliveryDate)}{dl!==null&&!pr.paid?` · ${dl}d`:""}</span>}
+                  </div>
                 </div>
-                {isOpen&&(
-                  <div>
-                    {g.items.map((it: any)=>{
-                      const stColor=it.status==="Delivered"?C.green:it.status==="Reviewed"?C.amber:it.status==="Finished"?C.black:C.light;
-                      return(
-                        <div key={it.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",borderTop:`1px solid ${C.rule}`}}>
-                          <span style={{fontSize:13,color:C.black,flex:1}}>{it.name}</span>
-                          <span style={{fontSize:11,color:stColor}}>{it.status}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           })}
-        </>}
-
-        {pastProjects.length>0&&<>
-          <p style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase" as const,margin:"20px 0 10px"}}>Past Projects</p>
-          {pastProjects.map((p: any)=>(
-            <div key={p.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.rule}`}}>
-              <span style={{fontSize:13,color:C.muted}}>{p.name}</span>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:10,padding:"2px 8px",border:`1px solid ${C.rule}`,borderRadius:2,color:C.muted}}>Paid</span>
-                <span style={{fontSize:12,color:C.light}}>›</span>
-              </div>
-            </div>
-          ))}
         </>}
       </div>
     );
@@ -5142,7 +5205,7 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
   useEffect(()=>{const fn=()=>setWinW(window.innerWidth);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   const isMobile=winW<700;
   const goToDash=()=>setNav(0);
-  const NAV=["Dashboard","Clients","Workspace","Planner"];
+  const NAV=["Dashboard","Clients","Projects","Workspace","Planner"];
   const initials=(()=>{const n=(settings.name||settings.company||"Lynn Hoa").trim();const p=n.split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():n.slice(0,2).toUpperCase();})();
 
   const AvatarBtn=({dropLeft=false}:{dropLeft?:boolean})=>(
@@ -5196,8 +5259,9 @@ function CreatorPage({settings,logout,clients,setClients}: {settings: any,logout
       <div style={{maxWidth:(nav===1&&creatorClientSel)&&!isMobile?1200:840,margin:"0 auto",padding:isMobile?"20px 12px":"28px 20px",transition:"max-width 0.25s ease"}}>
         {nav===0&&<CreatorDashboard isMobile={isMobile} clients={clients}/>}
         {nav===1&&<CreatorClients clients={clients} isMobile={isMobile} onSelChange={setCreatorClientSel}/>}
-        {nav===2&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
-        {nav===3&&<CreatorPlanner isMobile={isMobile} clients={clients} setClients={setClients}/>}
+        {nav===2&&<CreatorProjects isMobile={isMobile} clients={clients}/>}
+        {nav===3&&<CreatorWorkspace isMobile={isMobile} clients={clients} setClients={setClients}/>}
+        {nav===4&&<CreatorPlanner isMobile={isMobile} clients={clients} setClients={setClients}/>}
       </div>
     </div>
   );
