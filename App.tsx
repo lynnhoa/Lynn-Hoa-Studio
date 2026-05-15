@@ -622,6 +622,7 @@ function PDFModal({data,type,onClose,onSave,onSaveClose,settings,isNew}: any) {
       const curr=prev.hist[prev.idx];
       const newD=typeof fn==="function"?fn(curr):fn;
       const next=[...prev.hist.slice(0,prev.idx+1),JSON.parse(JSON.stringify(newD))];
+      setPreview(JSON.parse(JSON.stringify(newD)));
       return{hist:next,idx:next.length-1};
     });
   };
