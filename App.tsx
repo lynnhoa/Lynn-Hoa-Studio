@@ -557,6 +557,18 @@ function A4({d,type,lang,settings,extraSigMargin,clauseGuards,tRowGuards}: any) 
       {type==="contract"&&(d.quoteRef||"none")==="ref"&&<div style={{padding:"10px 0",marginBottom:0}}>
         <p style={{fontSize:8.5,color:C.muted,margin:0,fontStyle:"italic"}}>{l?`Bezugnehmend auf Angebot ${d.qNo||""}${d.date?` vom ${fmtD(d.date,l)}`:""}.`:`As per the agreed quote ${d.qNo||""}${d.date?` dated ${fmtD(d.date,l)}`:""}.`}</p>
       </div>}
+      {type==="contract"&&d.retainer&&d.retMo&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+        <div style={{width:175}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{l?"Mtl. Zwischensumme":"Monthly subtotal"}</span><span>€ {Number(linesSum).toLocaleString("de-DE")}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8}}><span style={{color:C.muted}}>{l?"Retainer-Rabatt −20%":"Retainer discount −20%"}</span><span>−€ {Number(linesSum-retainerMonthly).toLocaleString("de-DE")}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:8,borderTop:`1px solid ${C.rule}`,paddingTop:4}}><span style={{color:C.muted}}>{l?"Monatliche Rate":"Monthly fee"}</span><span>€ {Number(retainerMonthly).toLocaleString("de-DE")}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:8}}><span style={{color:C.muted}}>× {d.retMo} {l?"Monate":"months"}</span><span></span></div>
+          <div style={{borderTop:`1px solid ${C.rule}`,paddingTop:6,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+            <span style={{fontSize:6.5,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase"}}>{l?"Gesamt (EUR)":"Total (EUR)"}</span>
+            <span style={{fontFamily:SERIF,fontSize:15}}>€ {Number(total).toLocaleString("de-DE")}</span>
+          </div>
+        </div>
+      </div>}
       {type==="contract"&&<div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${C.rule}`}}>
         {(d.clauses&&d.clauses.length>0?d.clauses:[
           {title:l?"§ 1 — Vertragsgegenstand":"§ 1 — Subject Matter",text:l?`${s.company||s.name||"Der/Die Auftragnehmer/in"} verpflichtet sich, folgende Leistungen gegen ein vereinbartes Honorar von ${fmt(total)} zu erbringen: ${deliverablesList||"den vereinbarten Content gemäß obiger Übersicht"}. Umfang, Format und Zeitplan werden vor Produktionsbeginn schriftlich von beiden Parteien bestätigt. Das kreative Konzept bedarf der schriftlichen Freigabe beider Parteien vor Beginn der Produktion.`:`${s.company||s.name||"The creator"} agrees to produce and deliver the following for a total agreed fee of ${fmt(total)}: ${deliverablesList||"the content specified above"}. The deliverable scope, format, and timeline shall be confirmed in writing by both parties prior to production. The creative concept is subject to mutual written approval before work begins.`},
