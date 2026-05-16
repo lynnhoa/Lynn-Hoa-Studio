@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Casa Castel</title>
+  <link rel="stylesheet" href="casa-castel.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    /* ── LOGIN ── */
+    .login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
+    .login-logo{font-family:'Cormorant Garamond',Georgia,serif;font-size:36px;font-weight:300;letter-spacing:0.14em;text-transform:uppercase;color:var(--cc-ink);margin-bottom:6px;text-align:center;}
+    .login-sub{font-size:11px;color:var(--cc-stone);letter-spacing:0.06em;text-align:center;margin-bottom:48px;}
+    .login-box{width:100%;max-width:340px;background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);padding:28px 24px;}
+    .login-title{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--cc-taupe);margin-bottom:20px;text-align:center;}
+    .login-error{font-size:12px;color:#8C3A2A;background:#F5EEE8;border:0.5px solid #D4A87A;border-radius:var(--cc-r-sm);padding:9px 12px;margin-bottom:14px;display:none;}
+    .login-error.visible{display:block;}
+    .cc-select{display:block;width:100%;min-height:44px;background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-sm);padding:11px 14px;font-family:'Inter',system-ui,sans-serif;font-size:14px;font-weight:300;color:var(--cc-charcoal);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%23C8BFB0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;transition:border-color 0.15s;}
+    .cc-select:focus{border-color:var(--cc-charcoal);}
+    /* ── SHELL ── */
+    .app-shell{display:none;min-height:100vh;}
+    .app-shell.visible{display:block;}
+    .nav-right{display:flex;align-items:center;gap:6px;}
+    .nav-room-pill{font-size:11px;font-weight:500;letter-spacing:0.06em;color:var(--cc-taupe);background:var(--cc-surface);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-pill);padding:5px 11px;}
+    .nav-logout{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--cc-stone);background:none;border:none;cursor:pointer;border-radius:50%;}
+
+    /* ── TOP TABS LAYOUT ── */
+    .sidebar{display:none;}
+    .desktop-layout{display:block;}
+    .top-tabs{display:flex;border-bottom:0.5px solid var(--cc-rule);padding:0 36px;background:var(--cc-bg);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .top-tabs::-webkit-scrollbar{display:none;}
+    .top-tabs .cc-tab{padding:0 4px;height:44px;margin-right:24px;font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--cc-taupe);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:color 0.12s,border-color 0.12s;}
+    .top-tabs .cc-tab:hover{color:var(--cc-charcoal);}
+    .top-tabs .cc-tab.active{color:var(--cc-ink);border-bottom-color:var(--cc-ink);}
+    .mobile-tabs{display:none;}
+    .main-content{max-width:1200px;margin:0 auto;padding:32px 36px;display:flex;flex-direction:column;}
+    @media(max-width:700px){
+      .top-tabs{padding:0 16px;}
+      .top-tabs .cc-tab{margin-right:16px;}
+      .main-content{padding:20px;}
+    }
+
+    /* ── ANNOUNCEMENTS — editorial / news style ── */
+    .ann-masthead{text-align:center;padding:20px 0 14px;border-bottom:1px solid var(--cc-ink);margin-bottom:20px;}
+    .ann-masthead__label{font-family:'Cormorant Garamond',Georgia,serif;font-size:10px;font-weight:400;letter-spacing:0.22em;text-transform:uppercase;color:var(--cc-taupe);margin:0 0 4px;}
+    .ann-masthead__name{font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:300;letter-spacing:0.06em;color:var(--cc-ink);margin:0;}
+    .ann-masthead__sub{font-size:10px;color:var(--cc-stone);letter-spacing:0.06em;margin:3px 0 0;}
+    .ann-rule{height:0.5px;background:var(--cc-ink);margin-bottom:20px;}
+    /* lead article — newest / most recent non-pinned */
+    .ann-lead{margin-bottom:22px;padding:18px;background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);}
+    .ann-lead__eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+    .ann-lead__new{font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--cc-white);background:var(--cc-ink);border-radius:2px;padding:2px 7px;}
+    .ann-lead__section{font-size:9px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:var(--cc-stone);}
+    .ann-lead__pin{font-size:9px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:#633806;background:var(--cc-gold-lt);border:0.5px solid var(--cc-gold);border-radius:2px;padding:2px 7px;}
+    .ann-lead__title{font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:400;color:var(--cc-ink);margin:0 0 8px;line-height:1.2;}
+    .ann-lead__byline{display:flex;align-items:baseline;gap:5px;margin-bottom:10px;}
+    .ann-lead__by{font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--cc-taupe);}
+    .ann-lead__dot{font-size:10px;color:var(--cc-stone);}
+    .ann-lead__date{font-size:10px;color:var(--cc-stone);}
+    .ann-lead__body{font-size:14px;font-weight:300;color:var(--cc-charcoal);line-height:1.7;margin:0;}
+    /* secondary articles */
+    .ann-item{display:flex;gap:11px;margin-bottom:16px;padding-bottom:16px;border-bottom:0.5px solid var(--cc-rule);}
+    .ann-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+    .ann-item__stripe{width:2px;background:var(--cc-stone);flex-shrink:0;margin-top:3px;border-radius:0;}
+    .ann-item__stripe--important{background:#D4A87A;}
+    .ann-item__content{flex:1;min-width:0;}
+    .ann-item__eyebrow{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+    .ann-item__section{font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--cc-stone);}
+    .ann-item__pin{font-size:9px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:#633806;background:var(--cc-gold-lt);border:0.5px solid var(--cc-gold);border-radius:2px;padding:2px 6px;}
+    .ann-item__important{font-size:9px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:#8C3A2A;background:#F5EEE8;border:0.5px solid #D4A87A;border-radius:2px;padding:2px 6px;}
+    .ann-item__title{font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;font-weight:400;color:var(--cc-ink);margin:0 0 5px;line-height:1.25;}
+    .ann-item__byline{display:flex;align-items:baseline;gap:5px;margin-bottom:6px;}
+    .ann-item__by{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--cc-taupe);}
+    .ann-item__date{font-size:10px;color:var(--cc-stone);}
+    .ann-item__body{font-size:13px;font-weight:300;color:var(--cc-charcoal);line-height:1.6;margin:0;}
+    .ann-empty{text-align:center;padding:40px 20px;}
+    /* ── ANN-CARD (used in lounge zone 1) ── */
+    .ann-card{background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);padding:16px;margin-bottom:0;}
+    .ann-card--pinned{border-color:var(--cc-gold);background:#FDFAF6;}
+    .ann-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;}
+    .ann-pin{font-size:9px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--cc-gold);background:var(--cc-gold-lt);border:0.5px solid var(--cc-gold);border-radius:var(--cc-r-sm);padding:2px 7px;flex-shrink:0;}
+    .ann-date{font-size:11px;color:var(--cc-stone);}
+    .ann-title-text{font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;font-weight:400;color:var(--cc-ink);margin-bottom:6px;line-height:1.3;}
+    .ann-body-text{font-size:13px;font-weight:300;color:var(--cc-charcoal);line-height:1.6;}
+
+    /* ── LOUNGE ── */
+    .lounge-feed{display:flex;flex-direction:column;gap:0;}
+    .msg-row{display:flex;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--cc-rule);}
+    .msg-row:last-child{border-bottom:none;}
+    .msg-avatar{width:34px;height:34px;border-radius:50%;background:var(--cc-surface);border:0.5px solid var(--cc-rule);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--cc-taupe);flex-shrink:0;margin-top:1px;}
+    .msg-avatar--mgmt{background:var(--cc-ink);color:var(--cc-white);}
+    .msg-content{flex:1;min-width:0;}
+    .msg-meta{display:flex;align-items:baseline;gap:7px;margin-bottom:3px;}
+    .msg-name{font-size:12px;font-weight:500;color:var(--cc-ink);}
+    .msg-name--mgmt{color:var(--cc-gold);}
+    .msg-time{font-size:10px;color:var(--cc-stone);}
+    .msg-text{font-size:13px;font-weight:300;color:var(--cc-charcoal);line-height:1.55;word-break:break-word;}
+    .msg-mention{color:var(--cc-gold);font-weight:500;}
+    .msg-mention--me{color:var(--cc-ink);font-weight:500;background:var(--cc-gold-lt);padding:0 3px;border-radius:2px;}
+    /* compose */
+    .compose-bar{background:var(--cc-bg);border-top:0.5px solid var(--cc-rule);padding:10px 0 10px;display:flex;gap:8px;align-items:flex-end;margin-top:12px;}
+    @media(max-width:700px){
+      .compose-bar{position:sticky;bottom:0;padding:10px 20px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));border-top:0.5px solid var(--cc-rule);}
+    }
+    .compose-input{flex:1;min-height:40px;max-height:100px;background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:20px;padding:10px 14px;font-family:'Inter',system-ui,sans-serif;font-size:14px;font-weight:300;color:var(--cc-charcoal);outline:none;resize:none;transition:border-color 0.15s;line-height:1.4;}
+    .compose-input:focus{border-color:var(--cc-charcoal);}
+    .compose-input::placeholder{color:var(--cc-stone);}
+    .compose-send{width:40px;height:40px;background:var(--cc-ink);color:var(--cc-white);border:none;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;}
+    .compose-send:active{opacity:0.75;}
+    /* lounge needs scroll room for compose bar */
+    .lounge-scroll-pad{height:80px;}
+
+    /* ── NOTICE POSTED (read-only, tenant — color variants) ── */
+    .notice-posted{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border:0.5px solid #EAD96B;border-radius:var(--cc-r-md);margin-bottom:16px;background:#FEFCE8;}
+    .notice-posted--yellow{background:#FEFCE8;border-color:#EAD96B;}
+    .notice-posted--green{background:#F0FDF4;border-color:#86EFAC;}
+    .notice-posted--red{background:#FFF1F2;border-color:#FECDD3;}
+    .notice-posted__icon{font-size:13px;flex-shrink:0;margin-top:1px;}
+    .notice-posted--yellow .notice-posted__icon{color:#A0860E;}
+    .notice-posted--green .notice-posted__icon{color:#16A34A;}
+    .notice-posted--red .notice-posted__icon{color:#E11D48;}
+    .notice-posted__text{font-size:13px;font-weight:300;line-height:1.55;flex:1;}
+    .notice-posted--yellow .notice-posted__text{color:#78640A;}
+    .notice-posted--green .notice-posted__text{color:#14532D;}
+    .notice-posted--red .notice-posted__text{color:#9F1239;}
+
+    /* ── LOUNGE CHAT CARD (white) ── */
+    .lounge-chat-card{background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);overflow:hidden;display:flex;flex-direction:column;}
+    .lounge-chat-card .lounge-feed{flex:1;min-height:60px;overflow-y:auto;scroll-behavior:smooth;padding:4px 16px;margin-bottom:0;}
+    .lounge-chat-card .compose-bar{border-top:0.5px solid var(--cc-rule);padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));margin-top:0;background:var(--cc-white);flex-shrink:0;}
+    .lounge-ann-heading{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:400;color:var(--cc-ink);margin-bottom:10px;letter-spacing:.01em;}
+    @media(max-width:700px){
+      .lounge-chat-card .lounge-feed{max-height:260px;}
+      .lounge-chat-card .compose-bar{position:sticky;bottom:0;}
+    }
+
+    /* ── HOUSE CLEANING ── */
+    .hc-section-title{font-size:10px;font-weight:500;letter-spacing:0.11em;text-transform:uppercase;color:var(--cc-taupe);margin-bottom:12px;}
+    /* bin schedule */
+    .bin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:0;}
+    .bin-card{background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-md);padding:12px 10px;text-align:center;}
+    .bin-icon{font-size:22px;margin-bottom:4px;}
+    .bin-name{font-size:11px;font-weight:500;color:var(--cc-ink);margin-bottom:2px;}
+    .bin-day{font-size:11px;color:var(--cc-taupe);}
+    /* rotation rows */
+    .hc-rotation-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--cc-rule);}
+    .hc-rotation-row:last-child{border-bottom:none;}
+    .hc-rotation-row--current{background:var(--cc-white);margin:0 -20px;padding:12px 20px;border-bottom:0.5px solid var(--cc-rule);border-top:0.5px solid var(--cc-rule);}
+    .hc-room-name{font-size:13px;font-weight:500;color:var(--cc-ink);}
+    .hc-room-name--current{font-size:14px;}
+    .hc-room-sub{font-size:11px;color:var(--cc-taupe);margin-top:1px;}
+    /* current week card */
+    .hc-current-card{background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);padding:18px;}
+    .hc-current-card--done{border-color:#9AC87A;}
+    .hc-current-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+    .hc-current-kw{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:300;color:var(--cc-ink);line-height:1;}
+    .hc-current-dates{font-size:12px;color:var(--cc-taupe);margin-bottom:12px;}
+    .hc-your-turn-bar{background:var(--cc-ink);color:var(--cc-white);border-radius:var(--cc-r-sm);padding:11px 14px;font-size:13px;margin-bottom:12px;line-height:1.5;display:none;}
+    .hc-your-turn-bar.visible{display:block;}
+    .hc-your-turn-bar strong{color:var(--cc-gold);}
+    .hc-done-btn{width:100%;min-height:48px;background:var(--cc-ink);color:var(--cc-white);border:none;border-radius:var(--cc-r-sm);font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:opacity 0.15s;}
+    .hc-done-btn:active{opacity:0.8;}
+    .hc-done-confirm{display:flex;align-items:center;gap:8px;margin-top:10px;display:none;}
+    .hc-done-confirm.visible{display:flex;}
+    .hc-done-ts{font-size:11px;color:var(--cc-stone);}
+    /* issues */
+    .hc-issue{background:var(--cc-white);border:0.5px solid #E8C97A;border-radius:var(--cc-r-lg);padding:14px 16px;margin-bottom:8px;}
+    .hc-issue-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;}
+    .hc-issue-type{font-size:13px;font-weight:500;color:var(--cc-ink);}
+    .hc-issue-meta{font-size:11px;color:var(--cc-taupe);}
+    .hc-resolve-btn{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--cc-taupe);background:none;border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-sm);padding:4px 10px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+
+    /* ── KITCHEN ── */
+    .k-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;padding:3px 9px;border-radius:var(--cc-r-pill);flex-shrink:0;}
+    .k-pill--pending{background:#FDF5E8;color:#8C5A1A;border:0.5px solid #E8C97A;}
+    .k-pill--done{background:#EDF5E8;color:#3A6A1A;border:0.5px solid #9AC87A;}
+    .k-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+    .k-dot--pending{background:#D4A030;}
+    .k-dot--done{background:#4A9A20;}
+    /* current week card */
+    .kc-card{background:var(--cc-white);border:0.5px solid var(--cc-gold);border-radius:var(--cc-r-lg);padding:var(--cc-sp-16);}
+    .kc-week-badge{display:inline-block;font-size:9px;font-weight:500;letter-spacing:0.13em;text-transform:uppercase;background:var(--cc-gold-lt);color:var(--cc-gold);border:0.5px solid var(--cc-gold);border-radius:var(--cc-r-sm);padding:2px 8px;margin-bottom:var(--cc-sp-8);}
+    .kc-room-name{font-family:'Cormorant Garamond',Georgia,serif;font-size:28px;font-weight:300;color:var(--cc-ink);line-height:1;margin-bottom:4px;}
+    .kc-dates{font-size:12px;color:var(--cc-taupe);margin-bottom:var(--cc-sp-16);}
+    .kc-due{font-size:11px;color:var(--cc-stone);}
+    /* turn banner */
+    .kc-turn-bar{background:var(--cc-ink);color:var(--cc-white);border-radius:var(--cc-r-sm);padding:11px 14px;font-size:13px;font-weight:300;line-height:1.5;margin-bottom:var(--cc-sp-12);display:none;}
+    .kc-turn-bar.visible{display:block;}
+    .kc-turn-bar strong{color:var(--cc-gold);}
+    /* flag notice */
+    .kc-flag-notice{background:var(--cc-notice-bg);border:0.5px solid var(--cc-notice-bdr);border-radius:var(--cc-r-sm);padding:10px 14px;font-size:12px;color:var(--cc-notice-text);margin-bottom:var(--cc-sp-12);display:none;}
+    .kc-flag-notice.visible{display:block;}
+    /* check rows */
+    .kc-check-row{display:flex;align-items:center;gap:12px;padding:12px;border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-md);background:var(--cc-white);cursor:pointer;transition:background 0.15s,border-color 0.15s;margin-bottom:var(--cc-sp-8);-webkit-tap-highlight-color:transparent;}
+    .kc-check-row.checked{background:var(--cc-gold-lt);border-color:var(--cc-gold);}
+    .kc-check-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--cc-gold);flex-shrink:0;cursor:pointer;}
+    .kc-check-emoji{font-size:20px;line-height:1;}
+    .kc-check-label{font-size:13px;font-weight:500;color:var(--cc-ink);flex:1;}
+    /* upload button disabled */
+    .cc-btn--primary:disabled{background:var(--cc-surface);color:var(--cc-stone);border:0.5px solid var(--cc-rule);cursor:not-allowed;opacity:1;}
+    .cc-btn--primary:disabled:active{transform:none;}
+    /* photo preview */
+    .kc-photo-preview{display:none;margin-top:var(--cc-sp-12);}
+    .kc-photo-preview.visible{display:block;}
+    .kc-photo-img{width:100%;border-radius:var(--cc-r-md);border:0.5px solid var(--cc-rule);display:block;margin-bottom:var(--cc-sp-8);max-height:220px;object-fit:cover;}
+    .kc-photo-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .kc-replace-btn{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--cc-taupe);background:none;border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-sm);padding:4px 10px;cursor:pointer;}
+    /* rotation */
+    .kc-rotation-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--cc-rule);}
+    .kc-rotation-row:last-child{border-bottom:none;}
+    .kc-rotation-row--current{background:var(--cc-gold-lt);margin:0 calc(-1 * var(--cc-sp-20));padding:10px var(--cc-sp-20);border-top:0.5px solid var(--cc-gold);border-bottom:0.5px solid var(--cc-gold);}
+    .kc-rot-room{font-size:14px;font-weight:400;color:var(--cc-ink);}
+    .kc-rot-week{font-size:12px;color:var(--cc-taupe);}
+    .kc-rotation-row--current .kc-rot-week{color:var(--cc-gold);}
+    .kc-rotation-row--current .kc-rot-room{font-weight:500;}
+    /* feed */
+    .kc-submission{background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);overflow:hidden;margin-bottom:var(--cc-sp-12);}
+    .kc-submission--latest{border-color:var(--cc-gold);}
+    .kc-sub-header{display:flex;align-items:center;gap:10px;padding:12px 14px 10px;border-bottom:0.5px solid var(--cc-rule);}
+    .kc-sub-avatar{width:28px;height:28px;border-radius:50%;background:var(--cc-surface);border:0.5px solid var(--cc-rule);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--cc-taupe);flex-shrink:0;}
+    .kc-sub-room{font-size:13px;font-weight:500;color:var(--cc-ink);}
+    .kc-sub-date{font-size:11px;color:var(--cc-stone);}
+    .kc-sub-photo{width:100%;max-height:200px;object-fit:cover;display:block;}
+    .kc-sub-photo-placeholder{width:100%;height:120px;background:var(--cc-surface);display:flex;align-items:center;justify-content:center;}
+    .kc-sub-photo-placeholder span{font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-style:italic;color:var(--cc-stone);}
+    .kc-sub-caption{padding:10px 14px;font-size:13px;font-weight:300;color:var(--cc-charcoal);line-height:1.55;border-bottom:0.5px solid var(--cc-rule);}
+    /* comments */
+    .kc-comments{padding:0 14px;max-height:260px;overflow-y:auto;scroll-behavior:smooth;display:flex;flex-direction:column;}
+    @media(max-width:700px){.kc-comments{max-height:200px;}}
+    .kc-comment{display:flex;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--cc-rule);}
+    .kc-comment:last-child{border-bottom:none;}
+    .kc-comment-avatar{width:22px;height:22px;border-radius:50%;background:var(--cc-surface);border:0.5px solid var(--cc-rule);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:var(--cc-taupe);flex-shrink:0;margin-top:1px;}
+    .kc-comment-avatar--mgmt{background:var(--cc-ink);color:var(--cc-white);}
+    .kc-comment-hdr{display:flex;align-items:baseline;gap:6px;margin-bottom:2px;}
+    .kc-comment-name{font-size:11px;font-weight:500;color:var(--cc-ink);}
+    .kc-comment-name--mgmt{color:var(--cc-gold);}
+    .kc-comment-time{font-size:10px;color:var(--cc-stone);}
+    .kc-comment-text{font-size:12px;font-weight:300;color:var(--cc-charcoal);line-height:1.5;}
+    .kc-comment--flag .kc-comment-text{color:var(--cc-notice-text);background:var(--cc-notice-bg);border:0.5px solid var(--cc-notice-bdr);border-radius:var(--cc-r-sm);padding:6px 10px;display:inline-block;}
+    /* history */
+    .k-hist-item{background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);overflow:hidden;margin-bottom:10px;}
+    .k-hist-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;}
+    .k-hist-room{font-size:14px;font-weight:500;color:var(--cc-ink);}
+    .k-hist-date{font-size:11px;color:var(--cc-taupe);margin-top:2px;}
+    .k-hist-missed{padding:10px 14px;font-size:12px;color:var(--cc-stone);border-top:0.5px solid var(--cc-rule);font-style:italic;}
+    .k-hist-link{padding:10px 14px;border-top:0.5px solid var(--cc-rule);}
+    .k-hist-link a{font-size:12px;color:var(--cc-gold);text-decoration:underline;text-underline-offset:2px;word-break:break-all;}
+    /* scroll pad */
+    .kc-scroll-pad{height:72px;}
+
+    /* ── KITCHEN DESKTOP GRID ── */
+    .k-desktop-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;}
+    .k-col{min-width:0;}
+    @media(max-width:700px){.k-desktop-grid{grid-template-columns:1fr;}}
+
+    /* nudge banner */
+    .k-nudge-banner{display:flex;align-items:flex-start;gap:9px;padding:10px 14px;background:#FEFCE8;border:0.5px solid #EAD96B;border-radius:var(--cc-r-md);margin-bottom:14px;}
+    .k-nudge-banner__icon{font-size:14px;color:#A0860E;flex-shrink:0;margin-top:1px;}
+    .k-nudge-banner__text{font-size:13px;font-weight:300;color:#78640A;line-height:1.5;flex:1;}
+
+    /* 3-step wizard */
+    .k-steps{display:flex;align-items:center;margin-bottom:14px;gap:0;}
+    .k-step{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+    .k-step-num{width:22px;height:22px;border-radius:50%;background:var(--cc-surface);border:0.5px solid var(--cc-rule);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--cc-taupe);}
+    .k-step.active .k-step-num{background:var(--cc-ink);border-color:var(--cc-ink);color:var(--cc-white);}
+    .k-step.done .k-step-num{background:#9AC87A;border-color:#9AC87A;color:var(--cc-white);}
+    .k-step-label{font-size:11px;font-weight:500;color:var(--cc-taupe);}
+    .k-step.active .k-step-label{color:var(--cc-ink);}
+    .k-step-line{flex:1;height:0.5px;background:var(--cc-rule);margin:0 6px;}
+    .k-step-instructions{font-size:12px;font-weight:300;color:var(--cc-charcoal);line-height:1.5;margin-bottom:10px;padding:8px 10px;background:var(--cc-surface);border-radius:var(--cc-r-sm);}
+    .k-step-back-btn{font-size:10px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;color:var(--cc-taupe);background:none;border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-sm);padding:6px 14px;min-height:40px;cursor:pointer;font-family:'Inter',system-ui,sans-serif;}
+    .k-step-preview{display:flex;flex-direction:column;margin-bottom:8px;}
+    .k-step-preview .kc-photo-img{width:100%;height:180px;object-fit:cover;border-radius:var(--cc-r-sm);border:0.5px solid var(--cc-rule);}
+    .k-step-preview .kc-photo-meta{display:flex;align-items:center;gap:8px;margin-top:8px;padding:0;}
+    .k-photo-upload-btn{width:100%;}
+
+    /* feed card — white, scrollable */
+    .k-feed-card{background:var(--cc-white);border:0.5px solid var(--cc-rule);border-radius:var(--cc-r-lg);overflow:hidden;}
+    .k-feed-inner{max-height:420px;overflow-y:auto;scroll-behavior:smooth;padding:4px 0;}
+
+    /* photos submitted strip */
+    .k-photos-strip{display:flex;gap:8px;margin-top:10px;}
+    .k-photo-thumb{flex:1;height:80px;background:var(--cc-surface);border-radius:var(--cc-r-sm);border:0.5px solid var(--cc-rule);overflow:hidden;position:relative;}
+    .k-photo-thumb img{width:100%;height:100%;object-fit:cover;}
+    .k-photo-thumb-label{position:absolute;bottom:0;left:0;right:0;font-size:9px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--cc-white);background:rgba(30,27,24,0.55);padding:3px 5px;text-align:center;}
+  </style>
+</head>
+<body>
+
+  <!-- ══ LOGIN ══ -->
+  <div class="login-screen" id="loginScreen">
+    <p class="login-logo">Casa Castel</p>
+    <p class="login-sub">Alsenstraße 60 · 55252 Mainz-Kastel</p>
+    <div class="login-box">
+      <p class="login-title">Tenant login</p>
+      <div class="login-error" id="loginError">Incorrect room or password.</div>
+      <div class="cc-input-wrap cc-mb-12">
+        <label class="cc-input-label" for="roomSelect">Your room</label>
+        <select class="cc-select" id="roomSelect">
+          <option value="">Select your room</option>
+          <option value="Paris">Paris</option>
+          <option value="Copenhagen">Copenhagen</option>
+          <option value="Stockholm">Stockholm</option>
+          <option value="Oslo">Oslo</option>
+          <option value="London">London</option>
+          <option value="New York">New York</option>
+          <option value="Los Angeles">Los Angeles</option>
+        </select>
+      </div>
+      <div class="cc-input-wrap cc-mb-16">
+        <label class="cc-input-label" for="tenantPass">Password</label>
+        <input class="cc-input" id="tenantPass" type="password" placeholder="Enter your password" autocomplete="current-password"/>
+      </div>
+      <button class="cc-btn cc-btn--primary" id="tenantLoginBtn">Enter</button>
+    </div>
+  </div>
+
+  <!-- ══ APP SHELL ══ -->
+  <div class="app-shell" id="appShell">
+
+    <nav class="cc-nav">
+      <a class="cc-nav__logo" href="#">Casa Castel</a>
+      <div class="nav-right">
+        <span class="nav-room-pill" id="navRoomPill"></span>
+        <button class="nav-logout" id="logoutBtn" title="Log out">&#10005;</button>
+      </div>
+    </nav>
+
+    <!-- Top tabs -->
+    <div class="top-tabs cc-tabs">
+      <button class="cc-tab active" data-tab="lounge">Lounge</button>
+      <button class="cc-tab" data-tab="cleaning">House Cleaning</button>
+      <button class="cc-tab" data-tab="kitchen" id="kitchenTab" style="display:none;">Kitchen</button>
+    </div>
+
+    <div class="desktop-layout">
+
+      <!-- Main content -->
+      <div class="main-content">
+
+        <!-- ── LOUNGE (merged: announcement + notice + chat) ── -->
+        <div class="tab-content" id="tab-lounge" style="display:flex;flex-direction:column;height:100%;">
+
+          <!-- ZONE 1: Announcement (read-only, one box) -->
+          <p class="lounge-ann-heading">Announcement</p>
+          <div id="ann-list" class="cc-mb-12">
+            <p class="cc-note" style="padding:4px 0;">No announcement yet.</p>
+          </div>
+
+          <!-- ZONE 3: Chat card — notice pinned at top, feed fills remaining height -->
+          <p class="cc-label cc-mb-8">Chat</p>
+          <div class="lounge-chat-card" style="flex:1;min-height:0;">
+            <div class="notice-posted" id="notice-posted" style="display:none;">
+              <span class="notice-posted__icon">ℹ</span>
+              <span class="notice-posted__text" id="notice-posted-text"></span>
+            </div>
+            <div class="lounge-feed" id="lounge-feed">
+              <p class="cc-note" style="padding:8px 0 4px;">No messages yet. Say hello 👋</p>
+            </div>
+            <div class="compose-bar" id="lounge-compose-bar">
+              <textarea class="compose-input" id="lounge-input" placeholder="Message the house… @London @Paris" rows="1"></textarea>
+              <button class="compose-send" id="lounge-send" title="Send">&#8593;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── HOUSE CLEANING ── -->
+        <div class="tab-content" id="tab-cleaning" style="display:none;">
+          <h1 class="cc-h1 cc-mb-24">House Cleaning</h1>
+
+          <!-- All 7 rooms rotation list -->
+          <div class="cc-section" style="padding-top:0;">
+            <p class="hc-section-title">Rotation — all rooms</p>
+            <div id="hc-rotation-list"></div>
+          </div>
+
+          <!-- Current week highlight -->
+          <div class="cc-section">
+            <p class="hc-section-title">This week</p>
+            <div id="hc-current-week"></div>
+          </div>
+
+          <!-- Bin schedule -->
+          <div class="cc-section">
+            <p class="hc-section-title">Bin collection days</p>
+            <div class="bin-grid">
+              <div class="bin-card">
+                <div class="bin-icon">🗑</div>
+                <p class="bin-name">Restmüll</p>
+                <p class="bin-day" id="bin-rest">—</p>
+              </div>
+              <div class="bin-card">
+                <div class="bin-icon">♻️</div>
+                <p class="bin-name">Gelber Sack</p>
+                <p class="bin-day" id="bin-gelb">—</p>
+              </div>
+              <div class="bin-card">
+                <div class="bin-icon">📦</div>
+                <p class="bin-name">Papiermüll</p>
+                <p class="bin-day" id="bin-paper">—</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Open issues -->
+          <div class="cc-section">
+            <p class="hc-section-title">Open issues</p>
+            <div id="hc-issues-list">
+              <p class="cc-note" style="padding:4px 0;">No open issues.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── KITCHEN ── -->
+        <div class="tab-content" id="tab-kitchen" style="display:none;">
+
+          <!-- Anonymous nudge banner (shown when active) -->
+          <div class="k-nudge-banner" id="k-nudge-banner" style="display:none;">
+            <span class="k-nudge-banner__icon">⚑</span>
+            <div style="flex:1;min-width:0;">
+              <span id="k-nudge-banner-text" class="k-nudge-banner__text">House reminder this week.</span>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;">
+                <input type="checkbox" id="k-nudge-resolved-cb" style="width:15px;height:15px;accent-color:#A0860E;cursor:pointer;flex-shrink:0;"/>
+                <span style="font-size:12px;font-weight:500;color:#78640A;">⚑ I have addressed the house reminder</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="k-desktop-grid">
+
+            <!-- LEFT COLUMN -->
+            <div class="k-col">
+
+              <!-- Current week card -->
+              <div class="cc-section" style="padding-top:0;">
+                <div class="kc-card" id="kc-week-card">
+                  <span class="kc-week-badge">This week</span>
+                  <p class="kc-room-name" id="k-current-room">—</p>
+                  <p class="kc-dates" id="k-dates">— · <span class="kc-due">Due Sunday 23:59</span></p>
+                  <div class="kc-turn-bar" id="k-your-turn">It's <strong id="k-turn-name">your</strong> turn this week.</div>
+                  <div class="kc-flag-notice" id="k-flag-notice">⚑ The landlord has flagged this week — see comments below.</div>
+
+                  <!-- 3-step upload wizard (only visible when it's your turn + not yet submitted) -->
+                  <div id="k-upload-wizard" style="display:none;">
+                    <!-- Step indicators -->
+                    <div class="k-steps">
+                      <div class="k-step active" id="k-step-1"><span class="k-step-num">1</span><span class="k-step-label">Trash</span></div>
+                      <div class="k-step-line"></div>
+                      <div class="k-step" id="k-step-2"><span class="k-step-num">2</span><span class="k-step-label">Geschirr</span></div>
+                      <div class="k-step-line"></div>
+                      <div class="k-step" id="k-step-3"><span class="k-step-num">3</span><span class="k-step-label">Kitchen</span></div>
+                    </div>
+                    <!-- Step content -->
+                    <div id="k-step-content">
+                      <!-- Step 1: Trash -->
+                      <div id="k-step-panel-1">
+                        <p class="k-step-instructions">Take a photo of the <strong>empty trash area</strong>. Bin bag removed, area clean.</p>
+                        <div class="kc-photo-preview k-step-preview" id="k-photo-preview-1" style="display:none;">
+                          <img class="kc-photo-img" id="k-photo-img-1" src="" alt="Trash proof"/>
+                          <div class="kc-photo-meta"><span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Photo taken</span><button class="kc-replace-btn" id="k-replace-1">Retake</button></div>
+                        </div>
+                        <button class="cc-btn cc-btn--primary k-photo-upload-btn" id="k-upload-btn-1">📷 Photo — trash area</button>
+                        <input type="file" id="k-file-input-1" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" capture="environment" style="display:none;"/>
+                      </div>
+                      <!-- Step 2: Geschirr -->
+                      <div id="k-step-panel-2" style="display:none;">
+                        <p class="k-step-instructions">Take a photo of the <strong>empty dish rack or sink area</strong>. No dishes left.</p>
+                        <div class="kc-photo-preview k-step-preview" id="k-photo-preview-2" style="display:none;">
+                          <img class="kc-photo-img" id="k-photo-img-2" src="" alt="Geschirr proof"/>
+                          <div class="kc-photo-meta"><span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Photo taken</span><button class="kc-replace-btn" id="k-replace-2">Retake</button></div>
+                        </div>
+                        <button class="cc-btn cc-btn--primary k-photo-upload-btn" id="k-upload-btn-2">📷 Photo — dish area</button>
+                        <input type="file" id="k-file-input-2" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" capture="environment" style="display:none;"/>
+                      </div>
+                      <!-- Step 3: Full kitchen -->
+                      <div id="k-step-panel-3" style="display:none;">
+                        <p class="k-step-instructions">Take a photo of the <strong>full kitchen</strong>. Surfaces clean, floor done.</p>
+                        <div class="kc-photo-preview k-step-preview" id="k-photo-preview-3" style="display:none;">
+                          <img class="kc-photo-img" id="k-photo-img-3" src="" alt="Kitchen proof"/>
+                          <div class="kc-photo-meta"><span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Photo taken</span><button class="kc-replace-btn" id="k-replace-3">Retake</button></div>
+                        </div>
+                        <button class="cc-btn cc-btn--primary k-photo-upload-btn" id="k-upload-btn-3">📷 Photo — full kitchen</button>
+                        <input type="file" id="k-file-input-3" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" capture="environment" style="display:none;"/>
+                      </div>
+                    </div>
+                    <!-- Navigation — 50/50 -->
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                      <button class="k-step-back-btn" id="k-step-back" style="display:none;flex:1;min-height:40px;">← Back</button>
+                      <button class="cc-btn cc-btn--primary" id="k-step-next" style="flex:1;min-height:40px;display:none;">Next →</button>
+                      <button class="cc-btn cc-btn--primary" id="k-submit-all" style="flex:1;min-height:40px;display:none;">✓ Submit all 3</button>
+                    </div>
+                  </div>
+
+                  <!-- Submitted state (photo strip) -->
+                  <div id="k-photos-submitted" style="display:none;"></div>
+
+                </div>
+              </div>
+
+              <!-- Mark absence -->
+              <div class="cc-section">
+                <p class="hc-section-title">Mark absence</p>
+                <div class="kc-card" style="padding:14px 16px;" id="k-absence-panel">
+                  <p style="font-size:12px;font-weight:300;color:var(--cc-charcoal);margin-bottom:10px;">Going away for more than 5 days? Your week will be skipped. Complete the departure checklist.</p>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                    <div>
+                      <label class="cc-input-label" for="k-away-from">From</label>
+                      <input class="cc-input" type="date" id="k-away-from"/>
+                    </div>
+                    <div>
+                      <label class="cc-input-label" for="k-away-to">To</label>
+                      <input class="cc-input" type="date" id="k-away-to"/>
+                    </div>
+                  </div>
+                  <label class="kc-check-row"><input type="checkbox" id="k-dep-dishes"/><span class="kc-check-emoji">🍽</span><span class="kc-check-label">Dishes done before leaving</span></label>
+                  <label class="kc-check-row"><input type="checkbox" id="k-dep-bin"/><span class="kc-check-emoji">🗑</span><span class="kc-check-label">Bin emptied</span></label>
+                  <label class="kc-check-row"><input type="checkbox" id="k-dep-fridge"/><span class="kc-check-emoji">❄️</span><span class="kc-check-label">Fridge cleared of perishables</span></label>
+                  <button class="cc-btn cc-btn--primary" id="k-away-submit" style="margin-top:10px;width:100%;">Confirm absence</button>
+                </div>
+              </div>
+
+              <!-- Rotation -->
+              <div class="cc-section">
+                <p class="hc-section-title">Rotation</p>
+                <div id="k-rotation-list"></div>
+              </div>
+
+            </div><!-- end left col -->
+
+            <!-- RIGHT COLUMN -->
+            <div class="k-col">
+
+              <!-- Proof & chat feed -->
+              <div class="cc-section" style="padding-top:0;">
+                <p class="hc-section-title">Proof &amp; chat</p>
+                <div class="k-feed-card">
+                  <div id="k-feed" class="k-feed-inner"></div>
+                  <div style="display:flex;gap:8px;align-items:flex-end;padding:10px 14px;border-top:0.5px solid var(--cc-rule);">
+                    <textarea class="compose-input" id="k-comment-input" placeholder="Add a comment…" rows="1"></textarea>
+                    <button class="compose-send" id="k-comment-send">&#8593;</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- History -->
+              <div class="cc-section">
+                <p class="hc-section-title">History</p>
+                <div id="k-history"></div>
+              </div>
+
+              <!-- Open issues (nudges from landlord) -->
+              <div class="cc-section">
+                <p class="hc-section-title">Open issues</p>
+                <div id="k-issues-list">
+                  <p class="cc-note" style="padding:4px 0;">No open issues.</p>
+                </div>
+              </div>
+
+            </div><!-- end right col -->
+
+          </div><!-- end k-desktop-grid -->
+          <div class="kc-scroll-pad"></div>
+        </div>
+
+      </div><!-- end main-content -->
+    </div><!-- end desktop-layout -->
+
+  </div><!-- end app-shell -->
+
+  <script>
+    /* ══════════════════════════════════════════
+       PASSWORDS — change before deploying
+    ══════════════════════════════════════════ */
+    const ROOM_PASSWORDS = {
+      'Paris':       'paris2026',
+      'Copenhagen':  'copenhagen2026',
+      'Stockholm':   'stockholm2026',
+      'Oslo':        'oslo2026',
+      'London':      'london2026',
+      'New York':    'newyork2026',
+      'Los Angeles': 'losangeles2026'
+    };
+
+    /* ── BIN DAYS — set by landlord via Settings (hardcoded for now) ── */
+    const BIN_DAYS = { rest:'Every 2 weeks · Monday', gelb:'Every 4 weeks · Thursday', paper:'Every 4 weeks · Monday' };
+
+    /* ── STAIRCASE ROTATION — all 7 rooms, monthly ── */
+    const ALL_ROOMS = ['Paris','Copenhagen','Stockholm','Oslo','London','New York','Los Angeles'];
+    const HC_START  = new Date('2026-05-01T00:00:00');
+
+    /* ── KITCHEN CONFIG ── */
+    const KITCHEN_ROOMS = ['London','Copenhagen','Stockholm','Oslo'];
+    const K_ROTATION    = ['London','Copenhagen','Stockholm','Oslo'];
+    const K_START       = new Date('2026-05-01T00:00:00'); /* Mon 01 Jun 2026 — kitchen rotation start */
+
+    /* ── STORAGE (localStorage — kitchen issues only) ── */
+    const S={
+      get:(k,fb)=>{try{const v=localStorage.getItem('cc_'+k);return v!==null?JSON.parse(v):fb;}catch(e){return fb;}},
+      set:(k,v)=>{try{localStorage.setItem('cc_'+k,JSON.stringify(v));}catch(e){}}
+    };
+
+    /* ── SUPABASE CLIENT (lounge, notice, announcements) ── */
+    const SB_URL='https://nqxsonmmcnmdastcpiff.supabase.co';
+    const SB_KEY='sb_publishable_t2gaxYkyyGS32sEJJuCAnA_qk_G7sYM';
+    let sbL=null;
+    if(typeof supabase!=='undefined') sbL=supabase.createClient(SB_URL,SB_KEY);
+
+    /* ── UTILS ── */
+    function esc(s){return String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+    function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+    function fmtTs(ts){return new Date(ts).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
+    function roomInitials(r){const w=r.split(' ');return w.length>1?w[0][0]+w[1][0]:r.slice(0,2).toUpperCase();}
+
+    function parseMsg(text,myRoom){
+      let s=esc(text);
+      ALL_ROOMS.concat(['Management']).forEach(r=>{
+        const tag='@'+r;
+        const me=r.toLowerCase()===myRoom.toLowerCase();
+        s=s.replace(new RegExp(tag.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),
+          `<span class="${me?'msg-mention--me':'msg-mention'}">${tag}</span>`);
+      });
+      return s;
+    }
+
+    /* ── WEEK / MONTH CALC ── */
+    function kWeekIdx(d){const ms=(d||new Date())-K_START;return ms<0?-1:Math.floor(ms/(7*24*60*60*1000));}
+    function kWeekInfo(i){
+      if(i<0)return null;
+      const room=K_ROTATION[i%4];
+      const start=new Date(K_START.getTime()+i*7*24*60*60*1000);
+      const end=new Date(start.getTime()+6*24*60*60*1000);
+      const daysLeft=Math.max(0,Math.ceil((end-new Date())/(24*60*60*1000)));
+      const weekNum=Math.floor((start.getDate()-1)/7)+1;
+      const monthYear=start.toLocaleString('en-GB',{month:'long',year:'numeric'});
+      return{room,start,end,daysLeft,weekNum,monthYear,i};
+    }
+    function currentMonthRoomIdx(){
+      const now=new Date();
+      const months=( now.getFullYear()-HC_START.getFullYear())*12+(now.getMonth()-HC_START.getMonth());
+      return((months%ALL_ROOMS.length)+ALL_ROOMS.length)%ALL_ROOMS.length;
+    }
+
+    /* ── LOGIN ── */
+    let currentRoom=null;
+    const savedRoom=sessionStorage.getItem('cc_tenant_room');
+    if(sessionStorage.getItem('cc_role')==='tenant'&&savedRoom)initApp(savedRoom);
+
+    document.getElementById('tenantLoginBtn').addEventListener('click',doLogin);
+    document.getElementById('tenantPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+    function doLogin(){
+      const room=document.getElementById('roomSelect').value;
+      const pass=document.getElementById('tenantPass').value;
+      if(room&&ROOM_PASSWORDS[room]&&pass===ROOM_PASSWORDS[room]){
+        sessionStorage.setItem('cc_role','tenant');
+        sessionStorage.setItem('cc_tenant_room',room);
+        document.getElementById('loginError').classList.remove('visible');
+        initApp(room);
+      }else{
+        document.getElementById('loginError').classList.add('visible');
+        document.getElementById('tenantPass').value='';
+        document.getElementById('tenantPass').focus();
+      }
+    }
+
+    async function initApp(room){
+      currentRoom=room;
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('appShell').classList.add('visible');
+      document.getElementById('navRoomPill').textContent=room;
+      if(KITCHEN_ROOMS.includes(room)){
+        document.getElementById('kitchenTab').style.display='';
+      }
+      loadAnnouncements();
+      loadNotice();
+      loadLounge(room);
+      subscribeLounge();
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click',()=>{
+      sessionStorage.removeItem('cc_role');
+      sessionStorage.removeItem('cc_tenant_room');
+      location.reload();
+    });
+
+    /* ── TABS (sidebar + mobile) ── */
+    function switchTab(tabName){
+      document.querySelectorAll('.tab-content').forEach(c=>c.style.display='none');
+      document.getElementById('tab-'+tabName).style.display='block';
+      document.querySelectorAll('.sidebar-item,.cc-tab').forEach(t=>{
+        t.classList.toggle('active',t.dataset.tab===tabName);
+      });
+      if(tabName==='lounge'){loadAnnouncements();loadNotice();loadLounge(currentRoom);}
+      if(tabName==='cleaning')loadHouseCleaning(currentRoom);
+      if(tabName==='kitchen'&&KITCHEN_ROOMS.includes(currentRoom))initKitchen(currentRoom);
+    }
+    document.querySelectorAll('.sidebar-item,.cc-tab').forEach(btn=>{
+      btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
+    });
+
+    /* ══ ANNOUNCEMENTS — one box, read-only ══ */
+    async function loadAnnouncements(){
+      const el=document.getElementById('ann-list');
+      if(!sbL){el.innerHTML='<p class="cc-note" style="padding:4px 0;">No announcement yet.</p>';return;}
+      const {data}=await sbL.from('lounge_data').select('*').eq('type','announcement').order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(!data){el.innerHTML='<p class="cc-note" style="padding:4px 0;">No announcement yet.</p>';return;}
+      el.innerHTML=`
+        <div class="ann-card${data.pinned?' ann-card--pinned':''}">
+          <div class="ann-top">
+            ${data.pinned?'<span class="ann-pin">Pinned</span>':'<span></span>'}
+            <span class="ann-date">${fmtTs(new Date(data.created_at).getTime())}</span>
+          </div>
+          ${data.title?`<p class="ann-title-text">${esc(data.title)}</p>`:''}
+          <p class="ann-body-text">${esc(data.body)}</p>
+        </div>`;
+    }
+
+    /* ══ NOTICE — read-only ══ */
+    async function loadNotice(){
+      const posted=document.getElementById('notice-posted');
+      if(!sbL){if(posted)posted.style.display='none';return;}
+      const {data}=await sbL.from('lounge_data').select('*').eq('type','notice').order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(data&&data.body){
+        document.getElementById('notice-posted-text').textContent=data.body;
+        posted.className='notice-posted notice-posted--'+(data.color||'yellow');
+        posted.style.display='flex';
+      } else {
+        if(posted)posted.style.display='none';
+      }
+    }
+
+    /* ══ LOUNGE ══ */
+    async function loadLounge(room){
+      const el=document.getElementById('lounge-feed');
+      if(!sbL){el.innerHTML='<p class="cc-note" style="padding:8px 0 4px;">No messages yet. Say hello 👋</p>';return;}
+      const {data}=await sbL.from('lounge_data').select('*').eq('type','message').order('created_at',{ascending:true}).limit(100);
+      if(!data||!data.length){el.innerHTML='<p class="cc-note" style="padding:8px 0 4px;">No messages yet. Say hello 👋</p>';return;}
+      el.innerHTML=data.map(m=>{
+        const isCC=m.room==='Casa Castel';
+        return`<div class="msg-row">
+          <div class="msg-avatar${isCC?' msg-avatar--mgmt':''}">${roomInitials(m.room)}</div>
+          <div class="msg-content">
+            <div class="msg-meta">
+              <span class="msg-name${isCC?' msg-name--mgmt':''}">${esc(m.room)}</span>
+              <span class="msg-time">${fmtTs(new Date(m.created_at).getTime())}</span>
+            </div>
+            <p class="msg-text">${parseMsg(m.body,room)}</p>
+          </div>
+        </div>`;
+      }).join('');
+      const feed=document.getElementById('lounge-feed');
+      setTimeout(()=>feed.scrollTop=feed.scrollHeight,50);
+    }
+
+    async function sendLounge(room){
+      if(!sbL)return;
+      const input=document.getElementById('lounge-input');
+      const text=input.value.trim();
+      if(!text)return;
+      input.value='';
+      await sbL.from('lounge_data').insert({type:'message',room,body:text});
+      loadLounge(room);
+    }
+
+    document.getElementById('lounge-send').addEventListener('click',()=>sendLounge(currentRoom));
+    document.getElementById('lounge-input').addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendLounge(currentRoom);}
+    });
+
+    /* Realtime — refresh lounge, notice, announcement, kitchen issues on any change */
+    function subscribeLounge(){
+      if(!sbL)return;
+      sbL.channel('lounge-tenant')
+        .on('postgres_changes',{event:'*',schema:'public',table:'lounge_data'},()=>{
+          loadLounge(currentRoom);
+          loadNotice();
+          loadAnnouncements();
+          if(document.getElementById('k-issues-list'))loadKitchenIssues(currentRoom);
+        })
+        .subscribe();
+    }
+    /* ══ HOUSE CLEANING ══ */
+    /* Rotation: Copenhagen, Paris, Los Angeles, New York, London, Oslo, Stockholm — repeat */
+    const HC_ROTATION = ['Copenhagen','Paris','Los Angeles','New York','London','Oslo','Stockholm'];
+    /* Week 1 anchor: Thu 01 Jan 2026 → Sun 04 Jan 2026 (partial week)
+       Week 2 onward: Mon 05 Jan 2026 → standard Mon-Sun blocks */
+    const HC_W1_START = new Date('2026-01-01T00:00:00'); /* Thu */
+    const HC_W2_START = new Date('2026-01-05T00:00:00'); /* Mon */
+
+    function hcWeekIndex(d){
+      const now=d||new Date();
+      /* Before start */
+      if(now < HC_W1_START) return -1;
+      /* Week 1: 01 Jan (Thu) → 04 Jan (Sun) */
+      const w1end=new Date('2026-01-04T23:59:59');
+      if(now <= w1end) return 0;
+      /* Week 2+: count Mon-Sun blocks from 05 Jan */
+      const ms=now-HC_W2_START;
+      return 1+Math.floor(ms/(7*24*60*60*1000));
+    }
+
+    function hcWeekInfo(idx){
+      if(idx<0)return null;
+      const room=HC_ROTATION[idx%7];
+      let start,end;
+      if(idx===0){
+        start=new Date('2026-01-01T00:00:00');
+        end=new Date('2026-01-04T23:59:59');
+      } else {
+        start=new Date(HC_W2_START.getTime()+(idx-1)*7*24*60*60*1000);
+        end=new Date(start.getTime()+6*24*60*60*1000);
+        end.setHours(23,59,59,999);
+      }
+      const daysLeft=Math.max(0,Math.ceil((end-new Date())/(24*60*60*1000)));
+      const kwNum=idx+1;
+      const fmtDate=(dt)=>`${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+      return{room,start,end,daysLeft,kwNum,dateRange:fmtDate(start)+' – '+fmtDate(end),idx};
+    }
+
+    function loadHouseCleaning(room){
+      /* Bin days */
+      document.getElementById('bin-rest').textContent=BIN_DAYS.rest;
+      document.getElementById('bin-gelb').textContent=BIN_DAYS.gelb;
+      document.getElementById('bin-paper').textContent=BIN_DAYS.paper;
+
+      const curIdx=hcWeekIndex(new Date());
+      const curInfo=hcWeekInfo(curIdx);
+
+      /* ── All rooms rotation list ── */
+      const rotEl=document.getElementById('hc-rotation-list');
+      rotEl.innerHTML=HC_ROTATION.map((r,i)=>{
+        const isCurrent=curInfo&&r===curInfo.room;
+        const done=S.get('hc_done_'+curIdx,null);
+        const isDone=done&&done.room===r;
+        return`<div class="hc-rotation-row${isCurrent?' hc-rotation-row--current':''}">
+          <div>
+            <p class="hc-room-name${isCurrent?' hc-room-name--current':''}">${r}${isCurrent?' <span style="font-size:10px;font-weight:400;color:var(--cc-taupe);">· this week</span>':''}</p>
+            <p class="hc-room-sub">Week ${i+1} in cycle${isCurrent?' · '+curInfo.dateRange:''}</p>
+          </div>
+          ${isCurrent
+            ? isDone
+              ? `<span class="k-pill k-pill--done" style="font-size:10px;padding:3px 8px;"><span class="k-dot k-dot--done"></span>Done</span>`
+              : `<span class="k-pill k-pill--pending" style="font-size:10px;padding:3px 8px;"><span class="k-dot k-dot--pending"></span>Pending</span>`
+            : '<span class="cc-note" style="font-size:11px;">—</span>'}
+        </div>`;
+      }).join('');
+
+      /* ── Current week card ── */
+      const cwEl=document.getElementById('hc-current-week');
+      if(!curInfo){cwEl.innerHTML='<p class="cc-note">Not started yet.</p>';return;}
+
+      const wDone=S.get('hc_done_'+curIdx,null);
+      const isDone=!!wDone;
+      const isMyTurn=curInfo.room===room;
+
+      cwEl.innerHTML=`
+        <div class="hc-current-card${isDone?' hc-current-card--done':''}">
+          <div class="hc-current-top">
+            <div>
+              <p class="hc-current-kw">KW ${curInfo.kwNum} · ${curInfo.room}</p>
+            </div>
+            <span class="k-pill ${isDone?'k-pill--done':'k-pill--pending'}" style="font-size:10px;padding:3px 8px;">
+              <span class="k-dot ${isDone?'k-dot--done':'k-dot--pending'}"></span>
+              ${isDone?'Done':'Pending'}
+            </span>
+          </div>
+          <p class="hc-current-dates">${curInfo.dateRange} · ${curInfo.daysLeft} days left</p>
+          ${isMyTurn&&!isDone?`<div class="hc-your-turn-bar visible">It's <strong>${room}'s turn</strong> this week. Please clean the staircase and hallway.</div>`:''}
+          ${isMyTurn&&!isDone
+            ?`<button class="hc-done-btn" id="hc-done-btn">✓ Mark as done</button>`
+            :isDone
+              ?`<div class="hc-done-confirm visible"><span class="k-pill k-pill--done" style="font-size:10px;padding:3px 8px;"><span class="k-dot k-dot--done"></span>Marked done by ${esc(wDone.room)}</span><span class="hc-done-ts">${fmtTs(wDone.ts)}</span></div>`
+              :`<p class="cc-note" style="margin-top:4px;">${esc(curInfo.room)} is responsible this week.</p>`
+          }
+        </div>`;
+
+      if(isMyTurn&&!isDone){
+        document.getElementById('hc-done-btn').addEventListener('click',()=>{
+          S.set('hc_done_'+curIdx,{room,ts:Date.now()});
+          loadHouseCleaning(room);
+        });
+      }
+
+      renderHCIssues(room);
+    }
+
+    function renderHCIssues(room){
+      const issues=S.get('hc_issues',[]).filter(x=>!x.resolved);
+      const el=document.getElementById('hc-issues-list');
+      if(!issues.length){el.innerHTML='<p class="cc-note" style="padding:4px 0;">No open issues.</p>';return;}
+      el.innerHTML=issues.map(iss=>{
+        const forme=iss.to==='All'||iss.to===room;
+        return`<div class="hc-issue">
+          <div class="hc-issue-top">
+            <span class="hc-issue-type">${esc(iss.type)}</span>
+            <button class="hc-resolve-btn" onclick="resolveHCIssue('${iss.id}','${room}')">Resolved</button>
+          </div>
+          <p class="hc-issue-meta${forme?' k-issue-to--me':''}">→ ${esc(iss.to==='All'?'All rooms':iss.to)} · ${fmtTs(iss.ts)}</p>
+          ${iss.note?`<p class="cc-note cc-mt-4">${esc(iss.note)}</p>`:''}
+        </div>`;
+      }).join('');
+    }
+
+    function resolveHCIssue(id,room){
+      const issues=S.get('hc_issues',[]);
+      S.set('hc_issues',issues.map(x=>x.id===id?{...x,resolved:true,resolvedBy:room,resolvedTs:Date.now()}:x));
+      renderHCIssues(room);
+    }
+
+    /* ══ KITCHEN — SUPABASE ═══════════════════════════════════════
+       Paste your Supabase credentials below when ready.
+       Until connected, app shows current week info only (no upload).
+    ══════════════════════════════════════════════════════════════ */
+    const SB_READY = true;
+    const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+
+    let sb = null;
+    if(SB_READY && typeof supabase !== 'undefined'){
+      sb = supabase.createClient(SB_URL, SB_KEY);
+    }
+
+    /* ── SUPABASE HELPERS ── */
+    async function sbGetWeek(idx){
+      if(!sb)return null;
+      const {data} = await sb.from('kitchen_weeks').select('*').eq('week_index',idx).maybeSingle();
+      return data;
+    }
+    async function sbEnsureWeek(idx, room){
+      if(!sb)return null;
+      const existing = await sbGetWeek(idx);
+      if(existing) return existing;
+      const {data} = await sb.from('kitchen_weeks').insert({week_index:idx,room,status:'pending'}).select().single();
+      return data;
+    }
+    async function sbUpdateWeek(idx, patch){
+      if(!sb)return;
+      await sb.from('kitchen_weeks').update(patch).eq('week_index',idx);
+    }
+    async function sbGetComments(weekId){
+      if(!sb)return [];
+      const {data} = await sb.from('kitchen_comments').select('*').eq('week_id',weekId).order('created_at',{ascending:true});
+      return data||[];
+    }
+    async function sbAddComment(weekId, room, text, isFlag){
+      if(!sb)return;
+      await sb.from('kitchen_comments').insert({week_id:weekId,room,text,is_flag:!!isFlag});
+      const w = await sb.from('kitchen_weeks').select('comment_count').eq('id',weekId).single();
+      if(w.data) await sb.from('kitchen_weeks').update({comment_count:(w.data.comment_count||0)+1}).eq('id',weekId);
+    }
+    async function sbUploadPhoto(idx, file){
+      if(!sb)return null;
+      const ext = (file.name||'photo').split('.').pop()||'jpg';
+      const path = `week-${idx}-${Date.now()}.${ext}`;
+      const {error} = await sb.storage.from('kitchen-proofs').upload(path,file,{upsert:true});
+      if(error){console.error('Upload error',error);return null;}
+      const {data} = sb.storage.from('kitchen-proofs').getPublicUrl(path);
+      return {path, url:data.publicUrl};
+    }
+    async function sbDeletePhoto(path){
+      if(!sb||!path)return;
+      await sb.storage.from('kitchen-proofs').remove([path]);
+    }
+    async function sbDeleteComments(weekId){
+      if(!sb||!weekId)return;
+      await sb.from('kitchen_comments').delete().eq('week_id',weekId);
+    }
+
+    /* ── RESET: clear previous week when new upload comes in ── */
+    async function resetPreviousWeek(currentIdx){
+      if(!sb)return;
+      /* Point 5 — strictly prior week only, never current week */
+      const {data} = await sb.from('kitchen_weeks')
+        .select('*').lt('week_index',currentIdx-1)
+        .in('status',['submitted','approved'])
+        .order('week_index',{ascending:false}).limit(1).maybeSingle();
+      if(!data)return;
+      await sbDeletePhoto(data.photo_path);
+      await sbDeleteComments(data.id);
+      await sb.from('kitchen_weeks').update({photos:null,photo_path:null,photo_url:null,closed_at:new Date().toISOString()}).eq('id',data.id);
+    }
+
+    /* ── AUTO-RESET: clear if >2 weeks old regardless of next upload ── */
+    async function checkAutoReset(currentIdx){
+      if(!sb)return;
+      const {data} = await sb.from('kitchen_weeks')
+        .select('*').lt('week_index',currentIdx)
+        .in('status',['submitted','approved'])
+        .not('photo_path','is',null)
+        .order('week_index',{ascending:false}).limit(1).maybeSingle();
+      if(!data||!data.submitted_at)return;
+      const age = Date.now()-new Date(data.submitted_at).getTime();
+      if(age > TWO_WEEKS_MS){
+        await sbDeletePhoto(data.photo_path);
+        await sbDeleteComments(data.id);
+        /* Point 3 — also clear photos array */
+        await sb.from('kitchen_weeks').update({photos:null,photo_path:null,photo_url:null,closed_at:new Date().toISOString()}).eq('id',data.id);
+      }
+    }
+
+    /* ── REALTIME ── */
+    let realtimeSub=null;
+    function subscribeRealtime(weekId, cb){
+      if(!sb||realtimeSub)return;
+      realtimeSub = sb.channel('kitchen-live')
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'kitchen_comments',filter:`week_id=eq.${weekId}`},cb)
+        .on('postgres_changes',{event:'UPDATE',schema:'public',table:'kitchen_weeks',filter:`id=eq.${weekId}`},cb)
+        .subscribe();
+    }
+
+    /* ══ KITCHEN INIT ══ */
+    let kitchenReady=false;
+    let kCurrentWeekRow=null;
+    let kPhotos={trash:null,geschirr:null,overview:null}; /* {path,url} per step */
+    let kCurrentStep=1;
+
+    async function initKitchen(room){
+      const idx  = kWeekIdx(new Date());
+      const info = kWeekInfo(Math.max(0, idx));
+      const fmtDt = dt => `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+
+      renderKRotation(info);
+
+      if(idx < 0){
+        document.getElementById('k-current-room').textContent = info.room;
+        document.getElementById('k-dates').innerHTML = 'Starts ' + fmtDt(info.start) + ' · <span class="kc-due">Not started yet</span>';
+        document.getElementById('k-feed').innerHTML = '<p class="cc-note" style="padding:4px 0;">Kitchen rotation starts ' + fmtDt(info.start) + '.</p>';
+        return;
+      }
+
+      const isMyTurn = info.room === room;
+      document.getElementById('k-current-room').textContent = info.room;
+      document.getElementById('k-dates').innerHTML = fmtDt(info.start)+' – '+fmtDt(info.end)+' · <span class="kc-due">Due Sunday 23:59</span>';
+
+      checkAutoReset(idx);
+      let weekRow = SB_READY ? await sbEnsureWeek(idx, info.room) : null;
+      kCurrentWeekRow = weekRow;
+
+      /* Load active nudge banner */
+      await loadKNudgeBanner(room);
+
+      if(weekRow){
+        if(weekRow.flagged) document.getElementById('k-flag-notice').classList.add('visible');
+
+        if(weekRow.status==='approved'){
+          showKApproved();
+        } else if(weekRow.photos && weekRow.photos.length===3 && weekRow.status==='submitted'){
+          /* All 3 photos submitted and awaiting review — show strip */
+          showKPhotosSubmitted(weekRow.photos);
+        } else if(isMyTurn && (weekRow.status==='pending'||weekRow.status==='flagged')){
+          /* Show wizard when pending or flagged */
+          document.getElementById('k-turn-name').textContent=room;
+          document.getElementById('k-your-turn').classList.add('visible');
+          document.getElementById('k-upload-wizard').style.display='block';
+        }
+
+        await renderKFeed(weekRow, room);
+        subscribeRealtime(weekRow.id, async()=>{
+          const fresh = await sbGetWeek(idx);
+          kCurrentWeekRow = fresh;
+          if(fresh) await renderKFeed(fresh, room);
+          if(fresh&&fresh.status==='approved') showKApproved();
+          if(fresh&&fresh.status==='pending'&&isMyTurn){
+            /* Landlord undid approval — re-show wizard */
+            document.getElementById('k-photos-submitted').style.display='none';
+            document.getElementById('k-upload-wizard').style.display='block';
+          }
+        });
+      } else if(!SB_READY){
+        document.getElementById('k-feed').innerHTML='<p class="cc-note" style="padding:8px 0;">Connect Supabase to enable uploads.</p>';
+      }
+
+      if(!isMyTurn){
+        document.getElementById('k-upload-wizard').style.display='none';
+      }
+
+      if(!kitchenReady){
+        /* ── 3-step upload wiring ── */
+        const STEPS=['trash','geschirr','overview'];
+        const STEP_LABELS={trash:'Trash area',geschirr:'Dish area',overview:'Full kitchen'};
+
+        function updateStepUI(){
+          STEPS.forEach((type,i)=>{
+            const n=i+1;
+            const el=document.getElementById('k-step-'+n);
+            if(n<kCurrentStep) el.classList.add('done'),el.classList.remove('active');
+            else if(n===kCurrentStep) el.classList.add('active'),el.classList.remove('done');
+            else el.classList.remove('active','done');
+            document.getElementById('k-step-panel-'+n).style.display=n===kCurrentStep?'block':'none';
+          });
+          document.getElementById('k-step-back').style.display=kCurrentStep>1?'':'none';
+          const hasPhoto=kPhotos[STEPS[kCurrentStep-1]]!==null;
+          document.getElementById('k-step-next').style.display=kCurrentStep<3&&hasPhoto?'':'none';
+          document.getElementById('k-submit-all').style.display=kCurrentStep===3&&hasPhoto?'':'none';
+        }
+
+        async function handleFileSelect(stepNum, file){
+          if(!file)return;
+          const ALLOWED=['image/jpeg','image/png','image/webp','image/heic','image/heif'];
+          if(!ALLOWED.includes(file.type)&&!file.name.match(/\.(heic|heif)$/i)){alert('Only photos allowed.');return;}
+          if(file.size>5*1024*1024){alert('Max 5MB.');return;}
+          const btn=document.getElementById('k-upload-btn-'+stepNum);
+          btn.textContent='Uploading…'; btn.disabled=true;
+          const result=await sbUploadPhoto(idx,file);
+          btn.textContent='📷 Retake'; btn.disabled=false;
+          if(!result){alert('Upload failed.');return;}
+          kPhotos[STEPS[stepNum-1]]=result;
+          const prev=document.getElementById('k-photo-preview-'+stepNum);
+          document.getElementById('k-photo-img-'+stepNum).src=result.url;
+          prev.style.display='flex';
+          document.getElementById('k-upload-btn-'+stepNum).style.display='none';
+          updateStepUI();
+        }
+
+        [1,2,3].forEach(n=>{
+          document.getElementById('k-upload-btn-'+n).addEventListener('click',()=>document.getElementById('k-file-input-'+n).click());
+          document.getElementById('k-file-input-'+n).addEventListener('change',e=>handleFileSelect(n,e.target.files[0]));
+          document.getElementById('k-replace-'+n).addEventListener('click',()=>{
+            document.getElementById('k-photo-preview-'+n).style.display='none';
+            document.getElementById('k-upload-btn-'+n).style.display='';
+            document.getElementById('k-upload-btn-'+n).textContent='📷 Photo — '+STEP_LABELS[STEPS[n-1]].toLowerCase();
+            kPhotos[STEPS[n-1]]=null;
+            document.getElementById('k-file-input-'+n).value='';
+            updateStepUI();
+          });
+        });
+
+        document.getElementById('k-step-next').addEventListener('click',()=>{
+          if(kCurrentStep<3){kCurrentStep++;updateStepUI();}
+        });
+        document.getElementById('k-step-back').addEventListener('click',()=>{
+          if(kCurrentStep>1){kCurrentStep--;updateStepUI();}
+        });
+
+        document.getElementById('k-submit-all').addEventListener('click',async()=>{
+          if(!kPhotos.trash||!kPhotos.geschirr||!kPhotos.overview){alert('Please take all 3 photos.');return;}
+          const btn=document.getElementById('k-submit-all');
+          btn.textContent='Submitting…'; btn.disabled=true;
+          await resetPreviousWeek(idx);
+          const photosArr=[
+            {type:'trash',...kPhotos.trash},
+            {type:'geschirr',...kPhotos.geschirr},
+            {type:'overview',...kPhotos.overview}
+          ];
+          await sbUpdateWeek(idx,{
+            status:'submitted',
+            photos:photosArr,
+            photo_url:kPhotos.overview.url,
+            photo_path:kPhotos.overview.path,
+            submitted_at:new Date().toISOString(),
+            flagged:false
+          });
+          kCurrentWeekRow=await sbGetWeek(idx);
+          showKPhotosSubmitted(photosArr);
+          await renderKFeed(kCurrentWeekRow, room);
+        });
+
+        /* ── Away mode ── */
+        document.getElementById('k-away-submit').addEventListener('click',async()=>{
+          const from=document.getElementById('k-away-from').value;
+          const to=document.getElementById('k-away-to').value;
+          if(!from||!to){alert('Please select from and to dates.');return;}
+          const dishes=document.getElementById('k-dep-dishes').checked;
+          const bin=document.getElementById('k-dep-bin').checked;
+          const fridge=document.getElementById('k-dep-fridge').checked;
+          const checklistDone=dishes&&bin&&fridge;
+          if(!sb){alert('Supabase not connected.');return;}
+          await sb.from('kitchen_absences').insert({
+            room,from_date:from,to_date:to,checklist_done:checklistDone
+          });
+          document.getElementById('k-absence-panel').innerHTML=`
+            <div style="padding:12px;background:#F0FDF4;border:0.5px solid #86EFAC;border-radius:var(--cc-r-sm);">
+              <p style="font-size:12px;font-weight:500;color:#14532D;">Absence registered: ${from} – ${to}</p>
+              <p style="font-size:11px;color:#14532D;margin-top:3px;">${checklistDone?'Checklist completed.':'Checklist incomplete — please complete before leaving.'}</p>
+            </div>`;
+        });
+
+        /* ── Comment send ── */
+        document.getElementById('k-comment-send').addEventListener('click',()=>sendKComment(room));
+        document.getElementById('k-comment-input').addEventListener('keydown',e=>{
+          if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendKComment(room);}
+        });
+
+        kitchenReady=true;
+      }
+
+      /* Always update step UI when wizard is visible */
+      if(document.getElementById('k-upload-wizard').style.display!=='none'){
+        try{updateStepUI();}catch(e){}
+      }
+
+      await renderKHistory(idx);
+      await loadKitchenIssues(room);
+    }
+
+    let kActiveNudgeId=null;
+    async function loadKNudgeBanner(room){
+      const banner=document.getElementById('k-nudge-banner');
+      const client=sb||sbL;
+      if(!client){banner.style.display='none';return;}
+      const {data}=await client.from('lounge_data').select('*').eq('type','kitchen_nudge')
+        .order('created_at',{ascending:false}).limit(1).maybeSingle();
+      const cb=document.getElementById('k-nudge-resolved-cb');
+      if(data&&data.body&&(data.room==='All'||data.room===room)&&!data.resolved){
+        kActiveNudgeId=data.id;
+        document.getElementById('k-nudge-banner-text').textContent=
+          (data.body==='Trash not taken out'?'🗑 ':'🍽 ')+'House reminder: '+data.body.toLowerCase()+(data.title?' — '+data.title:'');
+        cb.checked=false;
+        banner.style.display='flex';
+        /* Wire checkbox once — remove old listener by replacing with clone */
+        const fresh=cb.cloneNode(true);
+        cb.parentNode.replaceChild(fresh,cb);
+        fresh.addEventListener('change',async()=>{
+          if(!fresh.checked||!kActiveNudgeId)return;
+          await client.from('lounge_data').delete().eq('id',kActiveNudgeId);
+          kActiveNudgeId=null;
+          banner.style.display='none';
+        });
+      } else {
+        kActiveNudgeId=null;
+        banner.style.display='none';
+      }
+    }
+
+    function showKPhotosSubmitted(photos){
+      document.getElementById('k-upload-wizard').style.display='none';
+      const el=document.getElementById('k-photos-submitted');
+      el.style.display='block';
+      el.innerHTML=`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Submitted — pending review</span>
+        </div>
+        <p style="font-size:11px;color:var(--cc-stone);">Auto-approves in 72h if no issues raised. Add comments below.</p>`;
+    }
+
+    function showKApproved(){
+      document.getElementById('k-upload-wizard').style.display='none';
+      document.getElementById('k-photos-submitted').style.display='none';
+      const card=document.getElementById('kc-week-card');
+      if(!document.getElementById('k-approved-badge')){
+        const badge=document.createElement('div');
+        badge.id='k-approved-badge';
+        badge.style.cssText='display:flex;align-items:center;gap:8px;padding:12px 14px;background:#EDF5E8;border:0.5px solid #9AC87A;border-radius:var(--cc-r-md);margin-top:var(--cc-sp-12);';
+        badge.innerHTML='<span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Approved</span>';
+        card.appendChild(badge);
+      }
+    }
+    function fmtShort(dt){return String(dt.getDate()).padStart(2,'0')+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.';}
+
+    function renderKRotation(currentInfo){
+      const el=document.getElementById('k-rotation-list');
+      const currentIdx=Math.max(0,kWeekIdx(new Date()));
+      el.innerHTML=K_ROTATION.map((r,i)=>{
+        /* Each room's slot relative to current week */
+        const slotOffset=(i-(currentIdx%4)+4)%4;
+        const weekIdx=currentIdx+slotOffset;
+        const start=new Date(K_START.getTime()+weekIdx*7*24*60*60*1000);
+        const end=new Date(start.getTime()+6*24*60*60*1000);
+        /* Rotation week number (1-based from start) */
+        const rotWeek=weekIdx+1;
+        const isCurrent=r===currentInfo.room;
+        const dateStr=fmtShort(start)+' – '+fmtShort(end)+end.getFullYear();
+        return`<div class="kc-rotation-row${isCurrent?' kc-rotation-row--current':''}">
+          <div>
+            <p class="kc-rot-room">${esc(r)}</p>
+            <p class="kc-rot-week">${dateStr}</p>
+          </div>
+          <div style="text-align:right;">
+            <p class="kc-rot-week" style="font-weight:500;">Week ${rotWeek}</p>
+            ${isCurrent?'<span class="kc-week-badge" style="margin-bottom:0;">This week</span>':''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function renderKFeed(weekRow, myRoom){
+      const el=document.getElementById('k-feed');
+
+      /* Auto-approve after 14 days if still submitted */
+      if(weekRow&&weekRow.status==='submitted'&&weekRow.submitted_at){
+        const age=Date.now()-new Date(weekRow.submitted_at).getTime();
+        if(age>14*24*60*60*1000){
+          await sbUpdateWeek(weekRow.week_index,{status:'approved',auto_approved_at:new Date().toISOString()});
+          weekRow=await sbGetWeek(weekRow.week_index);
+          kCurrentWeekRow=weekRow;
+          showKApproved();
+        }
+      }
+
+      if(!weekRow||((!weekRow.photo_url)&&(!weekRow.photos||!weekRow.photos.length))){
+        if(weekRow&&weekRow.status==='approved'){
+          el.innerHTML='<p class="cc-note" style="padding:4px 0;">✓ Approved. Comments below.</p>';
+        } else {
+          el.innerHTML='<p class="cc-note" style="padding:4px 0;">No proof uploaded yet this week.</p>';
+          return;
+        }
+      }
+
+      const comments=await sbGetComments(weekRow.id);
+      const ini=r=>{const w=r.split(' ');return w.length>1?w[0][0]+w[1][0]:r.slice(0,2).toUpperCase();};
+      const commentsHtml=comments.map(c=>{
+        const isMgmt=c.room==='Management';
+        return`<div class="kc-comment${c.is_flag?' kc-comment--flag':''}">
+          <div class="kc-comment-avatar${isMgmt?' kc-comment-avatar--mgmt':''}">${esc(ini(c.room))}</div>
+          <div>
+            <div class="kc-comment-hdr">
+              <span class="kc-comment-name${isMgmt?' kc-comment-name--mgmt':''}">${esc(c.room)}</span>
+              <span class="kc-comment-time">${fmtTs(new Date(c.created_at).getTime())}</span>
+            </div>
+            <p class="kc-comment-text">${esc(c.text)}</p>
+          </div>
+        </div>`;
+      }).join('')||'<p class="cc-note" style="padding:10px 0 4px;">No comments yet.</p>';
+
+      const statusPill=weekRow.status==='approved'
+        ?`<span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Approved</span>`
+        :`<span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Submitted</span>`;
+
+      /* Build photo area — 3-photo strip if available, fallback to single */
+      const labels={trash:'Trash',geschirr:'Geschirr',overview:'Kitchen'};
+      let photosHtml='';
+      if(weekRow.photos&&weekRow.photos.length){
+        photosHtml=`<div class="k-photos-strip" style="margin-bottom:10px;">${weekRow.photos.map(p=>`
+          <div class="k-photo-thumb">
+            ${p.url?`<img src="${p.url}" alt="${p.type}" style="cursor:pointer;" onclick="window.open('${p.url}','_blank')"/>`:''}
+            <span class="k-photo-thumb-label">${labels[p.type]||p.type}</span>
+          </div>`).join('')}</div>`;
+      } else if(weekRow.photo_url){
+        photosHtml=`<img class="kc-sub-photo" src="${weekRow.photo_url}" alt="Proof photo" style="cursor:pointer;" onclick="window.open('${weekRow.photo_url}','_blank')"/>`;
+      } else if(weekRow.status==='approved'){
+        photosHtml=`<div class="kc-sub-photo-placeholder"><span>✓ Photos approved &amp; removed</span></div>`;
+      }
+
+      el.innerHTML=`<div class="kc-submission kc-submission--latest">
+        <div class="kc-sub-header">
+          <div class="kc-sub-avatar">${esc(ini(weekRow.room))}</div>
+          <div style="flex:1;min-width:0;">
+            <p class="kc-sub-room">${esc(weekRow.room)}</p>
+            <p class="kc-sub-date">${weekRow.submitted_at?fmtTs(new Date(weekRow.submitted_at).getTime()):''}</p>
+          </div>
+          ${statusPill}
+        </div>
+        ${photosHtml}
+        <div class="kc-comments" id="k-comments-box">${commentsHtml}</div>
+      </div>`;
+      /* Scroll to bottom — newest message last, Slack-style */
+      setTimeout(()=>{const b=document.getElementById('k-comments-box');if(b)b.scrollTop=b.scrollHeight;},50);
+    }
+
+    async function sendKComment(room){
+      const input=document.getElementById('k-comment-input');
+      const text=input.value.trim(); if(!text)return;
+      if(!kCurrentWeekRow){alert('No active week found.');return;}
+      input.value='';
+      await sbAddComment(kCurrentWeekRow.id, room, text, false);
+      await renderKFeed(kCurrentWeekRow, room);
+    }
+
+    async function renderKHistory(currentIdx){
+      const el=document.getElementById('k-history');
+      if(!sb){el.innerHTML='<p class="cc-note">History available once Supabase is connected.</p>';return;}
+      const {data} = await sb.from('kitchen_weeks')
+        .select('*').lt('week_index',currentIdx)
+        .order('week_index',{ascending:false}).limit(8);
+      if(!data||!data.length){el.innerHTML='<p class="cc-note">Past weeks will appear here.</p>';return;}
+      const statusLabel={pending:'Pending',submitted:'✓ Done',approved:'✓ Approved',missed:'✗ Missed'};
+      const statusClass={pending:'k-pill--pending',submitted:'k-pill--done',approved:'k-pill--done',missed:'k-pill--pending'};
+      el.innerHTML=data.map(w=>`
+        <div class="k-hist-item">
+          <div class="k-hist-hdr">
+            <div>
+              <p class="k-hist-room">${esc(w.room)}</p>
+              <p class="k-hist-date">Week ${w.week_index+1}${w.comment_count?` · ${w.comment_count} comment${w.comment_count!==1?'s':''}`:''}</p>
+            </div>
+            <span class="k-pill ${statusClass[w.status]||'k-pill--pending'}" style="font-size:10px;padding:3px 8px;">
+              <span class="k-dot ${w.status==='approved'||w.status==='submitted'?'k-dot--done':'k-dot--pending'}"></span>
+              ${statusLabel[w.status]||w.status}
+            </span>
+          </div>
+        </div>`).join('');
+    }
+
+    async function loadKitchenIssues(room){
+      const el=document.getElementById('k-issues-list');
+      const client=sb||sbL;
+      if(!client){el.innerHTML='<p class="cc-note" style="padding:4px 0;">No open issues.</p>';return;}
+      const {data}=await client.from('lounge_data').select('*').eq('type','kitchen_nudge')
+        .order('created_at',{ascending:false}).limit(10);
+      if(!data||!data.length){el.innerHTML='<p class="cc-note" style="padding:4px 0;">No open issues.</p>';return;}
+      const relevant=data.filter(d=>d.room==='All'||d.room===room);
+      if(!relevant.length){el.innerHTML='<p class="cc-note" style="padding:4px 0;">No issues for your room.</p>';return;}
+      el.innerHTML=relevant.map(iss=>`
+        <div class="hc-issue">
+          <div class="hc-issue-top">
+            <span class="hc-issue-type">${esc(iss.body)}</span>
+          </div>
+          <p class="hc-issue-meta">→ ${esc(iss.room==='All'?'All kitchen rooms':iss.room)} · ${fmtTs(new Date(iss.created_at).getTime())}</p>
+          ${iss.title?`<p class="cc-note cc-mt-4">${esc(iss.title)}</p>`:''}
+        </div>`).join('');
+    }
+
+  </script>
+</body>
+</html>
