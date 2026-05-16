@@ -1223,6 +1223,11 @@
 
     function showKPhotosSubmitted(photos){
       document.getElementById('k-upload-wizard').style.display='none';
+      /* Hide all step photo previews so they don't appear in the left card */
+      [1,2,3].forEach(n=>{
+        const prev=document.getElementById('k-photo-preview-'+n);
+        if(prev) prev.style.display='none';
+      });
       const el=document.getElementById('k-photos-submitted');
       el.style.display='block';
       el.innerHTML=`
@@ -1315,7 +1320,7 @@
         ?`<span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Approved</span>`
         :`<span class="k-pill k-pill--done"><span class="k-dot k-dot--done"></span>Submitted</span>`;
 
-      /* Build photo area — 3-photo strip if available, fallback to single */
+      /* Build photo strip — shown inside chat feed only, not in the left card */
       const labels={trash:'Trash',geschirr:'Geschirr',overview:'Kitchen'};
       let photosHtml='';
       if(weekRow.photos&&weekRow.photos.length){
