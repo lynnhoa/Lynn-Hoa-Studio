@@ -278,7 +278,7 @@ function Header({title,sub,back,onBack,right}) {
 }
 
 function Card({children,style={},onClick}) {
-  return <div onClick={onClick} style={{background:T.white,borderRadius:16,border:`0.5px solid ${T.pk200}`,padding:"16px 20px",marginBottom:12,...style}}>{children}</div>;
+  return <div onClick={onClick} style={{background:T.white,borderRadius:18,border:`0.5px solid ${T.pk200}`,padding:"20px",marginBottom:14,...style}}>{children}</div>;
 }
 
 function SectionLabel({children}) {
@@ -565,28 +565,32 @@ function WorkoutTab({onComplete}) {
 }
 
 // ─── TAB: PLANS ──────────────────────────────────────────────────────────────
-function PlansTab({onStartDay}) {
-  const [view,setView]=useState("list"); // list | day3 | day5
-  const [modalEx,setModalEx]=useState(null);
-  const [activeDay,setActiveDay]=useState(null);
-
-  const PlanCard=({plan,label,sub,onView})=><Card style={{marginBottom:10}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+function PlanCard({plan,label,sub,onView}) {
+  return <Card style={{marginBottom:14}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
       <div>
-        <div style={{fontFamily:T.serif,fontSize:18,color:T.txtDk}}>{label}</div>
-        <div style={{fontSize:11,color:T.txtLt,marginTop:2}}>{sub}</div>
+        <div style={{fontFamily:T.serif,fontSize:20,color:T.txtDk}}>{label}</div>
+        <div style={{fontSize:12,color:T.txtLt,marginTop:2}}>{sub}</div>
       </div>
-      <span style={{background:T.pk100,color:T.pk500,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600}}>Preset</span>
+      <span style={{background:T.pk100,color:T.pk500,borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600}}>Preset</span>
     </div>
-    {plan.map(d=><div key={d.day} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:`0.5px solid ${T.pk200}`}}>
-      <div style={{width:28,height:28,borderRadius:8,background:T.pk500,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:600,flexShrink:0}}>D{d.day}</div>
+    {plan.map(d=><div key={d.day} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderTop:`0.5px solid ${T.pk200}`}}>
+      <div style={{width:34,height:34,borderRadius:10,background:T.pk500,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:600,flexShrink:0}}>D{d.day}</div>
       <div style={{flex:1}}>
-        <div style={{fontSize:12,fontWeight:600,color:T.txtDk}}>{d.name}</div>
-        <div style={{fontSize:10,color:T.txtLt}}>{d.exercises.length} exercises · {d.focus}</div>
+        <div style={{fontSize:14,fontWeight:600,color:T.txtDk}}>{d.name}</div>
+        <div style={{fontSize:12,color:T.txtLt}}>{d.exercises.length} exercises · {d.focus}</div>
       </div>
     </div>)}
-    <div style={{marginTop:10}}><OutlineBtn onClick={onView} style={{width:"100%"}}>View full plan</OutlineBtn></div>
+    <div style={{marginTop:14}}>
+      <PrimaryBtn onClick={onView}>View full plan →</PrimaryBtn>
+    </div>
   </Card>;
+}
+
+function PlansTab({onStartDay}) {
+  const [view,setView]=useState("list");
+  const [modalEx,setModalEx]=useState(null);
+  const [activeDay,setActiveDay]=useState(null);
 
   if(view==="list") return <div style={{paddingBottom:90}}>
     <Header title="Plans" sub="Your Wonyoung shape programs"/>
@@ -923,12 +927,12 @@ export default function PeachFitApp() {
   if(sessions.length===1)milestones.push("First session done ✓");
 
   const NavIcons={
-    home: (c)=><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>,
-    workout: (c)=><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4v16M18 4v16M3 8h3M18 8h3M3 16h3M18 16h3M6 12h12"/></svg>,
-    plans: (c)=><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill={c}/><circle cx="12" cy="15" r="1" fill={c}/><circle cx="16" cy="15" r="1" fill={c}/></svg>,
-    bank: (c)=><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1.2" fill={c}/><circle cx="5" cy="12" r="1.2" fill={c}/><circle cx="5" cy="18" r="1.2" fill={c}/></svg>,
-    nutrition: (c)=><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8 2 5 6 5 10c0 5 4 10 7 12 3-2 7-7 7-12 0-4-3-8-7-8z"/><path d="M12 2c0 0 2 3 2 6" strokeDasharray="2 2"/></svg>,
-    progress: (c)=><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 18 8 12 12 15 16 9 20 6"/><line x1="4" y1="21" x2="20" y2="21"/></svg>,
+    home: (c)=><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>,
+    workout: (c)=><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4v16M18 4v16M3 8h3M18 8h3M3 16h3M18 16h3M6 12h12"/></svg>,
+    plans: (c)=><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill={c}/><circle cx="12" cy="15" r="1" fill={c}/><circle cx="16" cy="15" r="1" fill={c}/></svg>,
+    bank: (c)=><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1.2" fill={c}/><circle cx="5" cy="12" r="1.2" fill={c}/><circle cx="5" cy="18" r="1.2" fill={c}/></svg>,
+    nutrition: (c)=><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C8 2 5 6 5 10c0 5 4 10 7 12 3-2 7-7 7-12 0-4-3-8-7-8z"/><path d="M12 2c0 0 2 3 2 6" strokeDasharray="2 2"/></svg>,
+    progress: (c)=><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 18 8 12 12 15 16 9 20 6"/><line x1="4" y1="21" x2="20" y2="21"/></svg>,
   };
 
   const tabs=[
@@ -947,7 +951,7 @@ export default function PeachFitApp() {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
     </div>}
 
-    <div style={{paddingBottom:0,overflowY:"auto",height:"calc(100dvh - 83px)",overflowX:"hidden"}}>
+    <div style={{paddingBottom:0,overflowY:"auto",height:"calc(100dvh - 96px)",overflowX:"hidden"}}>
       {tab==="home"&&<HomeTab profile={profile} sessions={sessions} nutrition={nutrition} onStartWorkout={()=>setTab("workout")} milestones={milestones}/>}
       {tab==="workout"&&<WorkoutTab onComplete={s=>{setSessions(prev=>[...prev,s]);}}/>}
       {tab==="plans"&&<PlansTab onStartDay={()=>setTab("workout")}/>}
@@ -956,8 +960,8 @@ export default function PeachFitApp() {
       {tab==="progress"&&<ProgressTab sessions={sessions} measurements={measurements} onLogMeasurement={m=>setMeasurements(prev=>[...prev,m])}/>}
     </div>
 
-    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.white,borderTop:`0.5px solid ${T.pk200}`,display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
-      {tabs.map(t=>{const c=tab===t.id?T.pk500:T.txtLt;return<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 0 12px",cursor:"pointer",color:c,fontSize:10,fontWeight:tab===t.id?600:400,gap:3,background:"none",border:"none",fontFamily:T.sans}}>
+    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.white,borderTop:`0.5px solid ${T.pk200}`,display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom, 16px)"}}>
+      {tabs.map(t=>{const c=tab===t.id?T.pk500:T.txtLt;return<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"12px 0 14px",cursor:"pointer",color:c,fontSize:11,fontWeight:tab===t.id?600:400,gap:5,background:"none",border:"none",fontFamily:T.sans}}>
         {NavIcons[t.icon](c)}
         {t.label}
       </button>;})}
